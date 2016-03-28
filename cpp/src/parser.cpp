@@ -11,10 +11,15 @@
 
 
 std::pair<const char*, const char*> get_line(const char*& it, const char* end) {
+    // skip empty lines
+    while (it != end && (*it == '\n' || *it == '\r')) {
+        ++it;
+    }
+
     auto lbegin = it;
 
     // fetch until line or file ends
-    while (it != end && *it != '\n') {
+    while (it != end && *it != '\n' && *it != '\r') {
         ++it;
     }
 
@@ -77,12 +82,15 @@ ngram_idx_map_t parse_map_file(const std::string& fname) {
     while (fit != fend) {
         auto line = get_line(fit, fend);
         std::string s8(std::get<0>(line), std::get<1>(line));
-        auto ngram = boost::locale::conv::utf_to_utf<char32_t>(s8);
-        if (result.find(ngram) != result.end()) {
-            // XXX: exception
+
+        if (!s8.empty()) {
+            auto ngram = boost::locale::conv::utf_to_utf<char32_t>(s8);
+            if (result.find(ngram) != result.end()) {
+                // XXX: exception
+            }
+            result.insert(std::make_pair(std::move(ngram), idx));
+            ++idx;
         }
-        result.insert(std::make_pair(std::move(ngram), idx));
-        ++idx;
     }
 
     return result;
@@ -103,11 +111,13 @@ ngram_ngram_map_t parse_trans_file(const std::string& fname) {
         auto line = get_line(fit, fend);
         std::string s8(std::get<0>(line), std::get<1>(line));
 
-        auto pos_sep = s8.find(sep);
-        if (pos_sep != std::string::npos) {
-            auto ngram0 = boost::locale::conv::utf_to_utf<char32_t>(s8.substr(0, pos_sep));
-            auto ngram1 = boost::locale::conv::utf_to_utf<char32_t>(s8.substr(pos_sep + sep.length()));
-            result.insert(std::make_pair(std::move(ngram0), std::move(ngram1)));
+        if (!s8.empty()) {
+            auto pos_sep = s8.find(sep);
+            if (pos_sep != std::string::npos) {
+                auto ngram0 = boost::locale::conv::utf_to_utf<char32_t>(s8.substr(0, pos_sep));
+                auto ngram1 = boost::locale::conv::utf_to_utf<char32_t>(s8.substr(pos_sep + sep.length()));
+                result.insert(std::make_pair(std::move(ngram0), std::move(ngram1)));
+            }
         }
     }
 

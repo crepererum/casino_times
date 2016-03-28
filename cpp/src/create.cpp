@@ -23,14 +23,12 @@ int main(int argc, char** argv) {
     std::string fname_out0;
     std::string fname_out1;
     std::string fname_mapin;
-    year_t ystart;
     year_t ylength;
     po::options_description desc("all the options");
     desc.add_options()
         ("binary0", po::value(&fname_out0)->required(), "output binary file for var0")
         ("binary1", po::value(&fname_out1)->required(), "output binary file for var1")
         ("map", po::value(&fname_mapin)->required(), "ngram map file to read")
-        ("ystart", po::value(&ystart)->required(), "first year to store")
         ("ylength", po::value(&ylength)->required(), "number of years to store")
         ("help", "print help message")
     ;
