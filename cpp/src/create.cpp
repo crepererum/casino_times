@@ -17,42 +17,21 @@
 
 namespace po = boost::program_options;
 
-using ngram_idx_map_t = std::unordered_map<ngram_t, idx_t>;
-
 int main(int argc, char** argv) {
     std::string fname_out0;
     std::string fname_out1;
     std::string fname_mapin;
     year_t ylength;
-    po::options_description desc("all the options");
+    auto desc = po_create_desc();
     desc.add_options()
         ("binary0", po::value(&fname_out0)->required(), "output binary file for var0")
         ("binary1", po::value(&fname_out1)->required(), "output binary file for var1")
         ("map", po::value(&fname_mapin)->required(), "ngram map file to read")
         ("ylength", po::value(&ylength)->required(), "number of years to store")
-        ("help", "print help message")
     ;
 
     po::variables_map vm;
-    try {
-        po::store(
-            po::command_line_parser(argc, argv).options(desc).run(),
-            vm
-        );
-    } catch(std::exception& e) {
-        std::cerr << e.what() << std::endl;
-        return 1;
-    }
-
-    if (vm.count("help")) {
-        std::cout << desc << std::endl;
-        return 1;
-    }
-
-    try {
-        po::notify(vm);
-    } catch(std::exception& e) {
-        std::cerr << e.what() << std::endl;
+    if (po_fill_vm(desc, vm, argc, argv, "create")) {
         return 1;
     }
 

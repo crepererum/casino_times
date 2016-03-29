@@ -36,11 +36,19 @@ target_link_libraries (
     boost_locale
 )
 
+# lib: utils
+add_library (utils STATIC "src/utils.cpp")
+target_link_libraries (
+    utils
+    boost_locale
+)
+
 # executable: create
 add_executable (create "src/create.cpp")
 target_link_libraries (
     create
     parser
+    utils
     boost_iostreams
     boost_locale
     boost_program_options
@@ -51,6 +59,7 @@ add_executable (normalize "src/normalize.cpp")
 target_link_libraries (
     normalize
     parser
+    utils
     boost_iostreams
     boost_locale
     boost_program_options
@@ -61,6 +70,7 @@ add_executable (scan "src/scan.cpp")
 target_link_libraries (
     scan
     parser
+    utils
     boost_iostreams
     boost_locale
     boost_program_options
@@ -71,6 +81,7 @@ add_executable (store "src/store.cpp")
 target_link_libraries (
     store
     parser
+    utils
     boost_iostreams
     boost_locale
     boost_program_options

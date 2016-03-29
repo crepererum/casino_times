@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include <locale>
+#include <set>
 #include <string>
 #include <unordered_map>
 
@@ -13,6 +14,7 @@ using var_t           = std::uint64_t;
 using year_t          = std::uint16_t;
 using ngram_idx_map_t = std::unordered_map<ngram_t, idx_t>;
 using ngram_ngram_map_t = std::unordered_map<ngram_t, ngram_t>;
+using ngram_set_t = std::set<ngram_t>;
 
 struct entry {
     var_t        var0;
@@ -27,3 +29,5 @@ ngram_idx_map_t parse_map_file(const std::string& fname);
 ngram_ngram_map_t parse_trans_file(const std::string& fname);
 
 std::u32string normalize(const std::u32string& s, const std::locale& loc);
+
+void write_map_file(const std::string& fname, const ngram_set_t& ngrams);

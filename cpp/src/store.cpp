@@ -9,7 +9,6 @@
 
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/iostreams/positioning.hpp>
-#include <boost/locale.hpp>
 #include <boost/program_options.hpp>
 
 #include "parser.hpp"
@@ -17,14 +16,10 @@
 
 namespace po = boost::program_options;
 
-using ngram_idx_map_t = std::unordered_map<ngram_t, idx_t>;
-
 int main(int argc, char** argv) {
-    // before we start, check if we're working on an UTF8 system
-    boost::locale::generator gen;
-    std::locale loc = gen("");
-    if (!std::use_facet<boost::locale::info>(loc).utf8()) {
-        std::cerr << "sorry, this program only works on UTF8 systems" << std::endl;
+    std::locale loc;
+    if (gen_locale(loc)) {
+        return 1;
     }
 
     std::string fname_in;
@@ -34,7 +29,7 @@ int main(int argc, char** argv) {
     std::string fname_trans;
     year_t ystart;
     year_t ylength;
-    po::options_description desc("all the options");
+    auto desc = po_create_desc();
     desc.add_options()
         ("file", po::value(&fname_in)->required(), "input ngram file")
         ("binary0", po::value(&fname_out0)->required(), "output binary file for var0")
@@ -43,29 +38,10 @@ int main(int argc, char** argv) {
         ("trans", po::value(&fname_trans), "transition map (e.g. for stemming)")
         ("ystart", po::value(&ystart)->required(), "first year to store")
         ("ylength", po::value(&ylength)->required(), "number of years to store")
-        ("help", "print help message")
     ;
 
     po::variables_map vm;
-    try {
-        po::store(
-            po::command_line_parser(argc, argv).options(desc).run(),
-            vm
-        );
-    } catch(std::exception& e) {
-        std::cerr << e.what() << std::endl;
-        return 1;
-    }
-
-    if (vm.count("help")) {
-        std::cout << desc << std::endl;
-        return 1;
-    }
-
-    try {
-        po::notify(vm);
-    } catch(std::exception& e) {
-        std::cerr << e.what() << std::endl;
+    if (po_fill_vm(desc, vm, argc, argv, "store")) {
         return 1;
     }
 

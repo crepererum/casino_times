@@ -1,5 +1,6 @@
 #include <cstdint>
 
+#include <fstream>
 #include <iterator>
 #include <string>
 #include <utility>
@@ -130,4 +131,11 @@ std::u32string normalize(const std::u32string& s, const std::locale& loc) {
     auto lowered = boost::locale::to_lower(nfkc, loc);
     auto utf32out = boost::locale::conv::utf_to_utf<char32_t>(lowered);
     return utf32out;
+}
+
+void write_map_file(const std::string& fname, const ngram_set_t& ngrams) {
+    std::ofstream mapfile(fname);
+    for (const auto& ngram : ngrams) { // they are sorted
+        mapfile << boost::locale::conv::utf_to_utf<char>(ngram) << '\n';
+    }
 }
