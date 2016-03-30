@@ -58,14 +58,14 @@ calc_t dist(calc_t a, calc_t b) {
 
 class dtw {
     public:
-        dtw(const calc_t* base, year_t ylength, std::size_t r) : _r(r), _r_plus(_r + 1), _r2_plus((_r << 1) + 1), _base(base), _ylength(ylength), _ylength_plus(_ylength + 1), _ylength_plus_minus_r(_ylength_plus - _r), _store(_ylength_plus * _r2_plus) {}
+        dtw(const calc_t* base, year_t ylength, std::size_t r) : _r(r), _r_plus(_r + 1), _r2(_r << 1), _r2_plus(_r2 + 1), _base(base), _ylength(ylength), _ylength_plus(_ylength + 1), _ylength_plus_minus_r(_ylength_plus - _r), _store_a(_r2_plus), _store_b(_r2_plus) {}
 
         calc_t calc(std::size_t i, std::size_t j) {
             const calc_t* local_base_i = _base + (i * _ylength);
             const calc_t* local_base_j = _base + (j * _ylength);
 
-            std::fill(_store.begin(), _store.end(), std::numeric_limits<calc_t>::infinity());
-            _store[_r] = 0.0;
+            std::fill(_store_a.begin(), _store_a.end(), std::numeric_limits<calc_t>::infinity());
+            _store_a[_r] = 0.0;
 
             // remember: r <= ylength/2
 
@@ -90,25 +90,30 @@ class dtw {
                 inner_loop(local_base_i, local_base_j, idx_i, idx_j_min, idx_j_max, 0);
             }
 
-            return _store[_store.size() - _r_plus];
+            return _store_a[_r];
         }
 
     private:
         const std::size_t _r;
         const std::size_t _r_plus;
+        const std::size_t _r2;
         const std::size_t _r2_plus;
         const calc_t* const _base;
         const year_t _ylength;
         const year_t _ylength_plus;
         const std::size_t _ylength_plus_minus_r;
-        std::vector<calc_t> _store;
+        std::vector<calc_t> _store_a;
+        std::vector<calc_t> _store_b;
 
         void inner_loop(const calc_t* local_base_i, const calc_t* local_base_j, std::size_t idx_i, std::size_t idx_j_min, std::size_t idx_j_max, std::size_t store_delta) {
-            auto p_store_last_row = &_store[(idx_i - 1) * _r2_plus];
-            auto p_store_current_row = &_store[idx_i * _r2_plus];
-
             std::size_t store_pos = store_delta;
-            calc_t current_value = p_store_current_row[store_pos - 1];
+            calc_t current_value = std::numeric_limits<calc_t>::infinity();
+
+            std::fill(
+                _store_b.begin(),
+                _store_b.begin() + static_cast<std::iterator_traits<decltype(_store_b.begin())>::difference_type>(store_pos),
+                std::numeric_limits<calc_t>::infinity()
+            );
 
             for (std::size_t idx_j = idx_j_min; idx_j <= idx_j_max; ++idx_j) {
                 calc_t cost = dist(
@@ -116,15 +121,27 @@ class dtw {
                     static_cast<calc_t>(local_base_j[idx_j])
                 );
 
-                calc_t dtw_insert = p_store_last_row[store_pos + 1];
+                calc_t dtw_insert = std::numeric_limits<calc_t>::infinity();
+                if (store_pos < _r2) {
+                    // XXX: this is only illegal during the last round, might consider unrolling
+                    dtw_insert = _store_a[store_pos + 1];
+                }
                 calc_t dtw_delete = current_value;  // value from last round
-                calc_t dtw_match  = p_store_last_row[store_pos];
+                calc_t dtw_match  = _store_a[store_pos];
 
                 current_value = cost + std::min(dtw_insert, std::min(dtw_delete, dtw_match));
-                p_store_current_row[store_pos] = current_value;
+                _store_b[store_pos] = current_value;
 
                 ++store_pos;
             }
+
+            std::fill(
+                _store_b.begin() + static_cast<std::iterator_traits<decltype(_store_b.begin())>::difference_type>(store_pos),
+                _store_b.end(),
+                std::numeric_limits<calc_t>::infinity()
+            );
+
+            std::swap(_store_a, _store_b);
         }
 };
 
