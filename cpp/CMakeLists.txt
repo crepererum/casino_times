@@ -6,8 +6,21 @@ set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # project metadata
 project (ngrams)
 
+# bunch of external projects
+externalproject_add (
+    project_libsimdpp
+    PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libsimdpp"
+    GIT_REPOSITORY "https://github.com/p12tic/libsimdpp.git"
+    GIT_TAG "v2.0-rc1"
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/simdpp <INSTALL_DIR>/simdpp
+    TEST_COMMAND ""
+)
+
 # compiler flags
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -g -gsplit-dwarf -pthread -Wall -Wextra -Wconversion -Wsign-conversion -Wpedantic -Wno-unknown-pragmas")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -mavx2 -g -gsplit-dwarf -pthread -Wall -Wextra -Wconversion -Wsign-conversion -Wpedantic -Wno-unknown-pragmas")
+set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_DEBUG} -O0 -fsanitize=address -fno-omit-frame-pointer")
 set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
 # detect clang
@@ -27,6 +40,11 @@ endif ()
 # includes
 include_directories (
     "include"
+)
+
+include_directories (
+    SYSTEM
+    "${CMAKE_CURRENT_BINARY_DIR}/libsimdpp"
 )
 
 # lib: parser
