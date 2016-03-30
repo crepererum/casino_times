@@ -26,7 +26,7 @@
 #define SIMDPP_ARCH_X86_AVX2
 #define SIMDPP_NO_DISPATCHER
 #include <simdpp/simd.h>
-#pragma message "using vector size " XSTR(SIMDPP_FAST_FLOAT64_SIZE)
+#pragma message "optimal vector size: " XSTR(SIMDPP_FAST_FLOAT64_SIZE)
 
 #include "parser.hpp"
 #include "utils.hpp"
@@ -235,7 +235,11 @@ struct dtw_impl_simple {
 };
 
 struct dtw_impl_vectorized {
-    static constexpr std::size_t n         = SIMDPP_FAST_FLOAT64_SIZE;
+    // Officially SIMDPP_FAST_FLOAT64_SIZE should be optimal,
+    // but higher counts seem to boost performance even higher.
+    // This value is bisected, but might need to be re-adjusted for
+    // other architectures or when multi-threading is implemented.
+    static constexpr std::size_t n         = SIMDPP_FAST_FLOAT64_SIZE * 4;
     static constexpr std::size_t alignment = n * 8;
 
     using internal_t = simdpp::float64<n>;
