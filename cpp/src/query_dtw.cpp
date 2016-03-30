@@ -143,7 +143,10 @@ class dtw_generic {
 
         void inner_loop(const calc_t* local_base_i, std::size_t idx_i, std::size_t idx_j_min, std::size_t idx_j_max, std::size_t store_delta) {
             std::size_t store_pos = store_delta;
-            internal_t current_value = T::infinity();
+
+            internal_t current_value   = T::infinity();
+            internal_t last_value_here = T::infinity();  // will never be used
+            internal_t last_value_next = T::load(&_store_a[store_pos]);
 
             std::fill(
                 _store_b.begin(),
@@ -156,13 +159,17 @@ class dtw_generic {
                 internal_t b = T::load(&_store_tmp[idx_j]);
                 internal_t cost = dist(a, b);
 
-                internal_t dtw_insert = T::infinity();
+                last_value_here = last_value_next;
                 if (store_pos < _r2) {
-                    // XXX: this is only illegal during the last round, might consider unrolling
-                    dtw_insert = T::load(&_store_a[store_pos + 1]);
+                    last_value_next = T::load(&_store_a[store_pos + 1]);
+                } else {
+                    last_value_next = T::infinity();
                 }
+
+                // rename variables (let's hope the compiler optimizes that)
+                internal_t dtw_insert = last_value_next;
                 internal_t dtw_delete = current_value;  // value from last round
-                internal_t dtw_match  = T::load(&_store_a[store_pos]);
+                internal_t dtw_match  = last_value_here;
 
                 current_value = cost + T::min3(dtw_insert, dtw_delete, dtw_match);
                 T::store(&_store_b[store_pos], current_value);
