@@ -20,7 +20,7 @@ externalproject_add (
 
 # compiler flags
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -mavx2 -g -gsplit-dwarf -pthread -Wall -Wextra -Wconversion -Wsign-conversion -Wpedantic -Wno-unknown-pragmas")
-set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_DEBUG} -O0 -fsanitize=address -fno-omit-frame-pointer")
+set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -fsanitize=address -fno-omit-frame-pointer")
 set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
 # detect clang
@@ -93,6 +93,7 @@ target_link_libraries (
     boost_locale
     boost_program_options
 )
+add_dependencies (query_dtw project_libsimdpp)
 
 # executable: scan
 add_executable (scan "src/scan.cpp")

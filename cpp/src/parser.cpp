@@ -11,6 +11,9 @@
 #include "parser.hpp"
 
 
+constexpr std::size_t cfg_expected_ngrams = 10 * 1000;
+
+
 std::pair<const char*, const char*> get_line(const char*& it, const char* end) {
     // skip empty lines
     while (it != end && (*it == '\n' || *it == '\r')) {
@@ -77,7 +80,9 @@ std::pair<idx_ngram_map_t, ngram_idx_map_t> parse_map_file(const std::string& fn
     }
 
     idx_ngram_map_t i2n;
-    ngram_idx_map_t n2i;
+    ngram_idx_map_t n2i(cfg_expected_ngrams);
+    i2n.reserve(cfg_expected_ngrams);
+
     auto fit = input.const_data();
     auto fend = fit + input.size();
     idx_t idx = 0;

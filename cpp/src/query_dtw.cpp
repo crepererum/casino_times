@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include <boost/align/aligned_allocator.hpp>
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/iostreams/positioning.hpp>
 #include <boost/locale.hpp>
@@ -88,11 +89,12 @@ class dtw_generic {
             _ylength_minus(_ylength - 1),
             _ylength_minus_r(_ylength - _r),
             _store_a(_r2_plus),
-            _store_b(_r2_plus) {}
+            _store_b(_r2_plus),
+            _store_tmp(ylength) {}
 
         internal_t calc(std::size_t i, std::size_t j0) {
             const calc_t* local_base_i = _base + (i * _ylength);
-            bases_t local_bases_j = T::get_bases(_base, _ylength, j0);
+            load_to_tmp(j0);
 
             std::fill(_store_a.begin(), _store_a.end(), T::infinity());
             T::store(&_store_a[_r], T::zero());
@@ -103,21 +105,21 @@ class dtw_generic {
                 std::size_t idx_j_min = 0;
                 std::size_t idx_j_max = idx_i + _r;
 
-                inner_loop(local_base_i, local_bases_j, idx_i, idx_j_min, idx_j_max, _r - idx_i);
+                inner_loop(local_base_i, idx_i, idx_j_min, idx_j_max, _r - idx_i);
             }
 
             for (std::size_t idx_i = _r; idx_i < _ylength_minus_r; ++idx_i) {
                 std::size_t idx_j_min = idx_i - _r;
                 std::size_t idx_j_max = idx_i + _r;
 
-                inner_loop(local_base_i, local_bases_j, idx_i, idx_j_min, idx_j_max, 0);
+                inner_loop(local_base_i, idx_i, idx_j_min, idx_j_max, 0);
             }
 
             for (std::size_t idx_i = _ylength_minus_r; idx_i < _ylength; ++idx_i) {
                 std::size_t idx_j_min = idx_i - _r;
                 std::size_t idx_j_max = _ylength_minus;
 
-                inner_loop(local_base_i, local_bases_j, idx_i, idx_j_min, idx_j_max, 0);
+                inner_loop(local_base_i, idx_i, idx_j_min, idx_j_max, 0);
             }
 
             return T::load(&_store_a[_r]);
@@ -125,10 +127,10 @@ class dtw_generic {
 
     private:
         using bases_t         = typename T::bases_t;
-        using store_t         = std::vector<internal_t>;
+        using store_t         = std::vector<internal_t, boost::alignment::aligned_allocator<internal_t, T::alignment>>;
         using difference_type = typename store_t::difference_type;
 
-        const std::size_t    _r;
+        const std::size_t   _r;
         const std::size_t   _r2;
         const std::size_t   _r2_plus;
         const calc_t* const _base;
@@ -137,8 +139,9 @@ class dtw_generic {
         const std::size_t   _ylength_minus_r;
         store_t             _store_a;
         store_t             _store_b;
+        store_t             _store_tmp;
 
-        void inner_loop(const calc_t* local_base_i, bases_t local_bases_j, std::size_t idx_i, std::size_t idx_j_min, std::size_t idx_j_max, std::size_t store_delta) {
+        void inner_loop(const calc_t* local_base_i, std::size_t idx_i, std::size_t idx_j_min, std::size_t idx_j_max, std::size_t store_delta) {
             std::size_t store_pos = store_delta;
             internal_t current_value = T::infinity();
 
@@ -150,7 +153,7 @@ class dtw_generic {
 
             for (std::size_t idx_j = idx_j_min; idx_j <= idx_j_max; ++idx_j) {
                 internal_t a = T::convert_single(local_base_i[idx_i]);
-                internal_t b = T::convert_multiple(local_bases_j, idx_j);
+                internal_t b = T::load(&_store_tmp[idx_j]);
                 internal_t cost = dist(a, b);
 
                 internal_t dtw_insert = T::infinity();
@@ -175,10 +178,18 @@ class dtw_generic {
 
             std::swap(_store_a, _store_b);
         }
+
+        void load_to_tmp(std::size_t j0) {
+            bases_t local_bases_j = T::get_bases(_base, _ylength, j0);
+            for (std::size_t idx = 0; idx < _ylength; ++idx) {
+                T::store(&_store_tmp[idx], T::convert_multiple(local_bases_j, idx));
+            }
+        }
 };
 
 struct dtw_impl_simple {
-    static constexpr std::size_t n = 1;
+    static constexpr std::size_t n         = 1;
+    static constexpr std::size_t alignment = n * 8;
 
     using internal_t = calc_t;
     using bases_t    = const calc_t*;
@@ -217,7 +228,8 @@ struct dtw_impl_simple {
 };
 
 struct dtw_impl_vectorized {
-    static constexpr std::size_t n = SIMDPP_FAST_FLOAT64_SIZE;
+    static constexpr std::size_t n         = SIMDPP_FAST_FLOAT64_SIZE;
+    static constexpr std::size_t alignment = n * 8;
 
     using internal_t = simdpp::float64<n>;
     using bases_t    = std::array<const calc_t*, n>;
