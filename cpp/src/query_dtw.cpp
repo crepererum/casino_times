@@ -239,8 +239,9 @@ struct dtw_impl_vectorized {
     // but higher counts seem to boost performance even higher.
     // This value is bisected, but might need to be re-adjusted for
     // other architectures or when multi-threading is implemented.
-    static constexpr std::size_t n         = SIMDPP_FAST_FLOAT64_SIZE * 4;
+    static constexpr std::size_t n         = 16;
     static constexpr std::size_t alignment = n * 8;
+    static_assert(n >= SIMDPP_FAST_FLOAT64_SIZE, "dtw_impl_vectorized is not optimal!");
 
     using internal_t = simdpp::float64<n>;
     using bases_t    = std::array<const calc_t*, n>;
@@ -251,19 +252,43 @@ struct dtw_impl_vectorized {
 
     inline static internal_t convert_multiple(bases_t bases, std::size_t idx) {
         return simdpp::make_float(
-            std::get<0>(bases)[idx],
-            std::get<1>(bases)[idx],
-            std::get<2>(bases)[idx],
-            std::get<3>(bases)[idx]
+            std::get< 0>(bases)[idx],
+            std::get< 1>(bases)[idx],
+            std::get< 2>(bases)[idx],
+            std::get< 3>(bases)[idx],
+            std::get< 4>(bases)[idx],
+            std::get< 5>(bases)[idx],
+            std::get< 6>(bases)[idx],
+            std::get< 7>(bases)[idx],
+            std::get< 8>(bases)[idx],
+            std::get< 9>(bases)[idx],
+            std::get<10>(bases)[idx],
+            std::get<11>(bases)[idx],
+            std::get<12>(bases)[idx],
+            std::get<13>(bases)[idx],
+            std::get<14>(bases)[idx],
+            std::get<15>(bases)[idx]
         );
     }
 
     inline static bases_t get_bases(const calc_t* base, std::size_t ylength, std::size_t j0) {
         return {{
-            (base + ((j0 + 0) * ylength)),
-            (base + ((j0 + 1) * ylength)),
-            (base + ((j0 + 2) * ylength)),
-            (base + ((j0 + 3) * ylength))
+            (base + ((j0 +  0) * ylength)),
+            (base + ((j0 +  1) * ylength)),
+            (base + ((j0 +  2) * ylength)),
+            (base + ((j0 +  3) * ylength)),
+            (base + ((j0 +  4) * ylength)),
+            (base + ((j0 +  5) * ylength)),
+            (base + ((j0 +  6) * ylength)),
+            (base + ((j0 +  7) * ylength)),
+            (base + ((j0 +  8) * ylength)),
+            (base + ((j0 +  9) * ylength)),
+            (base + ((j0 + 10) * ylength)),
+            (base + ((j0 + 11) * ylength)),
+            (base + ((j0 + 12) * ylength)),
+            (base + ((j0 + 13) * ylength)),
+            (base + ((j0 + 14) * ylength)),
+            (base + ((j0 + 15) * ylength))
         }};
     }
 
