@@ -69,14 +69,15 @@ entry parse_line_to_entry(const char*& it, const char* end) {
     return parse_entry(get_line(it, end));
 }
 
-ngram_idx_map_t parse_map_file(const std::string& fname) {
+std::pair<idx_ngram_map_t, ngram_idx_map_t> parse_map_file(const std::string& fname) {
     boost::iostreams::mapped_file input(fname, boost::iostreams::mapped_file::mapmode::readonly);
     if (!input.is_open()) {
         // XXX: exception!
         return {};
     }
 
-    ngram_idx_map_t result;
+    idx_ngram_map_t i2n;
+    ngram_idx_map_t n2i;
     auto fit = input.const_data();
     auto fend = fit + input.size();
     idx_t idx = 0;
@@ -86,15 +87,16 @@ ngram_idx_map_t parse_map_file(const std::string& fname) {
 
         if (!s8.empty()) {
             auto ngram = boost::locale::conv::utf_to_utf<char32_t>(s8);
-            if (result.find(ngram) != result.end()) {
+            if (n2i.find(ngram) != n2i.end()) {
                 // XXX: exception
             }
-            result.insert(std::make_pair(std::move(ngram), idx));
+            i2n.emplace_back(ngram);
+            n2i.insert(std::make_pair(std::move(ngram), idx));
             ++idx;
         }
     }
 
-    return result;
+    return std::make_pair(std::move(i2n), std::move(n2i));
 }
 
 ngram_ngram_map_t parse_trans_file(const std::string& fname) {

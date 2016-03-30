@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <tuple>
 
 #include <boost/program_options.hpp>
 
@@ -30,7 +31,9 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    ngram_idx_map_t ngmap = parse_map_file(fname_mapin);
+    idx_ngram_map_t idxmap;
+    ngram_idx_map_t ngmap;
+    std::tie(idxmap, ngmap) = parse_map_file(fname_mapin);
 
     ngram_set_t ngset_norm;
     for (const auto& kv : ngmap) {

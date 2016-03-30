@@ -65,6 +65,17 @@ target_link_libraries (
     boost_program_options
 )
 
+# executable: query_dtw
+add_executable (query_dtw "src/query_dtw.cpp")
+target_link_libraries (
+    query_dtw
+    parser
+    utils
+    boost_iostreams
+    boost_locale
+    boost_program_options
+)
+
 # executable: scan
 add_executable (scan "src/scan.cpp")
 target_link_libraries (

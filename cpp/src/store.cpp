@@ -5,6 +5,7 @@
 #include <iostream>
 #include <set>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 
 #include <boost/iostreams/device/mapped_file.hpp>
@@ -50,7 +51,9 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    ngram_idx_map_t ngmap = parse_map_file(fname_mapin);
+    idx_ngram_map_t idxmap;
+    ngram_idx_map_t ngmap;
+    std::tie(idxmap, ngmap) = parse_map_file(fname_mapin);
     std::size_t n = ngmap.size();
 
     if (vm.count("trans")) {
