@@ -40,6 +40,11 @@ function loaddata(fname, resolution, n)
     return Mmap.mmap(fp, Matrix{UInt64}, (resolution, n))
 end
 
+function loaddata_wd(fname, resolution, n)
+    fp = open(fname, "w+")
+    return Mmap.mmap(fp, Matrix{Float64}, (resolution, n))
+end
+
 function loadmap(fname)
     fp = open(fname, "r")
     bytes = readbytes(fp)
@@ -112,9 +117,7 @@ function find_min_dists(data, i, fnorm=norm_id, ftransform=transform_id, fdist=d
     return sort(results, by=x -> x[2])
 end
 
-function plot_all_that(data, map_s2i, t, ngrams, fnorm, ftransform, title)
-    dfs = map(ng -> DataFrame(x=t, y=get_from_data(data, map_s2i[ng], fnorm, ftransform), label=ng), ngrams)
-    df = reduce(vcat, DataFrame(), dfs)
+function plot_dataframe(df, t, title)
     Gadfly.plot(
         df,
         x="x",
@@ -127,4 +130,10 @@ function plot_all_that(data, map_s2i, t, ngrams, fnorm, ftransform, title)
         Guide.title(title),
         Guide.xticks(ticks=collect(minimum(t):16:maximum(t)))
     )
+end
+
+function plot_all_that(data, map_s2i, t, ngrams, fnorm, ftransform, title)
+    dfs = map(ng -> DataFrame(x=t, y=get_from_data(data, map_s2i[ng], fnorm, ftransform), label=ng), ngrams)
+    df = reduce(vcat, DataFrame(), dfs)
+    plot_dataframe(df, t, title)
 end
