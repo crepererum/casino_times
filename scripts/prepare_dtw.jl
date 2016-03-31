@@ -3,6 +3,7 @@
 fmap = ARGS[1]
 fin = ARGS[2]
 fout = ARGS[3]
+fn = ARGS[4]
 
 include("../julia/lib.jl")
 
@@ -12,6 +13,12 @@ m = 256
 data_in = loaddata(fin, m, n)
 data_out = loaddata_wd(fout, m, n)
 
+fn_sym = parse(fn)
+
+function transform_dispatch(x)
+    eval(Expr(:call, fn_sym, x))
+end
+
 for i in 1:n
-    data_out[:,i] = get_from_data(data_in, i, norm_id, transform_loggradient)
+    data_out[:,i] = get_from_data(data_in, i, norm_id, transform_dispatch)
 end
