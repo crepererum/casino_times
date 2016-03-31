@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <iterator>
 #include <limits>
@@ -413,13 +414,36 @@ int main(int argc, char** argv) {
         }
     );
 
+    constexpr std::size_t colw0 = 10;
+    constexpr std::size_t colw1 = 10;
+    constexpr std::size_t colw2 = 10;
+    std::cout
+        << "| "
+        << std::setw(colw0) << "ngram"
+        << " | "
+        << std::setw(colw1) << "id"
+        << " | "
+        << std::setw(colw2) << "distance"
+        << " |"
+        << std::endl;
+    std::cout
+        << "|-"
+        << std::string(colw0, '-')
+        << "-|-"
+        << std::string(colw1, '-')
+        << "-|-"
+        << std::string(colw2, '-')
+        << "-|"
+        << std::endl;
     for (std::size_t j = 0; j < usable_limit; ++j) {
         std::cout
-            << boost::locale::conv::utf_to_utf<char>(idxmap[distances[j].first])
-            << " @ "
-            << distances[j].first
-            << " : "
-            << distances[j].second
+            << "| "
+            << std::setw(colw0) << boost::locale::conv::utf_to_utf<char>(idxmap[distances[j].first])
+            << " | "
+            << std::setw(colw1) << distances[j].first
+            << " | "
+            << std::setw(colw2) << distances[j].second
+            << " |"
             << std::endl;
     }
 }
