@@ -117,23 +117,32 @@ function find_min_dists(data, i, fnorm=norm_id, ftransform=transform_id, fdist=d
     return sort(results, by=x -> x[2])
 end
 
-function plot_dataframe(df, t, title)
+function plot_dataframe(df, title, geo=Geom.line, th=Theme(default_point_size=0.75mm))
+    min_x = minimum(df[:x])
+    max_x = maximum(df[:x])
+
+    min_y = minimum(df[:y])
+    max_y = maximum(df[:y])
+    range_y = max_y - min_y
+    margin_y = range_y * 0.05
+
     Gadfly.plot(
         df,
         x="x",
         y="y",
         color="label",
-        Geom.line,
+        geo,
         Guide.xlabel("Year"),
         Guide.ylabel("n"),
         Guide.colorkey("ngram"),
         Guide.title(title),
-        Guide.xticks(ticks=collect(minimum(t):16:maximum(t)))
+        Coord.Cartesian(xmin=min_x, xmax=max_x, ymin=(min_y - margin_y), ymax=(max_y + margin_y)),
+        th
     )
 end
 
-function plot_all_that(data, map_s2i, t, ngrams, fnorm, ftransform, title)
+function plot_all_that(data, map_s2i, t, ngrams, fnorm, ftransform, title, geo=Geom.line, th=Theme(default_point_size=0.75mm))
     dfs = map(ng -> DataFrame(x=t, y=get_from_data(data, map_s2i[ng], fnorm, ftransform), label=ng), ngrams)
     df = reduce(vcat, DataFrame(), dfs)
-    plot_dataframe(df, t, title)
+    plot_dataframe(df, title, geo, th)
 end
