@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
     ;
 
     po::variables_map vm;
-    if (po_fill_vm(desc, vm, argc, argv, "query_dtw")) {
+    if (po_fill_vm(desc, vm, argc, argv, "query_dtw_simple")) {
         return 1;
     }
 
