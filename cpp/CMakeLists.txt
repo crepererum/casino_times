@@ -95,6 +95,18 @@ target_link_libraries (
 )
 add_dependencies (index_dtw project_libsimdpp)
 
+# executable: query_dtw_indexed
+add_executable (query_dtw_indexed "src/query_dtw_indexed.cpp")
+target_link_libraries (
+    query_dtw_indexed
+    parser
+    utils
+    boost_iostreams
+    boost_locale
+    boost_program_options
+)
+add_dependencies (query_dtw_indexed project_libsimdpp)
+
 # executable: query_dtw_simple
 add_executable (query_dtw_simple "src/query_dtw_simple.cpp")
 target_link_libraries (

@@ -11,7 +11,7 @@
 #include "parser.hpp"
 
 
-constexpr std::size_t cfg_expected_ngrams = 10 * 1000;
+constexpr std::size_t cfg_expected_ngrams = 100 * 1000;
 
 
 std::pair<const char*, const char*> get_line(const char*& it, const char* end) {
