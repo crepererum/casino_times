@@ -15,6 +15,7 @@
 #include "utils.hpp"
 
 #define SIMDPP_ARCH_X86_AVX2
+#define SIMDPP_ARCH_X86_FMA3
 #define SIMDPP_NO_DISPATCHER
 #include <simdpp/simd.h>
 #pragma message "optimal vector size: " XSTR(SIMDPP_FAST_FLOAT64_SIZE)

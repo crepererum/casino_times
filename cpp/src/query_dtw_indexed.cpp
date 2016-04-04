@@ -27,30 +27,152 @@
 
 namespace po = boost::program_options;
 
-struct queue_element_t {
+struct queue_helper_element_t {
     calc_t dist;
     std::size_t idx;
 
-    queue_element_t(calc_t dist_, std::size_t idx_) : dist(dist_), idx(idx_) {}
+    queue_helper_element_t(calc_t dist_, std::size_t idx_) : dist(dist_), idx(idx_) {}
 };
 
-struct cmp_queue {
-    bool operator()(const queue_element_t& a, const queue_element_t& b) {
+struct cmp_queue_helper {
+    bool operator()(const queue_helper_element_t& a, const queue_helper_element_t& b) {
         return a.dist > b.dist;
     }
 };
 
-using queue_t = std::priority_queue<queue_element_t, std::vector<queue_element_t>, cmp_queue>;
+using queue_helper_t = std::priority_queue<queue_helper_element_t, std::vector<queue_helper_element_t>, cmp_queue_helper>;
+
+
+class alignas(128) queue_t {
+    public:
+        static constexpr std::size_t max_buffer_size = 1024 * 16;
+
+        queue_t(box_t q_box, const downstorage_t* down, calc_t normfactor): _q_box(q_box), _down(down), _normfactor(normfactor) {
+            _buffer.reserve(max_buffer_size);
+        }
+
+        void add_to_buffer(std::size_t idx) {
+            _buffer.emplace_back(idx);
+
+            if (_buffer.size() >= max_buffer_size) {
+                flush_to_queue();
+            }
+        }
+
+        void flush_to_queue() {
+            std::size_t n      = _buffer.size();
+            std::size_t n_over = n % width;
+            std::size_t n_good = n - n_over;
+
+            for (std::size_t b = 0; b < n_good; b += width) {
+                lb_paa_vectorized(b);
+            }
+
+            for (std::size_t b = n_good; b < n; ++b) {
+                std::size_t idx = _buffer[b];
+                _queue.emplace(_normfactor * lb_paa_unnorm(_q_box, (*_down)[idx]), idx);
+            }
+
+            _buffer.clear();
+        }
+
+        bool has_data() const {
+            return !_queue.empty();
+        }
+
+        const queue_helper_element_t& top() const {
+            return _queue.top();
+        }
+
+        queue_helper_element_t pop() {
+            queue_helper_element_t top = _queue.top();
+            _queue.pop();
+            return top;
+        }
+
+    private:
+        box_t                                               _q_box;
+        const downstorage_t*                                _down;
+        calc_t                                              _normfactor;
+        std::vector<std::size_t>                            _buffer;
+        queue_helper_t                                      _queue;
+
+        static constexpr std::size_t width = 16;
+
+        using vector_t  = simdpp::float64<width>;
+        using mask_t    = simdpp::mask_float64<width>;
+        using indices_t = std::array<std::size_t, width>;
+        using bases_t   = std::array<const calc_t*, width>;
+        using tmp_t     = std::array<calc_t, width>;
+
+        indices_t          _indices;
+        bases_t            _bases;
+        alignas(128) tmp_t _tmp;
+
+        void lb_paa_vectorized(std::size_t p) {
+            vector_t zero       = simdpp::make_float(0.0);
+            vector_t sum        = simdpp::make_float(0.0);
+            vector_t normfactor = simdpp::make_float(_normfactor);
+
+            fetch_indices(p);
+            fetch_bases();
+
+            for (std::size_t i = 0; i < dtw_index_resolution; ++i) {
+                transfer_bases_to_tmp(i);
+                vector_t x = simdpp::load(_tmp.data());
+                vector_t u = simdpp::make_float(_q_box.max_corner()[i]);
+                vector_t l = simdpp::make_float(_q_box.min_corner()[i]);
+
+                mask_t cond_u = simdpp::cmp_gt(x, u);
+                mask_t cond_l = simdpp::cmp_lt(x, l);
+
+                vector_t delta_u = simdpp::sub(x, u);
+                vector_t delta_l = simdpp::sub(l, x);
+
+                vector_t delta = simdpp::blend(delta_u, zero, cond_u);
+                delta = simdpp::blend(delta_l, delta, cond_l);
+
+                sum = simdpp::fmadd(delta, delta, sum);
+            }
+
+            sum = simdpp::mul(sum, normfactor);
+
+            simdpp::store(_tmp.data(), sum);
+            for (std::size_t i = 0; i < width; ++i) {
+                _queue.emplace(_tmp[i], _indices[i]);
+            }
+        }
+
+        void fetch_indices(std::size_t p) {
+            for (std::size_t pd = 0; pd < width; ++pd) {
+                _indices[pd] = _buffer[p + pd];
+            }
+        }
+
+        void fetch_bases() {
+            for (std::size_t i = 0; i < width; ++i) {
+                _bases[i] = (*_down)[_indices[i]].data();
+            }
+        }
+
+        void transfer_bases_to_tmp(std::size_t d) {
+            for (std::size_t i = 0; i < width; ++i) {
+                _tmp[i] = _bases[i][d];
+            }
+        }
+};
 
 
 class temp_t {
     public:
         static constexpr std::size_t max_buffer_size = 128;
 
-        temp_t(const calc_t* base, year_t ylength, std::size_t r, std::size_t i): _mydtw_simple(base, ylength, r), _mydtw_vectorized(base, ylength, r), _i(i) {}
+        temp_t(const calc_t* base, year_t ylength, std::size_t r, std::size_t i): _mydtw_simple(base, ylength, r), _mydtw_vectorized(base, ylength, r), _i(i) {
+            _buffer.reserve(max_buffer_size);
+        }
 
         void add_to_buffer(std::size_t idx) {
-            _buffer.push_back(idx);
+            _buffer.emplace_back(idx);
 
             if (_buffer.size() >= max_buffer_size) {
                 flush_to_queue();
@@ -72,13 +194,13 @@ class temp_t {
                 simdpp::store(&_vresults, _internal);
 
                 for (std::size_t bd = 0; bd < dtw_vectorized_shuffled::n; ++bd) {
-                    _queue.push(queue_element_t(_vresults[bd], _buffer[b + bd]));
+                    _queue.emplace(_vresults[bd], _buffer[b + bd]);
                 }
             }
 
             for (std::size_t b = n_good; b < n; ++b) {
                 std::size_t idx = _buffer[b];
-                _queue.push(queue_element_t(_mydtw_simple.calc(_i, idx), idx));
+                _queue.emplace(_mydtw_simple.calc(_i, idx), idx);
             }
 
             _buffer.clear();
@@ -88,12 +210,12 @@ class temp_t {
             return !_queue.empty();
         }
 
-        const queue_element_t& top() const {
+        const queue_helper_element_t& top() const {
             return _queue.top();
         }
 
-        queue_element_t pop() {
-            queue_element_t top = _queue.top();
+        queue_helper_element_t pop() {
+            queue_helper_element_t top = _queue.top();
             _queue.pop();
             return top;
         }
@@ -106,7 +228,7 @@ class temp_t {
         std::array<calc_t, dtw_vectorized_shuffled::n>      _vresults;
         std::size_t                                         _i;
         std::vector<std::size_t>                            _buffer;
-        queue_t                                             _queue;
+        queue_helper_t                                      _queue;
 };
 
 
@@ -115,7 +237,7 @@ struct result_entry_t {
     calc_t dist;
 
     result_entry_t(std::size_t idx_, calc_t dist_) : idx(idx_), dist(dist_) {}
-    result_entry_t(const queue_element_t& obj) : idx(obj.idx), dist(obj.dist) {}
+    result_entry_t(const queue_helper_element_t& obj) : idx(obj.idx), dist(obj.dist) {}
 };
 
 struct result_t {
@@ -136,14 +258,14 @@ result_t run_query(const calc_t* base, year_t ylength, std::size_t i, std::size_
     box_t s_box;
     std::size_t s_j;
     std::size_t usable_limit = std::min(limit, n);
-    queue_t queue;
+    queue_t queue(q_box, down, normfactor);
     temp_t temp(base, ylength, r, i);
     result_t result;
     for (tree_t::const_query_iterator it = tree->qbegin(boost::geometry::index::nearest(q_box, static_cast<unsigned int>(n))); it != tree->qend(); ++it) {
         std::tie(s_box, s_j) = *it;
         auto mindist = normfactor * mindist_unnorm(q_box, s_box);
 
-        while (!queue.empty() && queue.top().dist < mindist) {
+        while (queue.has_data() && queue.top().dist < mindist) {
             auto p = queue.top();
             queue.pop();
 
@@ -158,10 +280,11 @@ result_t run_query(const calc_t* base, year_t ylength, std::size_t i, std::size_
             ++result.counter_dtw;
         }
 
-        queue.emplace(normfactor * lb_paa_unnorm(q_box, (*down)[s_j]), s_j);
+        queue.add_to_buffer(s_j);
         ++result.counter_fetched;
     }
-    while (!queue.empty()) {
+    queue.flush_to_queue();
+    while (queue.has_data()) {
         auto p = queue.top(); queue.pop();
 
         while (temp.has_data() && temp.top().dist < p.dist) {
