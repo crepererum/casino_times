@@ -88,17 +88,17 @@ int main(int argc, char** argv) {
 
     std::size_t usable_limit = std::min(limit, n);
     std::vector<std::pair<std::size_t, calc_t>> distances(n);
-    std::size_t n_over = n % static_cast<std::size_t>(4);
+    std::size_t n_over = n % static_cast<std::size_t>(dtw_vectorized_linear::n);
     std::size_t n_good = n - n_over;
 
-    dtw_vectorized mydtw_vectorized(base, ylength, r);
-    for (std::size_t j = 0; j < n_good; j += dtw_vectorized::n) {
+    dtw_vectorized_linear mydtw_vectorized(base, ylength, r);
+    for (std::size_t j = 0; j < n_good; j += dtw_vectorized_linear::n) {
         auto v_results = mydtw_vectorized.calc(i, j);
 
-        std::array<double, dtw_vectorized::n> d_results;
+        std::array<double, dtw_vectorized_linear::n> d_results;
         simdpp::store(&d_results, v_results);
 
-        for (std::size_t idx = 0; idx < dtw_vectorized::n; ++idx) {
+        for (std::size_t idx = 0; idx < dtw_vectorized_linear::n; ++idx) {
             distances[j + idx] = std::make_pair(j + idx, d_results[idx]);
         }
     }

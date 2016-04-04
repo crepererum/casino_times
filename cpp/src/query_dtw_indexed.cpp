@@ -43,6 +43,73 @@ struct cmp_queue {
 using queue_t = std::priority_queue<queue_element_t, std::vector<queue_element_t>, cmp_queue>;
 
 
+class temp_t {
+    public:
+        static constexpr std::size_t max_buffer_size = 128;
+
+        temp_t(const calc_t* base, year_t ylength, std::size_t r, std::size_t i): _mydtw_simple(base, ylength, r), _mydtw_vectorized(base, ylength, r), _i(i) {}
+
+        void add_to_buffer(std::size_t idx) {
+            _buffer.push_back(idx);
+
+            if (_buffer.size() >= max_buffer_size) {
+                flush_to_queue();
+            }
+        }
+
+        void flush_to_queue() {
+            std::size_t n      = _buffer.size();
+            std::size_t n_over = n % static_cast<std::size_t>(dtw_vectorized_shuffled::n);
+            std::size_t n_good = n - n_over;
+
+            for (std::size_t b = 0; b < n_good; b += dtw_vectorized_linear::n) {
+                for (std::size_t bd = 0; bd < dtw_vectorized_shuffled::n; ++bd) {
+                    _vindices[bd] = _buffer[b + bd];
+                }
+
+                _internal = _mydtw_vectorized.calc(_i, _vindices);
+
+                simdpp::store(&_vresults, _internal);
+
+                for (std::size_t bd = 0; bd < dtw_vectorized_shuffled::n; ++bd) {
+                    _queue.push(queue_element_t(_vresults[bd], _buffer[b + bd]));
+                }
+            }
+
+            for (std::size_t b = n_good; b < n; ++b) {
+                std::size_t idx = _buffer[b];
+                _queue.push(queue_element_t(_mydtw_simple.calc(_i, idx), idx));
+            }
+
+            _buffer.clear();
+        }
+
+        bool has_data() const {
+            return !_queue.empty();
+        }
+
+        const queue_element_t& top() const {
+            return _queue.top();
+        }
+
+        queue_element_t pop() {
+            queue_element_t top = _queue.top();
+            _queue.pop();
+            return top;
+        }
+
+    private:
+        dtw_simple                                          _mydtw_simple;
+        dtw_vectorized_shuffled                             _mydtw_vectorized;
+        std::array<std::size_t, dtw_vectorized_shuffled::n> _vindices;
+        dtw_vectorized_shuffled::internal_t                 _internal;
+        std::array<calc_t, dtw_vectorized_shuffled::n>      _vresults;
+        std::size_t                                         _i;
+        std::vector<std::size_t>                            _buffer;
+        queue_t                                             _queue;
+};
+
+
 struct result_entry_t {
     std::size_t idx;
     calc_t dist;
@@ -67,12 +134,11 @@ result_t run_query(const calc_t* base, year_t ylength, std::size_t i, std::size_
 
     calc_t normfactor = static_cast<calc_t>(ylength >> dtw_index_resolution_shift);
     box_t s_box;
-    std::size_t usable_limit = std::min(limit, n);
-    dtw_simple mydtw_simple(base, ylength, r);
-    queue_t queue;
-    queue_t temp;
-    result_t result;
     std::size_t s_j;
+    std::size_t usable_limit = std::min(limit, n);
+    queue_t queue;
+    temp_t temp(base, ylength, r, i);
+    result_t result;
     for (tree_t::const_query_iterator it = tree->qbegin(boost::geometry::index::nearest(q_box, static_cast<unsigned int>(n))); it != tree->qend(); ++it) {
         std::tie(s_box, s_j) = *it;
         auto mindist = normfactor * mindist_unnorm(q_box, s_box);
@@ -81,15 +147,14 @@ result_t run_query(const calc_t* base, year_t ylength, std::size_t i, std::size_
             auto p = queue.top();
             queue.pop();
 
-            while (!temp.empty() && temp.top().dist < p.dist) {
-                result.entries.emplace_back(std::move(temp.top()));
-                temp.pop();
+            while (temp.has_data() && temp.top().dist < p.dist) {
+                result.entries.emplace_back(temp.pop());
                 if (result.entries.size() >= usable_limit) {
                     return result;
                 }
             }
 
-            temp.push(queue_element_t(mydtw_simple.calc(i, p.idx), p.idx));
+            temp.add_to_buffer(p.idx);
             ++result.counter_dtw;
         }
 
@@ -99,20 +164,19 @@ result_t run_query(const calc_t* base, year_t ylength, std::size_t i, std::size_
     while (!queue.empty()) {
         auto p = queue.top(); queue.pop();
 
-        while (!temp.empty() && temp.top().dist < p.dist) {
-            result.entries.emplace_back(std::move(temp.top()));
-            temp.pop();
+        while (temp.has_data() && temp.top().dist < p.dist) {
+            result.entries.emplace_back(temp.pop());
             if (result.entries.size() >= usable_limit) {
                 return result;
             }
         }
 
-        temp.push(queue_element_t(mydtw_simple.calc(i, p.idx), p.idx));
+        temp.add_to_buffer(p.idx);
         ++result.counter_dtw;
     }
-    while (!temp.empty()) {
-        result.entries.emplace_back(std::move(temp.top()));
-        temp.pop();
+    temp.flush_to_queue();
+    while (temp.has_data()) {
+        result.entries.emplace_back(temp.pop());
         if (result.entries.size() >= usable_limit) {
             return result;
         }

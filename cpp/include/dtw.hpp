@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include <algorithm>
+#include <array>
 #include <iterator>
 #include <limits>
 #include <utility>
@@ -38,6 +39,7 @@ class dtw_generic {
         static constexpr std::size_t n = T::n;
 
         using internal_t      = typename T::internal_t;
+        using indices_t       = typename T::indices_t;
 
         dtw_generic(const calc_t* base, year_t ylength, std::size_t r) :
             _r(r),
@@ -51,7 +53,7 @@ class dtw_generic {
             _store_b(_r2_plus),
             _store_tmp(ylength) {}
 
-        internal_t calc(std::size_t i, std::size_t j0) {
+        internal_t calc(std::size_t i, indices_t j0) {
             const calc_t* local_base_i = _base + (i * _ylength);
             load_to_tmp(j0);
 
@@ -145,7 +147,7 @@ class dtw_generic {
             std::swap(_store_a, _store_b);
         }
 
-        void load_to_tmp(std::size_t j0) {
+        void load_to_tmp(indices_t j0) {
             bases_t local_bases_j = T::get_bases(_base, _ylength, j0);
             for (std::size_t idx = 0; idx < _ylength; ++idx) {
                 T::store(&_store_tmp[idx], T::convert_multiple(local_bases_j, idx));
@@ -158,6 +160,7 @@ struct dtw_impl_simple {
     static constexpr std::size_t alignment = n * 8;
 
     using internal_t = calc_t;
+    using indices_t  = std::size_t;
     using bases_t    = const calc_t*;
 
     inline static internal_t convert_single(calc_t x) {
@@ -168,7 +171,7 @@ struct dtw_impl_simple {
         return static_cast<calc_t>(bases[idx]);
     }
 
-    inline static bases_t get_bases(const calc_t* base, std::size_t ylength, std::size_t j0) {
+    inline static bases_t get_bases(const calc_t* base, std::size_t ylength, indices_t j0) {
         return base + (j0 * ylength);
     }
 
@@ -230,27 +233,6 @@ struct dtw_impl_vectorized {
         );
     }
 
-    inline static bases_t get_bases(const calc_t* base, std::size_t ylength, std::size_t j0) {
-        return {{
-            (base + ((j0 +  0) * ylength)),
-            (base + ((j0 +  1) * ylength)),
-            (base + ((j0 +  2) * ylength)),
-            (base + ((j0 +  3) * ylength)),
-            (base + ((j0 +  4) * ylength)),
-            (base + ((j0 +  5) * ylength)),
-            (base + ((j0 +  6) * ylength)),
-            (base + ((j0 +  7) * ylength)),
-            (base + ((j0 +  8) * ylength)),
-            (base + ((j0 +  9) * ylength)),
-            (base + ((j0 + 10) * ylength)),
-            (base + ((j0 + 11) * ylength)),
-            (base + ((j0 + 12) * ylength)),
-            (base + ((j0 + 13) * ylength)),
-            (base + ((j0 + 14) * ylength)),
-            (base + ((j0 + 15) * ylength))
-        }};
-    }
-
     inline static internal_t load(internal_t* ptr) {
         return simdpp::load(ptr);
     }
@@ -272,5 +254,56 @@ struct dtw_impl_vectorized {
     }
 };
 
-using dtw_simple     = dtw_generic<dtw_impl_simple>;
-using dtw_vectorized = dtw_generic<dtw_impl_vectorized>;
+struct dtw_impl_vectorized_linear : dtw_impl_vectorized {
+    using indices_t = std::size_t;
+
+    inline static bases_t get_bases(const calc_t* base, std::size_t ylength, indices_t j0) {
+        return {{
+            (base + ((j0 +  0) * ylength)),
+            (base + ((j0 +  1) * ylength)),
+            (base + ((j0 +  2) * ylength)),
+            (base + ((j0 +  3) * ylength)),
+            (base + ((j0 +  4) * ylength)),
+            (base + ((j0 +  5) * ylength)),
+            (base + ((j0 +  6) * ylength)),
+            (base + ((j0 +  7) * ylength)),
+            (base + ((j0 +  8) * ylength)),
+            (base + ((j0 +  9) * ylength)),
+            (base + ((j0 + 10) * ylength)),
+            (base + ((j0 + 11) * ylength)),
+            (base + ((j0 + 12) * ylength)),
+            (base + ((j0 + 13) * ylength)),
+            (base + ((j0 + 14) * ylength)),
+            (base + ((j0 + 15) * ylength))
+        }};
+    }
+};
+
+struct dtw_impl_vectorized_shuffled : dtw_impl_vectorized {
+    using indices_t = const std::array<std::size_t, n>&;
+
+    inline static bases_t get_bases(const calc_t* base, std::size_t ylength, indices_t j0) {
+        return {{
+            (base + (std::get< 0>(j0) * ylength)),
+            (base + (std::get< 1>(j0) * ylength)),
+            (base + (std::get< 2>(j0) * ylength)),
+            (base + (std::get< 3>(j0) * ylength)),
+            (base + (std::get< 4>(j0) * ylength)),
+            (base + (std::get< 5>(j0) * ylength)),
+            (base + (std::get< 6>(j0) * ylength)),
+            (base + (std::get< 7>(j0) * ylength)),
+            (base + (std::get< 8>(j0) * ylength)),
+            (base + (std::get< 9>(j0) * ylength)),
+            (base + (std::get<10>(j0) * ylength)),
+            (base + (std::get<11>(j0) * ylength)),
+            (base + (std::get<12>(j0) * ylength)),
+            (base + (std::get<13>(j0) * ylength)),
+            (base + (std::get<14>(j0) * ylength)),
+            (base + (std::get<15>(j0) * ylength)),
+        }};
+    }
+};
+
+using dtw_simple              = dtw_generic<dtw_impl_simple>;
+using dtw_vectorized_linear   = dtw_generic<dtw_impl_vectorized_linear>;
+using dtw_vectorized_shuffled = dtw_generic<dtw_impl_vectorized_shuffled>;
