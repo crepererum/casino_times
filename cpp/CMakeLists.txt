@@ -11,7 +11,7 @@ externalproject_add (
     project_libsimdpp
     PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libsimdpp"
     GIT_REPOSITORY "https://github.com/p12tic/libsimdpp.git"
-    GIT_TAG "v2.0-rc1"
+    GIT_TAG "v2.0-rc2"
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/simdpp <INSTALL_DIR>/simdpp
