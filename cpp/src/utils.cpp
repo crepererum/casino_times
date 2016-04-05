@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <exception>
 #include <iostream>
 
@@ -56,4 +57,11 @@ int gen_locale(std::locale& loc) {
     }
 
     return 0;
+}
+
+std::unique_ptr<char[]> alloc_cs(const std::string& s) {
+    std::unique_ptr<char[]> cs(new char[s.size() + 1]);
+    std::copy(s.cbegin(), s.cend(), cs.get());
+    cs[s.size()] = '\0';
+    return cs;
 }

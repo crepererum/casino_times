@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include <locale>
+#include <memory>
 #include <string>
 
 #include <boost/program_options.hpp>
@@ -26,3 +27,5 @@ int po_fill_vm(
 );
 
 int gen_locale(std::locale& loc);
+
+std::unique_ptr<char[]> alloc_cs(const std::string& s);
