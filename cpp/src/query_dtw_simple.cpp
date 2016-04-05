@@ -145,7 +145,7 @@ int main(int argc, char** argv) {
             << " | "
             << std::setw(colw1) << distances[j].first
             << " | "
-            << std::setw(colw2) << distances[j].second
+            << std::setw(colw2) << std::sqrt(distances[j].second)
             << " |"
             << std::endl;
     }

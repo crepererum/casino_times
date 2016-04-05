@@ -237,7 +237,7 @@ struct result_entry_t {
     calc_t dist;
 
     result_entry_t(std::size_t idx_, calc_t dist_) : idx(idx_), dist(dist_) {}
-    result_entry_t(const queue_helper_element_t& obj) : idx(obj.idx), dist(obj.dist) {}
+    result_entry_t(const queue_helper_element_t& obj) : idx(obj.idx), dist(std::sqrt(obj.dist)) {}
 };
 
 struct result_t {
