@@ -18,6 +18,18 @@ externalproject_add (
     TEST_COMMAND ""
 )
 
+externalproject_add (
+    project_wavelib
+    PREFIX "${CMAKE_CURRENT_BINARY_DIR}/wavelib"
+    GIT_REPOSITORY "https://github.com/rafat/wavelib.git"
+    GIT_TAG "a2c709715b5987247bf0182edc01d9791ce33ae2"
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR> -DBUILD_UT=Off
+    BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR>
+    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory <BINARY_DIR>/Bin <INSTALL_DIR>/lib
+    COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/header <INSTALL_DIR>/include
+    TEST_COMMAND ""
+)
+
 # compiler flags
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -mavx2 -mfma -g -fno-omit-frame-pointer -pthread -Wall -Wextra -Wconversion -Wsign-conversion -Wpedantic -Wno-unknown-pragmas")
 set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -fsanitize=address")
@@ -45,6 +57,12 @@ include_directories (
 include_directories (
     SYSTEM
     "${CMAKE_CURRENT_BINARY_DIR}/libsimdpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/wavelib/include"
+)
+
+# lib paths
+link_directories (
+    "${CMAKE_CURRENT_BINARY_DIR}/wavelib/lib"
 )
 
 # lib: parser
@@ -59,6 +77,7 @@ add_library (utils STATIC "src/utils.cpp")
 target_link_libraries (
     utils
     boost_locale
+    boost_program_options
 )
 
 # executable: create
@@ -94,6 +113,19 @@ target_link_libraries (
     boost_program_options
 )
 add_dependencies (index_dtw project_libsimdpp)
+
+# executable: index_wavelet
+add_executable (index_wavelet "src/index_wavelet.cpp")
+target_link_libraries (
+    index_wavelet
+    parser
+    utils
+    boost_iostreams
+    boost_locale
+    boost_program_options
+    wavelib
+)
+add_dependencies (index_wavelet project_wavelib)
 
 # executable: query_dtw_indexed
 add_executable (query_dtw_indexed "src/query_dtw_indexed.cpp")
