@@ -234,19 +234,82 @@ class transformer {
             for (std::size_t l_plus = _depth; l_plus > 0; --l_plus) {
                 std::size_t l = l_plus - 1;
 
-                // XXX: shuffle+sort (don't use _levels for that because that will break parent-lookup)
+                std::vector<range_bucket_t*> buckets(_levels[l].size());
                 for (std::size_t idx = 0; idx < _levels[l].size(); ++idx) {
                     node_t* current_node = _levels[l][idx];
                     auto& current_index_slot = _index->levels[l][idx];
-                    auto& bucket = current_index_slot.get_bucket(current_node);
-                    auto neighbor_and_distance = bucket.get_nearest(current_node);
+                    buckets[idx] = &current_index_slot.get_bucket(current_node);
+                }
+                // XXX: ensure that bucket pointers are stable during that function call
 
-                    if (neighbor_and_distance.first != nullptr && superroot->error + neighbor_and_distance.second < _max_error) {
-                        superroot->error += neighbor_and_distance.second;
-                        link_to_parent(neighbor_and_distance.first, l, idx, superroot);
+                // bucket lookup depends on the children, so we don't need to do check if children are equal here
+                std::vector<std::pair<node_t*, double>> neighbors(_levels[l].size());
+                for (std::size_t idx = 0; idx < _levels[l].size(); ++idx) {
+                    node_t* current_node = _levels[l][idx];
+                    neighbors[idx] = buckets[idx]->get_nearest(current_node);
+                }
+
+                // XXX: shuffle during selection (don't use _levels for that because that will break parent-lookup)
+
+                // merge pairs first to give better changes of large sub-tree merges
+                if (l > 0) {
+                    std::vector<std::pair<std::size_t, double>> indices_pairs;
+                    for (std::size_t idx = 0; idx < _levels[l].size(); idx += 2) {
+                        if (neighbors[idx].first != nullptr && neighbors[idx + 1].first != nullptr) {
+                            indices_pairs.push_back(std::make_pair(idx, neighbors[idx].second + neighbors[idx + 1].second));
+                        }
+                    }
+                    std::sort(indices_pairs.begin(), indices_pairs.end(), [](const auto& a, const auto& b){
+                        return a.second < b.second;
+                    });
+                    for (const auto& kv : indices_pairs) {
+                        std::size_t idx = kv.first;
+                        node_t* current_node_l = _levels[l][idx];
+                        node_t* current_node_r = _levels[l][idx + 1];
+
+                        if (superroot->error + kv.second < _max_error) {
+                            superroot->error += kv.second;
+
+                            link_to_parent(neighbors[idx    ].first, l, idx    , superroot);
+                            link_to_parent(neighbors[idx + 1].first, l, idx + 1, superroot);
+
+                            delete current_node_l;
+                            delete current_node_r;
+
+                            // mark them as merged
+                            _levels[l][idx]     = nullptr;
+                            _levels[l][idx + 1] = nullptr;
+                        } else {
+                            // they're sorted, so we can abort here
+                            break;
+                        }
+                    }
+                }
+
+                // now merge remaining nodes one-by-one
+                // keep ALL remaining nodes, otherwise they won't be added to the buckets
+                std::vector<std::pair<std::size_t, double>> indices_single;
+                for (std::size_t idx = 0; idx < _levels[l].size(); ++idx) {
+                    node_t* current_node = _levels[l][idx];
+
+                    // node might already be merged
+                    if (current_node != nullptr) {
+                        indices_single.push_back(std::make_pair(idx, neighbors[idx].second));
+                    }
+                }
+                std::sort(indices_single.begin(), indices_single.end(), [](const auto& a, const auto& b){
+                    return a.second < b.second;
+                });
+                for (const auto& kv : indices_single) {
+                    std::size_t idx = kv.first;
+                    node_t* current_node = _levels[l][idx];
+
+                    if (neighbors[idx].first != nullptr && superroot->error + kv.second < _max_error) {
+                        superroot->error += kv.second;
+                        link_to_parent(neighbors[idx].first, l, idx, superroot);
                         delete current_node;
                     } else {
-                        bucket.insert(current_node);
+                        buckets[idx]->insert(current_node);
                         ++_index->node_count;
                     }
                 }
