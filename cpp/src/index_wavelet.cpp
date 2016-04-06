@@ -432,6 +432,21 @@ class printer {
         }
 };
 
+double calc_compression_rate(const index_t* index, year_t ylength, std::size_t n) {
+    std::size_t size_normal = sizeof(calc_t) * static_cast<std::size_t>(ylength) * n;
+
+    // don't count the size for storing the actual ngram because that's additional information
+    // and not strictly part of the compression
+    std::size_t size_compression = sizeof(node_t) * index->node_count
+        + (sizeof(superroot_t) - sizeof(ngram_t)) * n;
+
+    return static_cast<double>(size_compression) / static_cast<double>(size_normal);
+}
+
+void print_process(const index_t* index, year_t ylength, std::size_t n, std::size_t i) {
+    std::cout << "  process=" << i << "/" << n << " #nodes=" << index->node_count << " compression_rate=" << calc_compression_rate(index, ylength, i) << std::endl;
+}
+
 int main(int argc, char** argv) {
     std::string fname_binary;
     std::string fname_map;
@@ -491,16 +506,13 @@ int main(int argc, char** argv) {
     std::shuffle(indices.begin(), indices.end(), rng);
     for (std::size_t i = 0; i < n; ++i) {
         if (i % 10000 == 0) {
-            std::cout << "  " << i << "/" << n << std::endl;
+            print_process(&index, ylength, n, i);
         }
         trans.run(indices[i]);
     }
+    print_process(&index, ylength, n, n);
     // XXX: unshuffle superroots!
     std::cout << "done" << std::endl;
-
-    std::cout << "stats:" << std::endl
-        << "  #nodes           = " << index.node_count << std::endl
-        << "  compression rate = " << (static_cast<double>(index.node_count) / static_cast<double>((ylength - 1) * n)) << std::endl;
 
     if (vm.count("dotfile")) {
         std::ofstream out(fname_dot);
