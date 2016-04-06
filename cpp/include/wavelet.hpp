@@ -52,8 +52,9 @@ class wavelet_transform {
             setWTConv(_wt_obj, _cs_conv.get());
         }
 
-        void run_dwt(double* inp) {
-            dwt(_wt_obj, inp);
+        void run_dwt(const double* inp) {
+            // dwt won't change the input, but the API is kinda messy
+            dwt(_wt_obj, const_cast<double*>(inp));
         }
 
         void print_summary() const {

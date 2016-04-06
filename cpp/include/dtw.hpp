@@ -20,9 +20,6 @@
 #include <simdpp/simd.h>
 #pragma message "optimal vector size: " XSTR(SIMDPP_FAST_FLOAT64_SIZE)
 
-using calc_t = double;
-static_assert(sizeof(double) == 8, "double isn't 64bit :(");
-
 calc_t dist(calc_t a, calc_t b) {
     calc_t d = a - b;
     return d * d;

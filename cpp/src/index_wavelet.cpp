@@ -1,24 +1,383 @@
+#include <fstream>
 #include <iostream>
 #include <memory>
+#include <random>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
+#include <boost/functional/hash.hpp>
+#include <boost/iostreams/device/mapped_file.hpp>
+#include <boost/iostreams/positioning.hpp>
+#include <boost/locale.hpp>
+#include <boost/program_options.hpp>
+
+#include "parser.hpp"
+#include "utils.hpp"
 #include "wavelet.hpp"
 
-int main() {
-    int n = 4;
-    int j = 2;
-    auto w = std::make_shared<wavelet>("haar");
-    w->print_summary();
+struct node_t;
+struct superroot_t;
 
-    wavelet_transform mywt(w, "dwt", n, j);
-    mywt.extension("per");
-    mywt.conv("direct");
+struct superroot_t {
+    ngram_t ngram;
+    node_t* root;
+    calc_t  approx;
+    calc_t  error;
+};
 
-    std::vector<double> data{2, 0, 1, 7};
-    mywt.run_dwt(data.data());
-    mywt.print_summary();
+struct node_t {
+    node_t* child_l;
+    node_t* child_r;
+    calc_t  x;
+};
 
-    for (std::size_t i = 0; i < mywt.outlength(); ++i) {
-        std::cout << mywt.output()[i] << std::endl;
+namespace std {
+    template<>
+    struct hash<std::pair<node_t*, node_t*>> {
+        size_t operator()(const std::pair<node_t*, node_t*>& obj) const {
+            std::size_t seed = 0;
+            boost::hash_combine(seed, obj.first);
+            boost::hash_combine(seed, obj.second);
+            return seed;
+        }
+    };
+}
+
+class range_index_t {
+    public:
+        range_index_t() = default;
+
+        void insert(node_t* node) {
+            auto& slot = _index_struct[std::make_pair(node->child_l, node->child_r)];
+            slot.push_back(node);
+        }
+
+        std::pair<node_t*, double> get_nearest(node_t* node) {
+            node_t* best_obj = nullptr;
+            double best_dist = std::numeric_limits<double>::infinity();
+            auto& slot = _index_struct[std::make_pair(node->child_l, node->child_r)];
+
+            for (std::size_t idx = 0; idx < slot.size(); ++idx) {
+                auto other = slot[idx];
+                double dist = std::abs(other->x - node->x);
+                if (dist < best_dist) {
+                    best_obj = other;
+                    best_dist = dist;
+                }
+            }
+
+            return std::make_pair(best_obj, best_dist);
+        }
+
+    private:
+        std::unordered_map<std::pair<node_t*, node_t*>, std::vector<node_t*>> _index_struct;
+};
+
+struct index_t {
+    std::vector<superroot_t*> superroots;
+    std::vector<std::vector<range_index_t>> levels;
+    std::size_t node_count;
+
+    index_t(std::size_t depth) : levels(depth), node_count(0) {
+        for (std::size_t l = 0; l < depth; ++l) {
+            levels[l] = std::vector<range_index_t>(1 << l);
+        }
+    }
+};
+
+namespace po = boost::program_options;
+
+constexpr std::size_t power_of_2(std::size_t x) {
+    std::size_t p = 0;
+    while (x > 1) {
+        x = x >> 1;
+        ++p;
+    }
+    return p;
+}
+
+class transformer {
+    public:
+        transformer(std::size_t ylength, std::size_t depth, double max_error, const calc_t* base, const std::shared_ptr<idx_ngram_map_t>& idxmap, index_t* index)
+            : _ylength(ylength),
+            _depth(depth),
+            _max_error(max_error),
+            _mywt(std::make_shared<wavelet>("haar"), "dwt", static_cast<int>(_ylength), static_cast<int>(_depth)),
+            _base(base),
+            _idxmap(idxmap),
+            _index(index),
+            _levels(_depth)
+        {
+            _mywt.extension("per");
+            _mywt.conv("direct");
+        }
+
+        superroot_t* run(std::size_t i) {
+            run_dwt(i);
+            superroot_t* superroot = transform_to_tree(i);
+            add_to_index(superroot);
+
+            return superroot;
+        }
+
+    private:
+        const std::size_t                 _ylength;
+        const std::size_t                 _depth;
+        double                            _max_error;
+        wavelet_transform                 _mywt;
+        const calc_t*                     _base;
+        std::shared_ptr<idx_ngram_map_t>  _idxmap;
+        index_t*                          _index;
+        std::vector<std::vector<node_t*>> _levels;
+
+        void run_dwt(std::size_t i) {
+            const calc_t* data = _base + (i * _ylength);
+            _mywt.run_dwt(data);
+        }
+
+        superroot_t* transform_to_tree(std::size_t i) {
+            superroot_t* superroot = new superroot_t;
+            superroot->ngram  = (*_idxmap)[i];
+            superroot->approx = _mywt.output()[0];
+            superroot->error  = 0;
+
+            for (std::size_t l = 0; l < _depth; ++l) {
+                std::size_t outdelta  = 1 << l;
+                std::size_t width     = outdelta;  // same calculation
+                std::size_t influence = 1u << (_depth - l);
+                double influence_sqrt = std::sqrt(static_cast<double>(influence));  // XXX: precalc
+
+                for (std::size_t idx = 0; idx < width; ++idx) {
+                    node_t* node = new node_t;
+                    node->child_l   = nullptr;
+                    node->child_r   = nullptr;
+                    node->x         = _mywt.output()[outdelta + idx] * influence_sqrt;
+
+                    link_to_parent(node, l, idx, superroot);
+
+                    _levels[l].push_back(node);
+                }
+            }
+
+            return superroot;
+        }
+
+        void add_to_index(superroot_t* superroot) {
+            _index->superroots.push_back(superroot);
+
+            for (std::size_t l_plus = _depth; l_plus > 0; --l_plus) {
+                std::size_t l = l_plus - 1;
+
+                // XXX: shuffle+sort (don't use _levels for that because that will break parent-lookup)
+                for (std::size_t idx = 0; idx < _levels[l].size(); ++idx) {
+                    node_t* current_node = _levels[l][idx];
+                    auto& current_index_slot = _index->levels[l][idx];
+                    auto neighbor_and_distance = current_index_slot.get_nearest(current_node);
+
+                    if (neighbor_and_distance.first != nullptr && superroot->error + neighbor_and_distance.second < _max_error) {
+                        superroot->error += neighbor_and_distance.second;
+                        link_to_parent(neighbor_and_distance.first, l, idx, superroot);
+                        delete current_node;
+                    } else {
+                        current_index_slot.insert(current_node);
+                        ++_index->node_count;
+                    }
+                }
+
+                _levels[l].clear();
+            }
+
+        }
+
+        void link_to_parent(node_t* node, std::size_t l, std::size_t idx, superroot_t* superroot) {
+            if (l == 0) {
+                superroot->root = node;
+            } else {
+                auto parent = _levels[l - 1][idx >> 1];
+
+                if (idx & 1u) {
+                    parent->child_r = node;
+                } else {
+                    parent->child_l = node;
+                }
+            }
+        }
+};
+
+class printer {
+    public:
+        std::ostream& print_begin(std::ostream &out) {
+            out << "digraph treegraph {" << std::endl;
+            out << "  nodesep=0.1;" << std::endl;
+            out << "  ranksep=5;" << std::endl;
+            out << "  size=\"25,25\";" << std::endl;
+            out << std::endl;
+
+            return out;
+        }
+
+        std::ostream& print_end(std::ostream &out) {
+            out << "}" << std::endl;
+
+            return out;
+        }
+
+        std::ostream& print_tree(std::ostream &out, superroot_t* superroot) {
+            print_superroot(out, superroot);
+
+            std::vector<node_t*> todo;
+            todo.push_back(superroot->root);
+
+            while (!todo.empty()) {
+                node_t* current = todo.back();
+                todo.pop_back();
+
+                print_node(out, current);
+
+                if (current->child_l) {
+                    todo.push_back(current->child_l);
+                }
+                if (current->child_r) {
+                    todo.push_back(current->child_r);
+                }
+            }
+
+            return out;
+        }
+
+    private:
+        std::unordered_set<node_t*> _printed_nodes;
+
+        template <typename T>
+        std::ostream& print_address(std::ostream &out, T* addr) {
+            out << "addr" << addr;
+            return out;
+        }
+
+        std::ostream& print_superroot(std::ostream &out, superroot_t* superroot) {
+            out << "  ";
+            print_address(out, superroot);
+            out << " [label=\"" << boost::locale::conv::utf_to_utf<char>(superroot->ngram) << "\", shape=circle, fixedsize=true, width=6, height=6, fontsize=80];" << std::endl;
+
+            out << "  ";
+            print_address(out, superroot);
+            out << " -> ";
+            print_address(out, superroot->root);
+            out << ";" << std::endl;
+
+            out << std::endl;
+
+            return out;
+        }
+
+        std::ostream& print_node(std::ostream &out, node_t* node) {
+            if (_printed_nodes.find(node) == _printed_nodes.end()) {
+                out << "  ";
+                print_address(out, node);
+                out << " [label=\"" << node->x << "\", shape=box, fixedsize=true, width=1.0, height=0.5, fontsize=8];" << std::endl;
+
+                if (node->child_l) {
+                    out << "  ";
+                    print_address(out, node);
+                    out << " -> ";
+                    print_address(out, node->child_l);
+                    out << ";" << std::endl;
+                }
+                if (node->child_r) {
+                    out << "  ";
+                    print_address(out, node);
+                    out << " -> ";
+                    print_address(out, node->child_r);
+                    out << ";" << std::endl;
+                }
+
+                out << std::endl;
+
+                _printed_nodes.insert(node);
+            }
+
+            return out;
+        }
+};
+
+int main(int argc, char** argv) {
+    std::string fname_binary;
+    std::string fname_map;
+    std::string fname_dot;
+    year_t ylength;
+    double max_error;
+    auto desc = po_create_desc();
+    desc.add_options()
+        ("binary", po::value(&fname_binary)->required(), "input binary file for var")
+        ("map", po::value(&fname_map)->required(), "ngram map file to read")
+        ("ylength", po::value(&ylength)->required(), "number of years to store")
+        ("error", po::value(&max_error)->required(), "maximum error during tree merge")
+        ("dotfile", po::value(&fname_dot), "dot file that represents the index (optional)")
+    ;
+
+    po::variables_map vm;
+    if (po_fill_vm(desc, vm, argc, argv, "index_dtw")) {
+        return 1;
+    }
+
+    if (!is_power_of_2(ylength)) {
+        std::cerr << "ylength has to be a power of 2!" << std::endl;
+        return 1;
+    }
+
+    auto idxmap = std::make_shared<idx_ngram_map_t>();
+    ngram_idx_map_t ngmap;
+    std::tie(*idxmap, ngmap) = parse_map_file(fname_map);
+    std::size_t n = ngmap.size();
+
+    boost::iostreams::mapped_file_params params;
+    params.path   = fname_binary;
+    params.flags  = boost::iostreams::mapped_file::mapmode::readonly;
+    params.length = static_cast<std::size_t>(n * ylength * sizeof(calc_t));
+    params.offset = 0;
+    boost::iostreams::mapped_file input(params);
+    if (!input.is_open()) {
+        std::cerr << "cannot read input file" << std::endl;
+        return 1;
+    }
+    auto base = reinterpret_cast<const calc_t*>(input.const_data());
+
+
+    std::size_t depth = power_of_2(ylength);
+    index_t index(depth);
+    transformer trans(ylength, depth, max_error, base, idxmap, &index);
+
+    n = 10000; // DEBUG
+
+    std::cout << "build and merge trees" << std::endl;
+    std::mt19937 rng;
+    std::size_t counter = 0;
+    std::vector<std::size_t> indices(n);
+    std::generate(indices.begin(), indices.end(), [&counter](){
+        return counter++;
+    });
+    std::shuffle(indices.begin(), indices.end(), rng);
+    for (std::size_t i = 0; i < n; ++i) {
+        if (i % 10000 == 0) {
+            std::cout << "  " << i << "/" << n << std::endl;
+        }
+        trans.run(indices[i]);
+    }
+    // XXX: unshuffle superroots!
+    std::cout << "done" << std::endl;
+
+    std::cout << "stats:" << std::endl
+        << "  #nodes           = " << index.node_count << std::endl
+        << "  compression rate = " << (static_cast<double>(index.node_count) / static_cast<double>((ylength - 1) * n)) << std::endl;
+
+    if (vm.count("dotfile")) {
+        std::ofstream out(fname_dot);
+        printer pr;
+        pr.print_begin(std::cout);
+        for (auto sr : index.superroots) {
+            pr.print_tree(std::cout, sr);
+        }
+        pr.print_end(std::cout);
     }
 }

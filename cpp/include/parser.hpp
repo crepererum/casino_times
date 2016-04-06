@@ -18,6 +18,9 @@ using ngram_idx_map_t   = std::unordered_map<ngram_t, idx_t>;
 using idx_ngram_map_t   = std::vector<ngram_t>;
 using ngram_ngram_map_t = std::unordered_map<ngram_t, ngram_t>;
 using ngram_set_t       = std::set<ngram_t>;
+using calc_t            = double;
+
+static_assert(sizeof(double) == 8, "double isn't 64bit :(");
 
 struct entry {
     var_t        var0;

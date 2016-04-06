@@ -76,6 +76,10 @@ function transform_log(x)
     return log(1.0 + x)
 end
 
+function transform_log_smooth(x)
+    return applykernel(log(1.0 + x), kernel_gauss_sigma2)
+end
+
 function transform_gradient(x)
     return gradient(x)
 end
