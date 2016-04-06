@@ -100,6 +100,12 @@ class range_bucket_t {
             }
         }
 
+        void delete_all_ptrs() {
+            for (auto& node : _slot) {
+                delete node;
+            }
+        }
+
     private:
         std::vector<node_t*> _slot;
 };
@@ -110,6 +116,12 @@ class range_index_t {
 
         range_bucket_t& get_bucket(const node_t* node) {
             return _index_struct[std::make_pair(node->child_l, node->child_r)];
+        }
+
+        void delete_all_ptrs() {
+            for (auto& kv : _index_struct) {
+                kv.second.delete_all_ptrs();
+            }
         }
 
     private:
@@ -124,6 +136,17 @@ struct index_t {
     index_t(std::size_t depth) : levels(depth), node_count(0) {
         for (std::size_t l = 0; l < depth; ++l) {
             levels[l] = std::vector<range_index_t>(1 << l);
+        }
+    }
+
+    void delete_all_ptrs() {
+        for (auto& sr : superroots) {
+            delete sr;
+        }
+        for (auto& level : levels) {
+            for (auto& range_index : level) {
+                range_index.delete_all_ptrs();
+            }
         }
     }
 };
@@ -423,4 +446,7 @@ int main(int argc, char** argv) {
         }
         pr.print_end(std::cout);
     }
+
+    // free memory for sanity checking
+    index.delete_all_ptrs();
 }
