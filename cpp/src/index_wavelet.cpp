@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <memory>
 #include <random>
 #include <unordered_map>
@@ -44,34 +45,75 @@ namespace std {
     };
 }
 
+class range_bucket_t {
+    public:
+        range_bucket_t() = default;
+
+        void insert(node_t* node) {
+            auto lower = std::lower_bound(_slot.begin(), _slot.end(), node, [](node_t* a, node_t* b){
+                return a->x < b->x;
+            });
+            _slot.insert(lower, node);
+        }
+
+        std::pair<node_t*, double> get_nearest(node_t* node) {
+            auto begin       = _slot.begin();
+            auto end         = _slot.end();
+            auto lower       = std::lower_bound(begin, end, node, [](node_t* a, node_t* b) {
+                return a->x < b->x;
+            });
+
+            // work around edge cases (e.g. lower == begin or lower == end)
+            if (lower != begin) {
+                // there is an element before the lower bound
+                auto lower_minus        = std::prev(lower);
+                double dist_lower_minus = std::abs((*lower_minus)->x - node->x);
+
+                // is this the end?
+                if (lower != end) {
+                    // also the lower element exists (for real)
+                    double dist_lower = std::abs((*lower)->x - node->x);
+
+                    // now figure out which is the nearest element
+                    if (dist_lower < dist_lower_minus) {
+                        return std::make_pair(*lower, dist_lower);
+                    } else {
+                        return std::make_pair(*lower_minus, dist_lower_minus);
+                    }
+                } else {
+                    // this is the end!
+                    // so the element before lower must be the nearest neighbor
+                    return std::make_pair(*lower_minus, dist_lower_minus);
+                }
+            } else {
+                // is this the end?
+                if (lower != end) {
+                    // nope, cool, but because lower is the first element, it's also the only
+                    // candidate for the nearest neighbor
+                    double dist_lower = std::abs((*lower)->x - node->x);
+                    return std::make_pair(*lower, dist_lower);
+                } else {
+                    // begin == end == lower
+                    // so the slot was empty
+                    return std::make_pair(nullptr, std::numeric_limits<double>::infinity());
+                }
+            }
+        }
+
+    private:
+        std::vector<node_t*> _slot;
+};
+
 class range_index_t {
     public:
         range_index_t() = default;
 
-        void insert(node_t* node) {
-            auto& slot = _index_struct[std::make_pair(node->child_l, node->child_r)];
-            slot.push_back(node);
-        }
-
-        std::pair<node_t*, double> get_nearest(node_t* node) {
-            node_t* best_obj = nullptr;
-            double best_dist = std::numeric_limits<double>::infinity();
-            auto& slot = _index_struct[std::make_pair(node->child_l, node->child_r)];
-
-            for (std::size_t idx = 0; idx < slot.size(); ++idx) {
-                auto other = slot[idx];
-                double dist = std::abs(other->x - node->x);
-                if (dist < best_dist) {
-                    best_obj = other;
-                    best_dist = dist;
-                }
-            }
-
-            return std::make_pair(best_obj, best_dist);
+        range_bucket_t& get_bucket(const node_t* node) {
+            return _index_struct[std::make_pair(node->child_l, node->child_r)];
         }
 
     private:
-        std::unordered_map<std::pair<node_t*, node_t*>, std::vector<node_t*>> _index_struct;
+        std::unordered_map<std::pair<node_t*, node_t*>, range_bucket_t> _index_struct;
 };
 
 struct index_t {
@@ -173,14 +215,15 @@ class transformer {
                 for (std::size_t idx = 0; idx < _levels[l].size(); ++idx) {
                     node_t* current_node = _levels[l][idx];
                     auto& current_index_slot = _index->levels[l][idx];
-                    auto neighbor_and_distance = current_index_slot.get_nearest(current_node);
+                    auto& bucket = current_index_slot.get_bucket(current_node);
+                    auto neighbor_and_distance = bucket.get_nearest(current_node);
 
                     if (neighbor_and_distance.first != nullptr && superroot->error + neighbor_and_distance.second < _max_error) {
                         superroot->error += neighbor_and_distance.second;
                         link_to_parent(neighbor_and_distance.first, l, idx, superroot);
                         delete current_node;
                     } else {
-                        current_index_slot.insert(current_node);
+                        bucket.insert(current_node);
                         ++_index->node_count;
                     }
                 }
@@ -348,7 +391,7 @@ int main(int argc, char** argv) {
     index_t index(depth);
     transformer trans(ylength, depth, max_error, base, idxmap, &index);
 
-    n = 10000; // DEBUG
+    n = 100000; // DEBUG
 
     std::cout << "build and merge trees" << std::endl;
     std::mt19937 rng;
