@@ -195,6 +195,7 @@ class transformer {
         std::shared_ptr<idx_ngram_map_t>  _idxmap;
         index_t*                          _index;
         std::vector<std::vector<node_t*>> _levels;
+        std::mt19937                      _rng;
 
         void run_dwt(std::size_t i) {
             const calc_t* data = _base + (i * _ylength);
@@ -249,9 +250,8 @@ class transformer {
                     neighbors[idx] = buckets[idx]->get_nearest(current_node);
                 }
 
-                // XXX: shuffle during selection (don't use _levels for that because that will break parent-lookup)
-
-                // merge pairs first to give better changes of large sub-tree merges
+                // merge pairs with merged children first to give better changes of large sub-tree merges
+                // INFO: "merged children" can also mean: no children at all (e.g. for the lowest level)
                 if (l > 0) {
                     std::vector<std::pair<std::size_t, double>> indices_pairs;
                     for (std::size_t idx = 0; idx < _levels[l].size(); idx += 2) {
@@ -259,6 +259,7 @@ class transformer {
                             indices_pairs.push_back(std::make_pair(idx, neighbors[idx].second + neighbors[idx + 1].second));
                         }
                     }
+                    std::shuffle(indices_pairs.begin(), indices_pairs.end(), _rng);
                     std::sort(indices_pairs.begin(), indices_pairs.end(), [](const auto& a, const auto& b){
                         return a.second < b.second;
                     });
@@ -297,6 +298,7 @@ class transformer {
                         indices_single.push_back(std::make_pair(idx, neighbors[idx].second));
                     }
                 }
+                std::shuffle(indices_single.begin(), indices_single.end(), _rng);
                 std::sort(indices_single.begin(), indices_single.end(), [](const auto& a, const auto& b){
                     return a.second < b.second;
                 });
