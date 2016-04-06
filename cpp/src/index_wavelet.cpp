@@ -56,48 +56,47 @@ class range_bucket_t {
             _slot.insert(lower, node);
         }
 
-        std::pair<node_t*, double> get_nearest(node_t* node) {
-            auto begin       = _slot.begin();
-            auto end         = _slot.end();
-            auto lower       = std::lower_bound(begin, end, node, [](node_t* a, node_t* b) {
+        std::vector<std::pair<node_t*, double>> get_nearest(node_t* node, double max_dist, std::size_t max_size) {
+            auto begin  = _slot.begin();
+            auto end    = _slot.end();
+            auto center = std::lower_bound(begin, end, node, [](node_t* a, node_t* b) {
                 return a->x < b->x;
             });
 
-            // work around edge cases (e.g. lower == begin or lower == end)
-            if (lower != begin) {
-                // there is an element before the lower bound
-                auto lower_minus        = std::prev(lower);
-                double dist_lower_minus = std::abs((*lower_minus)->x - node->x);
-
-                // is this the end?
-                if (lower != end) {
-                    // also the lower element exists (for real)
-                    double dist_lower = std::abs((*lower)->x - node->x);
-
-                    // now figure out which is the nearest element
-                    if (dist_lower < dist_lower_minus) {
-                        return std::make_pair(*lower, dist_lower);
+            std::vector<std::pair<node_t*, double>> neighbors;
+            auto it_up       = center;
+            auto it_down     = std::prev(center);
+            double dist_up   = std::numeric_limits<double>::infinity();
+            double dist_down = std::numeric_limits<double>::infinity();
+            auto prev_begin  = std::prev(begin); // let's also hope that std::prev(begin) works
+            if (it_up != end) {
+                dist_up = std::abs((*it_up)->x - node->x);
+            }
+            if (it_down != prev_begin) {
+                dist_down = std::abs((*it_down)->x - node->x);
+            }
+            while ((neighbors.size() < max_size)
+                    && (((it_up != end) && (dist_up <= max_dist)) || ((it_down != prev_begin) && (dist_down <= max_dist)))) {
+                if (dist_up < dist_down) {
+                    neighbors.push_back(std::make_pair(*it_up, dist_up));
+                    ++it_up;
+                    if (it_up != end) {
+                        dist_up = std::abs((*it_up)->x - node->x);
                     } else {
-                        return std::make_pair(*lower_minus, dist_lower_minus);
+                        dist_up = std::numeric_limits<double>::infinity();
                     }
                 } else {
-                    // this is the end!
-                    // so the element before lower must be the nearest neighbor
-                    return std::make_pair(*lower_minus, dist_lower_minus);
-                }
-            } else {
-                // is this the end?
-                if (lower != end) {
-                    // nope, cool, but because lower is the first element, it's also the only
-                    // candidate for the nearest neighbor
-                    double dist_lower = std::abs((*lower)->x - node->x);
-                    return std::make_pair(*lower, dist_lower);
-                } else {
-                    // begin == end == lower
-                    // so the slot was empty
-                    return std::make_pair(nullptr, std::numeric_limits<double>::infinity());
+                    neighbors.push_back(std::make_pair(*it_down, dist_down));
+                    --it_down;
+                    if (it_down != prev_begin) {
+                        dist_down = std::abs((*it_down)->x - node->x);
+                    } else {
+                        dist_down = std::numeric_limits<double>::infinity();
+                    }
                 }
             }
+
+            return neighbors;
         }
 
         void delete_all_ptrs() {
@@ -246,10 +245,13 @@ class transformer {
                 // XXX: ensure that bucket pointers are stable during that function call
 
                 // bucket lookup depends on the children, so we don't need to do check if children are equal here
-                std::vector<std::pair<node_t*, double>> neighbors(_levels[l].size());
+                std::vector<std::pair<node_t*, double>> neighbors(_levels[l].size(), std::make_pair(nullptr, std::numeric_limits<double>::infinity()));
                 for (std::size_t idx = 0; idx < _levels[l].size(); ++idx) {
                     node_t* current_node = _levels[l][idx];
-                    neighbors[idx] = buckets[idx]->get_nearest(current_node);
+                    auto all = buckets[idx]->get_nearest(current_node, _max_error - superroot->error, 1);
+                    if (!all.empty()) {
+                        neighbors[idx] = all[0];
+                    }
                 }
 
                 // merge groups with merged children first to give better changes of large sub-tree merges,
