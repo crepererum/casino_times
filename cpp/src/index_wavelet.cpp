@@ -252,36 +252,49 @@ class transformer {
                     neighbors[idx] = buckets[idx]->get_nearest(current_node);
                 }
 
-                // merge pairs with merged children first to give better changes of large sub-tree merges
+                // merge groups with merged children first to give better changes of large sub-tree merges,
+                // starting with the largest groups
                 // INFO: "merged children" can also mean: no children at all (e.g. for the lowest level)
-                if (l > 0) {
-                    std::vector<std::pair<std::size_t, double>> indices_pairs;
-                    for (std::size_t idx = 0; idx < _levels[l].size(); idx += 2) {
-                        if (neighbors[idx].first != nullptr && neighbors[idx + 1].first != nullptr) {
-                            indices_pairs.push_back(std::make_pair(idx, neighbors[idx].second + neighbors[idx + 1].second));
+                std::size_t foo = 0; // DEBUG: should be _depth, but currently that method ain't working
+                std::size_t l2_start = 0;
+                if (l >= foo) {
+                    l2_start = l - foo;
+                }
+                for (std::size_t l2 = l2_start; l2 < l; ++l2) {
+                    std::size_t width = 1 << (l - l2);
+                    std::vector<std::pair<std::size_t, double>> indices_groups;
+                    for (std::size_t idx = 0; idx < _levels[l].size(); idx += width) {
+                        bool usable = true;
+                        double sum  = 0.0;
+
+                        // node might already be merged
+                        for (std::size_t j = 0; (j < width) && usable; ++j) {
+                            // usable if: not already merged and we found a possible neighbor to merge with
+                            usable = usable && (_levels[l][idx + j] != nullptr) && (neighbors[idx + j].first != nullptr);
+                            // the sum is made up by all errors, because we want to merge them simultaneously
+                            sum += neighbors[idx + j].second;
+                        }
+                        if (usable) {
+                            indices_groups.push_back(std::make_pair(idx, sum));
                         }
                     }
-                    std::shuffle(indices_pairs.begin(), indices_pairs.end(), _rng);
-                    std::sort(indices_pairs.begin(), indices_pairs.end(), [](const auto& a, const auto& b){
+
+                    std::shuffle(indices_groups.begin(), indices_groups.end(), _rng);
+                    std::sort(indices_groups.begin(), indices_groups.end(), [](const auto& a, const auto& b){
                         return a.second < b.second;
                     });
-                    for (const auto& kv : indices_pairs) {
+
+                    for (const auto& kv : indices_groups) {
                         std::size_t idx = kv.first;
-                        node_t* current_node_l = _levels[l][idx];
-                        node_t* current_node_r = _levels[l][idx + 1];
 
                         if (superroot->error + kv.second < _max_error) {
                             superroot->error += kv.second;
 
-                            link_to_parent(neighbors[idx    ].first, l, idx    , superroot);
-                            link_to_parent(neighbors[idx + 1].first, l, idx + 1, superroot);
-
-                            delete current_node_l;
-                            delete current_node_r;
-
-                            // mark them as merged
-                            _levels[l][idx]     = nullptr;
-                            _levels[l][idx + 1] = nullptr;
+                            for (std::size_t j = 0; j < width; ++j) {
+                                link_to_parent(neighbors[idx + j].first, l, idx + j, superroot);
+                                delete _levels[l][idx + j];
+                                _levels[l][idx + j] = nullptr; // mark them as merged
+                            }
                         } else {
                             // they're sorted, so we can abort here
                             break;
