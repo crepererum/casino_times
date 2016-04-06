@@ -133,7 +133,7 @@ struct index_t {
     std::vector<std::vector<range_index_t>> levels;
     std::size_t node_count;
 
-    index_t(std::size_t depth) : levels(depth), node_count(0) {
+    index_t(std::size_t depth, std::size_t n) : superroots(n, nullptr), levels(depth), node_count(0) {
         for (std::size_t l = 0; l < depth; ++l) {
             levels[l] = std::vector<range_index_t>(1 << l);
         }
@@ -141,7 +141,9 @@ struct index_t {
 
     void delete_all_ptrs() {
         for (auto& sr : superroots) {
-            delete sr;
+            if (sr != nullptr) {
+                delete sr;
+            }
         }
         for (auto& level : levels) {
             for (auto& range_index : level) {
@@ -181,7 +183,7 @@ class transformer {
         superroot_t* run(std::size_t i) {
             run_dwt(i);
             superroot_t* superroot = transform_to_tree(i);
-            add_to_index(superroot);
+            add_to_index(superroot, i);
 
             return superroot;
         }
@@ -229,8 +231,8 @@ class transformer {
             return superroot;
         }
 
-        void add_to_index(superroot_t* superroot) {
-            _index->superroots.push_back(superroot);
+        void add_to_index(superroot_t* superroot, std::size_t i) {
+            _index->superroots[i] = superroot;
 
             for (std::size_t l_plus = _depth; l_plus > 0; --l_plus) {
                 std::size_t l = l_plus - 1;
@@ -489,12 +491,11 @@ int main(int argc, char** argv) {
     }
     auto base = reinterpret_cast<const calc_t*>(input.const_data());
 
+    n = 100000; // DEBUG
 
     std::size_t depth = power_of_2(ylength);
-    index_t index(depth);
+    index_t index(depth, n);
     transformer trans(ylength, depth, max_error, base, idxmap, &index);
-
-    n = 100000; // DEBUG
 
     std::cout << "build and merge trees" << std::endl;
     std::mt19937 rng;
@@ -511,7 +512,6 @@ int main(int argc, char** argv) {
         trans.run(indices[i]);
     }
     print_process(&index, ylength, n, n);
-    // XXX: unshuffle superroots!
     std::cout << "done" << std::endl;
 
     if (vm.count("dotfile")) {
