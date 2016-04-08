@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iterator>
 #include <memory>
+#include <queue>
 #include <random>
 #include <unordered_map>
 #include <unordered_set>
@@ -183,12 +184,35 @@ class transformer {
         superroot_t* run(std::size_t i) {
             run_dwt(i);
             superroot_t* superroot = transform_to_tree(i);
-            add_to_index(superroot, i);
+            _index->superroots[i] = superroot;
+            run_mergeloop(superroot);
+            drain();
 
             return superroot;
         }
 
     private:
+        struct queue_entry_t {
+            double      dist;
+            std::size_t l;
+            std::size_t idx;
+            node_t*     neighbor;
+
+            queue_entry_t(double dist_, std::size_t l_, std::size_t idx_, node_t* neighbor_) :
+                dist(dist_),
+                l(l_),
+                idx(idx_),
+                neighbor(neighbor_) {}
+        };
+
+        struct queue_entry_compare {
+            bool operator()(const queue_entry_t& a, const queue_entry_t& b) {
+                return a.dist > b.dist;
+            }
+        };
+
+        using queue_t = std::priority_queue<queue_entry_t, std::vector<queue_entry_t>, queue_entry_compare>;
+
         const std::size_t                 _ylength;
         const std::size_t                 _depth;
         double                            _max_error;
@@ -231,114 +255,84 @@ class transformer {
             return superroot;
         }
 
-        void add_to_index(superroot_t* superroot, std::size_t i) {
-            _index->superroots[i] = superroot;
+        void run_mergeloop(superroot_t* superroot) {
+            queue_t queue;
 
+            // fill queue with entries from lowest level
+            std::vector<std::size_t> indices(_levels[_depth - 1].size());
+            for (std::size_t idx = 0; idx < indices.size(); ++idx) {
+                indices[idx] = idx;
+            }
+            std::shuffle(indices.begin(), indices.end(), _rng);
+            for (auto idx : indices) {
+                std::size_t l = _depth - 1;
+                generate_queue_entries(l, idx, superroot, queue);
+            }
+
+            // now run merge loop
+            while (!queue.empty()) {
+                auto best = queue.top();
+                queue.pop();
+
+                node_t* current_node = _levels[best.l][best.idx];
+
+                // check if node was already merged and if distance is low enough
+                if ((current_node != nullptr) && (superroot->error + best.dist < _max_error)) {
+                    // execute merge
+                    superroot->error += best.dist;
+                    link_to_parent(best.neighbor, best.l, best.idx, superroot);
+                    delete current_node;
+                    _levels[best.l][best.idx] = nullptr;
+
+                    // generate new queue entries
+                    std::size_t idx_even = best.idx - (best.idx % 2);
+                    if ((best.l > 0) && (_levels[best.l][idx_even] == nullptr) && (_levels[best.l][idx_even + 1] == nullptr)) {
+                        generate_queue_entries(best.l - 1, best.idx >> 1, superroot, queue);
+                    }
+                }
+            }
+        }
+
+        void generate_queue_entries(std::size_t l, std::size_t idx, superroot_t* superroot, queue_t& queue) {
+            node_t* current_node = _levels[l][idx];
+
+            if (current_node != nullptr) {
+                auto& current_index_slot = _index->levels[l][idx];
+                auto& bucket = current_index_slot.get_bucket(current_node);
+                auto neighbors = bucket.get_nearest(current_node, _max_error - superroot->error, 1);
+                if (!neighbors.empty()) {
+                    queue.emplace(neighbors[0].second, l, idx, neighbors[0].first);
+                }
+            }
+        }
+
+        /*
+         * adds all remaining to index, without any merges
+         */
+        void drain() {
+            // do work bottom to top, might be important for some transaction implementaions later
             for (std::size_t l_plus = _depth; l_plus > 0; --l_plus) {
                 std::size_t l = l_plus - 1;
 
-                std::vector<range_bucket_t*> buckets(_levels[l].size());
-                for (std::size_t idx = 0; idx < _levels[l].size(); ++idx) {
-                    node_t* current_node = _levels[l][idx];
-                    auto& current_index_slot = _index->levels[l][idx];
-                    buckets[idx] = &current_index_slot.get_bucket(current_node);
-                }
-                // XXX: ensure that bucket pointers are stable during that function call
-
-                // bucket lookup depends on the children, so we don't need to do check if children are equal here
-                std::vector<std::pair<node_t*, double>> neighbors(_levels[l].size(), std::make_pair(nullptr, std::numeric_limits<double>::infinity()));
-                for (std::size_t idx = 0; idx < _levels[l].size(); ++idx) {
-                    node_t* current_node = _levels[l][idx];
-                    auto all = buckets[idx]->get_nearest(current_node, _max_error - superroot->error, 1);
-                    if (!all.empty()) {
-                        neighbors[idx] = all[0];
-                    }
-                }
-
-                // merge groups with merged children first to give better changes of large sub-tree merges,
-                // starting with the largest groups
-                // INFO: "merged children" can also mean: no children at all (e.g. for the lowest level)
-                std::size_t foo = 0; // DEBUG: should be _depth, but currently that method ain't working
-                std::size_t l2_start = 0;
-                if (l >= foo) {
-                    l2_start = l - foo;
-                }
-                for (std::size_t l2 = l2_start; l2 < l; ++l2) {
-                    std::size_t width = 1 << (l - l2);
-                    std::vector<std::pair<std::size_t, double>> indices_groups;
-                    for (std::size_t idx = 0; idx < _levels[l].size(); idx += width) {
-                        bool usable = true;
-                        double sum  = 0.0;
-
-                        // node might already be merged
-                        for (std::size_t j = 0; (j < width) && usable; ++j) {
-                            // usable if: not already merged and we found a possible neighbor to merge with
-                            usable = usable && (_levels[l][idx + j] != nullptr) && (neighbors[idx + j].first != nullptr);
-                            // the sum is made up by all errors, because we want to merge them simultaneously
-                            sum += neighbors[idx + j].second;
-                        }
-                        if (usable) {
-                            indices_groups.push_back(std::make_pair(idx, sum));
-                        }
-                    }
-
-                    std::shuffle(indices_groups.begin(), indices_groups.end(), _rng);
-                    std::sort(indices_groups.begin(), indices_groups.end(), [](const auto& a, const auto& b){
-                        return a.second < b.second;
-                    });
-
-                    for (const auto& kv : indices_groups) {
-                        std::size_t idx = kv.first;
-
-                        if (superroot->error + kv.second < _max_error) {
-                            superroot->error += kv.second;
-
-                            for (std::size_t j = 0; j < width; ++j) {
-                                link_to_parent(neighbors[idx + j].first, l, idx + j, superroot);
-                                delete _levels[l][idx + j];
-                                _levels[l][idx + j] = nullptr; // mark them as merged
-                            }
-                        } else {
-                            // they're sorted, so we can abort here
-                            break;
-                        }
-                    }
-                }
-
-                // now merge remaining nodes one-by-one
-                // keep ALL remaining nodes, otherwise they won't be added to the buckets
-                std::vector<std::pair<std::size_t, double>> indices_single;
                 for (std::size_t idx = 0; idx < _levels[l].size(); ++idx) {
                     node_t* current_node = _levels[l][idx];
 
                     // node might already be merged
                     if (current_node != nullptr) {
-                        indices_single.push_back(std::make_pair(idx, neighbors[idx].second));
-                    }
-                }
-                std::shuffle(indices_single.begin(), indices_single.end(), _rng);
-                std::sort(indices_single.begin(), indices_single.end(), [](const auto& a, const auto& b){
-                    return a.second < b.second;
-                });
-                for (const auto& kv : indices_single) {
-                    std::size_t idx = kv.first;
-                    node_t* current_node = _levels[l][idx];
-
-                    if (neighbors[idx].first != nullptr && superroot->error + kv.second < _max_error) {
-                        superroot->error += kv.second;
-                        link_to_parent(neighbors[idx].first, l, idx, superroot);
-                        delete current_node;
-                    } else {
-                        buckets[idx]->insert(current_node);
+                        auto& current_index_slot = _index->levels[l][idx];
+                        auto& bucket = current_index_slot.get_bucket(current_node);
+                        bucket.insert(current_node);
                         ++_index->node_count;
                     }
                 }
 
                 _levels[l].clear();
             }
-
         }
 
+        /*
+         * link specified node to the right parent above it (calculated by using l and idx)
+         */
         void link_to_parent(node_t* node, std::size_t l, std::size_t idx, superroot_t* superroot) {
             if (l == 0) {
                 superroot->root = node;
@@ -524,7 +518,7 @@ int main(int argc, char** argv) {
     });
     std::shuffle(indices.begin(), indices.end(), rng);
 
-    std::size_t n_test = 10000; // DEBUG
+    std::size_t n_test = 100000; // DEBUG
     for (std::size_t i = 0; i < n_test; ++i) {
         if (i % 1000 == 0) {
             print_process(&index, ylength, n_test, i);
