@@ -127,10 +127,97 @@ class range_index_t {
         std::unordered_map<std::pair<node_t*, node_t*>, range_bucket_t> _index_struct;
 };
 
+class subtree_index_t {
+    public:
+        void add_to_subtree(const node_t* subtree, const superroot_t* superroot) {
+            auto& slot = _lists[subtree];
+            auto lower = std::lower_bound(slot.begin(), slot.end(), superroot);
+            slot.insert(lower, superroot);
+
+            _sets[superroot].insert(subtree);
+
+            if (subtree->child_l != nullptr) {
+                add_to_subtree(subtree->child_l, superroot);
+            }
+            if (subtree->child_r != nullptr) {
+                add_to_subtree(subtree->child_r, superroot);
+            }
+        }
+
+        bool has_superroot(const node_t* subtree, const superroot_t* superroot) const {
+            auto it_slot = _sets.find(superroot);
+            if (it_slot != _sets.end()) {
+                auto& slot = it_slot->second;
+                return slot.find(subtree) != slot.end();
+            } else {
+                // XXX: this should never ever happen, or something used the index the wrong way
+                return false;
+            }
+        }
+
+        std::vector<const superroot_t*> get_superroots(const node_t* subtree) const {
+            auto it_slot = _lists.find(subtree);
+            if (it_slot != _lists.end()) {
+                return it_slot->second;
+            } else {
+                // XXX: this should never ever happen, or something used the index the wrong way
+                return {};
+            }
+        }
+
+    private:
+        std::unordered_map<const node_t*, std::vector<const superroot_t*>>        _lists;
+        std::unordered_map<const superroot_t*, std::unordered_set<const node_t*>> _sets;
+};
+
+class superroot_index_t {
+    public:
+        void add_to_subtree(const node_t* subtree, const superroot_t* superroot) {
+            auto& slot = _lists[subtree];
+            auto lower = std::lower_bound(slot.begin(), slot.end(), superroot);
+            slot.insert(lower, superroot);
+
+            _sets[superroot].insert(subtree);
+
+            if (subtree->child_l != nullptr) {
+                add_to_subtree(subtree->child_l, superroot);
+            }
+            if (subtree->child_r != nullptr) {
+                add_to_subtree(subtree->child_r, superroot);
+            }
+        }
+
+        bool has_superroot(const node_t* subtree, const superroot_t* superroot) const {
+            auto it_slot = _sets.find(superroot);
+            if (it_slot != _sets.end()) {
+                auto& slot = it_slot->second;
+                return slot.find(subtree) != slot.end();
+            } else {
+                // XXX: this should never ever happen, or something used the index the wrong way
+                return false;
+            }
+        }
+
+        std::vector<const superroot_t*> get_superroots(const node_t* subtree) const {
+            auto it_slot = _lists.find(subtree);
+            if (it_slot != _lists.end()) {
+                return it_slot->second;
+            } else {
+                // XXX: this should never ever happen, or something used the index the wrong way
+                return {};
+            }
+        }
+
+    private:
+        std::unordered_map<const node_t*, std::vector<const superroot_t*>>        _lists;
+        std::unordered_map<const superroot_t*, std::unordered_set<const node_t*>> _sets;
+};
+
 struct index_t {
     std::vector<superroot_t*> superroots;
     std::vector<std::vector<range_index_t>> levels;
     std::size_t node_count;
+    superroot_index_t superroot_index;
 
     index_t(std::size_t depth, std::size_t n) : superroots(n, nullptr), levels(depth), node_count(0) {
         for (std::size_t l = 0; l < depth; ++l) {
@@ -227,6 +314,8 @@ class transformer {
                 }
             }
 
+            _index->superroot_index.add_to_subtree(superroot->root, superroot);
+
             return superroot;
         }
 
@@ -257,7 +346,7 @@ class transformer {
                 // merge groups with merged children first to give better changes of large sub-tree merges,
                 // starting with the largest groups
                 // INFO: "merged children" can also mean: no children at all (e.g. for the lowest level)
-                std::size_t foo = 0; // DEBUG: should be _depth, but currently that method ain't working
+                std::size_t foo = 1; // DEBUG: should be _depth, but currently that method ain't working
                 std::size_t l2_start = 0;
                 if (l >= foo) {
                     l2_start = l - foo;
@@ -266,17 +355,13 @@ class transformer {
                     std::size_t width = 1 << (l - l2);
                     std::vector<std::pair<std::size_t, double>> indices_groups;
                     for (std::size_t idx = 0; idx < _levels[l].size(); idx += width) {
-                        bool usable = true;
-                        double sum  = 0.0;
+                        if (find_best_group_merge(width, idx, superroot->error, neighbors)) {
+                            double sum  = 0.0;
 
-                        // node might already be merged
-                        for (std::size_t j = 0; (j < width) && usable; ++j) {
-                            // usable if: not already merged and we found a possible neighbor to merge with
-                            usable = usable && (_levels[l][idx + j] != nullptr) && (neighbors[idx + j].first != nullptr);
-                            // the sum is made up by all errors, because we want to merge them simultaneously
-                            sum += neighbors[idx + j].second;
-                        }
-                        if (usable) {
+                            // node might already be merged
+                            for (std::size_t j = 0; j < width; ++j) {
+                                sum += neighbors[idx + j].second;
+                            }
                             indices_groups.push_back(std::make_pair(idx, sum));
                         }
                     }
@@ -326,6 +411,7 @@ class transformer {
                     if (neighbors[idx].first != nullptr && superroot->error + kv.second < _max_error) {
                         superroot->error += kv.second;
                         link_to_parent(neighbors[idx].first, l, idx, superroot);
+                        _index->superroot_index.add_to_subtree(neighbors[idx].first, superroot);
                         delete current_node;
                     } else {
                         buckets[idx]->insert(current_node);
@@ -350,6 +436,35 @@ class transformer {
                     parent->child_l = node;
                 }
             }
+        }
+
+        // XXX: extend to work with multiple neighbors per member
+        bool find_best_group_merge(std::size_t width, std::size_t idx, double current_error, const std::vector<std::pair<node_t*, double>>& neighbors) {
+            bool found_smth = false;
+            double best_sum = std::numeric_limits<double>::infinity();
+
+            // start chains with the first member of the group
+            // might already be merged
+            if (neighbors[idx].first != nullptr) {
+                for (auto& sr : _index->superroot_index.get_superroots(neighbors[idx].first)) {
+                    double sum  = current_error + neighbors[idx].second;
+                    bool usable = true;
+                    for (std::size_t j = 1; (j < width) && usable && (sum < _max_error); ++j) {
+                        // might already be merged
+                        if ((neighbors[idx + j].first != nullptr) && _index->superroot_index.has_superroot(neighbors[idx + j].first, sr)) {
+                            sum += neighbors[idx + j].second;
+                        } else {
+                            usable = false;
+                        }
+                    }
+                    if (usable && (sum < _max_error) && (sum < best_sum)) {
+                        best_sum   = sum;
+                        found_smth = true;
+                    }
+                }
+            }
+
+            return found_smth;
         }
 };
 
@@ -506,7 +621,7 @@ int main(int argc, char** argv) {
     }
     auto base = reinterpret_cast<const calc_t*>(input.const_data());
 
-    n = 100000; // DEBUG
+    n = 5000; // DEBUG
 
     std::size_t depth = power_of_2(ylength);
     index_t index(depth, n);
@@ -521,7 +636,7 @@ int main(int argc, char** argv) {
     });
     std::shuffle(indices.begin(), indices.end(), rng);
     for (std::size_t i = 0; i < n; ++i) {
-        if (i % 10000 == 0) {
+        if (i % 1000 == 0) {
             print_process(&index, ylength, n, i);
         }
         trans.run(indices[i]);
