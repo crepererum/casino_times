@@ -462,7 +462,11 @@ double calc_compression_rate(const index_t* index, year_t ylength, std::size_t n
 }
 
 void print_process(const index_t* index, year_t ylength, std::size_t n, std::size_t i) {
-    std::cout << "  process=" << i << "/" << n << " #nodes=" << index->node_count << " compression_rate=" << calc_compression_rate(index, ylength, i) << std::endl;
+    std::cout << "  process=" << i << "/" << n
+        << " #nodes=" << index->node_count
+        << " %nodes=" << (static_cast<double>(index->node_count) / static_cast<double>((ylength - 1) * i))
+        << " compression_rate=" << calc_compression_rate(index, ylength, i)
+        << std::endl;
 }
 
 int main(int argc, char** argv) {
