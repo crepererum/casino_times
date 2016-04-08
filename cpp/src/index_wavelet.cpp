@@ -511,8 +511,6 @@ int main(int argc, char** argv) {
     }
     auto base = reinterpret_cast<const calc_t*>(input.const_data());
 
-    n = 100000; // DEBUG
-
     std::size_t depth = power_of_2(ylength);
     index_t index(depth, n);
     transformer trans(ylength, depth, max_error, base, idxmap, &index);
@@ -525,13 +523,15 @@ int main(int argc, char** argv) {
         return counter++;
     });
     std::shuffle(indices.begin(), indices.end(), rng);
-    for (std::size_t i = 0; i < n; ++i) {
-        if (i % 10000 == 0) {
-            print_process(&index, ylength, n, i);
+
+    std::size_t n_test = 10000; // DEBUG
+    for (std::size_t i = 0; i < n_test; ++i) {
+        if (i % 1000 == 0) {
+            print_process(&index, ylength, n_test, i);
         }
         trans.run(indices[i]);
     }
-    print_process(&index, ylength, n, n);
+    print_process(&index, ylength, n_test, n_test);
     std::cout << "done" << std::endl;
 
     if (vm.count("dotfile")) {
