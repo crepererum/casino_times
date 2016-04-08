@@ -124,6 +124,7 @@ class range_index_t {
         }
 
     private:
+        // XXX: make node pointers in key const
         std::unordered_map<std::pair<node_t*, node_t*>, range_bucket_t> _index_struct;
 };
 
