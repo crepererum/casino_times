@@ -168,16 +168,16 @@ constexpr std::size_t power_of_2(std::size_t x) {
 
 class transformer {
     public:
-        transformer(std::size_t ylength, std::size_t depth, double max_error, const calc_t* base, const std::shared_ptr<idx_ngram_map_t>& idxmap, index_t* index)
-            : _ylength(ylength),
+        superroot_t*                      superroot;
+        std::vector<std::vector<node_t*>> levels;
+
+        transformer(std::size_t ylength, std::size_t depth) :
+            superroot(nullptr),
+            levels(depth),
+            _ylength(ylength),
             _depth(depth),
-            _max_error(max_error),
             _mywt(std::make_shared<wavelet>("haar"), "dwt", static_cast<int>(_ylength), static_cast<int>(_depth)),
-            _influence_sqrt(_depth),
-            _base(base),
-            _idxmap(idxmap),
-            _index(index),
-            _levels(_depth)
+            _influence_sqrt(_depth)
         {
             _mywt.extension("per");
             _mywt.conv("direct");
@@ -188,16 +188,102 @@ class transformer {
             }
         }
 
-        superroot_t* run(std::size_t i) {
-            run_dwt(i);
-            superroot_t* superroot = transform_to_tree(i);
-            superroot->error = calc_error(superroot, i);  // correct error because of floating point errors
-            _index->superroots[i] = superroot;
-            run_mergeloop(superroot, i);
-            drain();
-            superroot->error = calc_error(superroot, i);  // correct error one last time
+        superroot_t* data_to_tree(const calc_t* data, const ngram_t& ngram) {
+            _mywt.run_dwt(data);
+
+            superroot = new superroot_t;
+            superroot->ngram  = ngram;
+            superroot->approx = _mywt.output()[0];
+            superroot->error  = 0;
+
+            for (std::size_t l = 0; l < _depth; ++l) {
+                std::size_t outdelta  = 1 << l;
+                std::size_t width     = outdelta;  // same calculation
+
+                levels[l].clear();
+
+                for (std::size_t idx = 0; idx < width; ++idx) {
+                    node_t* node  = new node_t;
+                    node->child_l = nullptr;
+                    node->child_r = nullptr;
+                    node->x       = _mywt.output()[outdelta + idx] * _influence_sqrt[l];
+
+                    link_to_parent(node, l, idx);
+
+                    levels[l].push_back(node);
+                }
+            }
 
             return superroot;
+        }
+
+        void tree_to_data(calc_t* data) {
+            // prepare idwt
+            _mywt.output()[0] = superroot->approx;
+            std::vector<node_t*> layer_a{superroot->root};
+            std::vector<node_t*> layer_b;
+            for (std::size_t l = 0; l < _depth; ++l) {
+                std::size_t width    = static_cast<std::size_t>(1) << l;
+                std::size_t outdelta = width; // same calculation
+
+                layer_b.clear();
+                for (std::size_t idx = 0; idx < width; ++idx) {
+                    _mywt.output()[outdelta + idx] = layer_a[idx]->x / _influence_sqrt[l];
+                    layer_b.push_back(layer_a[idx]->child_l);
+                    layer_b.push_back(layer_a[idx]->child_r);
+                }
+
+                std::swap(layer_a, layer_b);
+            }
+
+            // do idwt
+            _mywt.run_idwt(data);
+        }
+
+        /*
+         * link specified node to the right parent above it (calculated by using l and idx)
+         */
+        void link_to_parent(node_t* node, std::size_t l, std::size_t idx) {
+            if (l == 0) {
+                superroot->root = node;
+            } else {
+                auto parent = levels[l - 1][idx >> 1];
+
+                if (idx & 1u) {
+                    parent->child_r = node;
+                } else {
+                    parent->child_l = node;
+                }
+            }
+        }
+
+    private:
+        const std::size_t   _ylength;
+        const std::size_t   _depth;
+        wavelet_transform   _mywt;
+        std::vector<double> _influence_sqrt;
+};
+
+class engine {
+    public:
+        engine(std::size_t ylength, std::size_t depth, double max_error, const calc_t* base, const std::shared_ptr<idx_ngram_map_t>& idxmap, index_t* index)
+            : _ylength(ylength),
+            _depth(depth),
+            _max_error(max_error),
+            _base(base),
+            _idxmap(idxmap),
+            _index(index),
+            _transformer(_ylength, _depth) {}
+
+        superroot_t* run(std::size_t i) {
+            _transformer.data_to_tree(_base + (i * _ylength), (*_idxmap)[i]);
+            _transformer.superroot->error = calc_error(i);  // correct error because of floating point errors
+            _index->superroots[i] = _transformer.superroot;
+            run_mergeloop(i);
+            drain();
+            _transformer.superroot->error = calc_error(i);  // correct error one last time
+
+            return _transformer.superroot;
         }
 
     private:
@@ -222,60 +308,28 @@ class transformer {
 
         using queue_t = std::priority_queue<queue_entry_t, std::vector<queue_entry_t>, queue_entry_compare>;
 
-        const std::size_t                 _ylength;
-        const std::size_t                 _depth;
-        double                            _max_error;
-        wavelet_transform                 _mywt;
-        std::vector<double>               _influence_sqrt;
-        const calc_t*                     _base;
-        std::shared_ptr<idx_ngram_map_t>  _idxmap;
-        index_t*                          _index;
-        std::vector<std::vector<node_t*>> _levels;
-        std::mt19937                      _rng;
+        const std::size_t                _ylength;
+        const std::size_t                _depth;
+        double                           _max_error;
+        const calc_t*                    _base;
+        std::shared_ptr<idx_ngram_map_t> _idxmap;
+        index_t*                         _index;
+        std::mt19937                     _rng;
+        transformer                      _transformer;
 
-        void run_dwt(std::size_t i) {
-            const calc_t* data = _base + (i * _ylength);
-            _mywt.run_dwt(data);
-        }
-
-        superroot_t* transform_to_tree(std::size_t i) {
-            superroot_t* superroot = new superroot_t;
-            superroot->ngram  = (*_idxmap)[i];
-            superroot->approx = _mywt.output()[0];
-            superroot->error  = 0;
-
-            for (std::size_t l = 0; l < _depth; ++l) {
-                std::size_t outdelta  = 1 << l;
-                std::size_t width     = outdelta;  // same calculation
-
-                for (std::size_t idx = 0; idx < width; ++idx) {
-                    node_t* node = new node_t;
-                    node->child_l   = nullptr;
-                    node->child_r   = nullptr;
-                    node->x         = _mywt.output()[outdelta + idx] * _influence_sqrt[l];
-
-                    link_to_parent(node, l, idx, superroot);
-
-                    _levels[l].push_back(node);
-                }
-            }
-
-            return superroot;
-        }
-
-        void run_mergeloop(superroot_t* superroot, std::size_t i) {
+        void run_mergeloop(std::size_t i) {
             queue_t queue;
             bool error_is_approx = false;
 
             // fill queue with entries from lowest level
-            std::vector<std::size_t> indices(_levels[_depth - 1].size());
+            std::vector<std::size_t> indices(_transformer.levels[_depth - 1].size());
             for (std::size_t idx = 0; idx < indices.size(); ++idx) {
                 indices[idx] = idx;
             }
             std::shuffle(indices.begin(), indices.end(), _rng);
             for (auto idx : indices) {
                 std::size_t l = _depth - 1;
-                generate_queue_entries(l, idx, superroot, queue);
+                generate_queue_entries(l, idx, queue);
             }
 
             // now run merge loop
@@ -283,48 +337,48 @@ class transformer {
                 auto best = queue.top();
                 queue.pop();
 
-                node_t* current_node = _levels[best.l][best.idx];
+                node_t* current_node = _transformer.levels[best.l][best.idx];
 
                 // check if node was already merged and if distance is low enough
                 if (current_node != nullptr) {
                     // check if merge would be in error range (i.e. does not increase error beyond _max_error)
                     bool in_error_range = false;
-                    if (superroot->error + best.dist < _max_error) {
+                    if (_transformer.superroot->error + best.dist < _max_error) {
                         in_error_range = true;
                     } else if (error_is_approx) {
                         // ok, error is an approximation anyway, so lets calculate the right value and try again
-                        superroot->error = calc_error(superroot, i);
+                        _transformer.superroot->error = calc_error(i);
                         error_is_approx = false;
-                        if (superroot->error + best.dist < _max_error) {
+                        if (_transformer.superroot->error + best.dist < _max_error) {
                             in_error_range = true;
                         }
                     }
 
                     if (in_error_range) {
                         // execute merge
-                        superroot->error += best.dist;
+                        _transformer.superroot->error += best.dist;
                         error_is_approx = true;
-                        link_to_parent(best.neighbor, best.l, best.idx, superroot);
+                        _transformer.link_to_parent(best.neighbor, best.l, best.idx);
                         delete current_node;
-                        _levels[best.l][best.idx] = nullptr;
+                        _transformer.levels[best.l][best.idx] = nullptr;
 
                         // generate new queue entries
                         std::size_t idx_even = best.idx - (best.idx % 2);
-                        if ((best.l > 0) && (_levels[best.l][idx_even] == nullptr) && (_levels[best.l][idx_even + 1] == nullptr)) {
-                            generate_queue_entries(best.l - 1, best.idx >> 1, superroot, queue);
+                        if ((best.l > 0) && (_transformer.levels[best.l][idx_even] == nullptr) && (_transformer.levels[best.l][idx_even + 1] == nullptr)) {
+                            generate_queue_entries(best.l - 1, best.idx >> 1, queue);
                         }
                     }
                 }
             }
         }
 
-        void generate_queue_entries(std::size_t l, std::size_t idx, superroot_t* superroot, queue_t& queue) {
-            node_t* current_node = _levels[l][idx];
+        void generate_queue_entries(std::size_t l, std::size_t idx, queue_t& queue) {
+            node_t* current_node = _transformer.levels[l][idx];
 
             if (current_node != nullptr) {
                 auto& current_index_slot = _index->levels[l][idx];
                 auto& bucket = current_index_slot.get_bucket(current_node);
-                auto neighbors = bucket.get_nearest(current_node, _max_error - superroot->error, 1);
+                auto neighbors = bucket.get_nearest(current_node, _max_error - _transformer.superroot->error, 1);
                 if (!neighbors.empty()) {
                     queue.emplace(neighbors[0].second, l, idx, neighbors[0].first);
                 }
@@ -339,8 +393,8 @@ class transformer {
             for (std::size_t l_plus = _depth; l_plus > 0; --l_plus) {
                 std::size_t l = l_plus - 1;
 
-                for (std::size_t idx = 0; idx < _levels[l].size(); ++idx) {
-                    node_t* current_node = _levels[l][idx];
+                for (std::size_t idx = 0; idx < _transformer.levels[l].size(); ++idx) {
+                    node_t* current_node = _transformer.levels[l][idx];
 
                     // node might already be merged
                     if (current_node != nullptr) {
@@ -350,50 +404,13 @@ class transformer {
                         ++_index->node_count;
                     }
                 }
-
-                _levels[l].clear();
             }
         }
 
-        /*
-         * link specified node to the right parent above it (calculated by using l and idx)
-         */
-        void link_to_parent(node_t* node, std::size_t l, std::size_t idx, superroot_t* superroot) {
-            if (l == 0) {
-                superroot->root = node;
-            } else {
-                auto parent = _levels[l - 1][idx >> 1];
-
-                if (idx & 1u) {
-                    parent->child_r = node;
-                } else {
-                    parent->child_l = node;
-                }
-            }
-        }
-
-        double calc_error(const superroot_t* superroot, const std::size_t i) {
-            // prepare idwt
-            _mywt.output()[0] = superroot->approx;
-            std::vector<node_t*> layer_a{superroot->root};
-            std::vector<node_t*> layer_b;
-            for (std::size_t l = 0; l < _depth; ++l) {
-                std::size_t width    = static_cast<std::size_t>(1) << l;
-                std::size_t outdelta = width; // same calculation
-
-                layer_b.clear();
-                for (std::size_t idx = 0; idx < width; ++idx) {
-                    _mywt.output()[outdelta + idx] = layer_a[idx]->x / _influence_sqrt[l];
-                    layer_b.push_back(layer_a[idx]->child_l);
-                    layer_b.push_back(layer_a[idx]->child_r);
-                }
-
-                std::swap(layer_a, layer_b);
-            }
-
+        double calc_error(const std::size_t i) {
             // do idwt
             std::vector<double> data_approximated(_ylength);
-            _mywt.run_idwt(data_approximated.data());
+            _transformer.tree_to_data(data_approximated.data());
 
             // compare
             double error = 0.0;
@@ -565,7 +582,7 @@ int main(int argc, char** argv) {
 
     std::size_t depth = power_of_2(ylength);
     index_t index(depth, n);
-    transformer trans(ylength, depth, max_error, base, idxmap, &index);
+    engine eng(ylength, depth, max_error, base, idxmap, &index);
 
     std::cout << "build and merge trees" << std::endl;
     std::mt19937 rng;
@@ -581,7 +598,7 @@ int main(int argc, char** argv) {
         if (i % 1000 == 0) {
             print_process(&index, ylength, n_test, i);
         }
-        trans.run(indices[i]);
+        eng.run(indices[i]);
     }
     print_process(&index, ylength, n_test, n_test);
     std::cout << "done" << std::endl;
