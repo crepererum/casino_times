@@ -57,6 +57,10 @@ class wavelet_transform {
             dwt(_wt_obj, const_cast<double*>(inp));
         }
 
+        void run_idwt(double* outp) {
+            idwt(_wt_obj, outp);
+        }
+
         void print_summary() const {
             wt_summary(_wt_obj);
         }
@@ -66,6 +70,10 @@ class wavelet_transform {
         }
 
         const double* output() const {
+            return _wt_obj->output;
+        }
+
+        double* output() {
             return _wt_obj->output;
         }
 
