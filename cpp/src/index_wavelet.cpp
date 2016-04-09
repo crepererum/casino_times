@@ -6,6 +6,7 @@
 #include <random>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include <boost/functional/hash.hpp>
@@ -172,6 +173,7 @@ class transformer {
             _depth(depth),
             _max_error(max_error),
             _mywt(std::make_shared<wavelet>("haar"), "dwt", static_cast<int>(_ylength), static_cast<int>(_depth)),
+            _influence_sqrt(_depth),
             _base(base),
             _idxmap(idxmap),
             _index(index),
@@ -179,14 +181,21 @@ class transformer {
         {
             _mywt.extension("per");
             _mywt.conv("direct");
+
+            for (std::size_t l = 0; l < _depth; ++l) {
+                std::size_t influence = 1u << (_depth - l);
+                _influence_sqrt[l] = std::sqrt(static_cast<double>(influence));
+            }
         }
 
         superroot_t* run(std::size_t i) {
             run_dwt(i);
             superroot_t* superroot = transform_to_tree(i);
+            superroot->error = calc_error(superroot, i);  // correct error because of floating point errors
             _index->superroots[i] = superroot;
-            run_mergeloop(superroot);
+            run_mergeloop(superroot, i);
             drain();
+            superroot->error = calc_error(superroot, i);  // correct error one last time
 
             return superroot;
         }
@@ -217,6 +226,7 @@ class transformer {
         const std::size_t                 _depth;
         double                            _max_error;
         wavelet_transform                 _mywt;
+        std::vector<double>               _influence_sqrt;
         const calc_t*                     _base;
         std::shared_ptr<idx_ngram_map_t>  _idxmap;
         index_t*                          _index;
@@ -237,14 +247,12 @@ class transformer {
             for (std::size_t l = 0; l < _depth; ++l) {
                 std::size_t outdelta  = 1 << l;
                 std::size_t width     = outdelta;  // same calculation
-                std::size_t influence = 1u << (_depth - l);
-                double influence_sqrt = std::sqrt(static_cast<double>(influence));  // XXX: precalc
 
                 for (std::size_t idx = 0; idx < width; ++idx) {
                     node_t* node = new node_t;
                     node->child_l   = nullptr;
                     node->child_r   = nullptr;
-                    node->x         = _mywt.output()[outdelta + idx] * influence_sqrt;
+                    node->x         = _mywt.output()[outdelta + idx] * _influence_sqrt[l];
 
                     link_to_parent(node, l, idx, superroot);
 
@@ -255,8 +263,9 @@ class transformer {
             return superroot;
         }
 
-        void run_mergeloop(superroot_t* superroot) {
+        void run_mergeloop(superroot_t* superroot, std::size_t i) {
             queue_t queue;
+            bool error_is_approx = false;
 
             // fill queue with entries from lowest level
             std::vector<std::size_t> indices(_levels[_depth - 1].size());
@@ -277,17 +286,33 @@ class transformer {
                 node_t* current_node = _levels[best.l][best.idx];
 
                 // check if node was already merged and if distance is low enough
-                if ((current_node != nullptr) && (superroot->error + best.dist < _max_error)) {
-                    // execute merge
-                    superroot->error += best.dist;
-                    link_to_parent(best.neighbor, best.l, best.idx, superroot);
-                    delete current_node;
-                    _levels[best.l][best.idx] = nullptr;
+                if (current_node != nullptr) {
+                    // check if merge would be in error range (i.e. does not increase error beyond _max_error)
+                    bool in_error_range = false;
+                    if (superroot->error + best.dist < _max_error) {
+                        in_error_range = true;
+                    } else if (error_is_approx) {
+                        // ok, error is an approximation anyway, so lets calculate the right value and try again
+                        superroot->error = calc_error(superroot, i);
+                        error_is_approx = false;
+                        if (superroot->error + best.dist < _max_error) {
+                            in_error_range = true;
+                        }
+                    }
 
-                    // generate new queue entries
-                    std::size_t idx_even = best.idx - (best.idx % 2);
-                    if ((best.l > 0) && (_levels[best.l][idx_even] == nullptr) && (_levels[best.l][idx_even + 1] == nullptr)) {
-                        generate_queue_entries(best.l - 1, best.idx >> 1, superroot, queue);
+                    if (in_error_range) {
+                        // execute merge
+                        superroot->error += best.dist;
+                        error_is_approx = true;
+                        link_to_parent(best.neighbor, best.l, best.idx, superroot);
+                        delete current_node;
+                        _levels[best.l][best.idx] = nullptr;
+
+                        // generate new queue entries
+                        std::size_t idx_even = best.idx - (best.idx % 2);
+                        if ((best.l > 0) && (_levels[best.l][idx_even] == nullptr) && (_levels[best.l][idx_even + 1] == nullptr)) {
+                            generate_queue_entries(best.l - 1, best.idx >> 1, superroot, queue);
+                        }
                     }
                 }
             }
@@ -345,6 +370,39 @@ class transformer {
                     parent->child_l = node;
                 }
             }
+        }
+
+        double calc_error(const superroot_t* superroot, const std::size_t i) {
+            // prepare idwt
+            _mywt.output()[0] = superroot->approx;
+            std::vector<node_t*> layer_a{superroot->root};
+            std::vector<node_t*> layer_b;
+            for (std::size_t l = 0; l < _depth; ++l) {
+                std::size_t width    = static_cast<std::size_t>(1) << l;
+                std::size_t outdelta = width; // same calculation
+
+                layer_b.clear();
+                for (std::size_t idx = 0; idx < width; ++idx) {
+                    _mywt.output()[outdelta + idx] = layer_a[idx]->x / _influence_sqrt[l];
+                    layer_b.push_back(layer_a[idx]->child_l);
+                    layer_b.push_back(layer_a[idx]->child_r);
+                }
+
+                std::swap(layer_a, layer_b);
+            }
+
+            // do idwt
+            std::vector<double> data_approximated(_ylength);
+            _mywt.run_idwt(data_approximated.data());
+
+            // compare
+            double error = 0.0;
+            const calc_t* local_base = _base + (i * _ylength);
+            for (std::size_t y = 0; y < _ylength; ++y) {
+                error += std::abs(data_approximated[y] - local_base[y]);
+            }
+
+            return error;
         }
 };
 
