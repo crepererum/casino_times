@@ -1,19 +1,12 @@
-#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <memory>
 #include <queue>
 #include <random>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
-#include <boost/functional/hash.hpp>
-#include <boost/interprocess/allocators/allocator.hpp>
-#include <boost/interprocess/containers/vector.hpp>
-#include <boost/interprocess/managed_mapped_file.hpp>
-#include <boost/interprocess/offset_ptr.hpp>
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/iostreams/positioning.hpp>
 #include <boost/locale.hpp>
@@ -22,28 +15,7 @@
 #include "parser.hpp"
 #include "utils.hpp"
 #include "wavelet.hpp"
-
-struct node_t;
-struct superroot_t;
-
-using node_ptr_t            = boost::interprocess::offset_ptr<node_t>;
-using superroot_ptr_t       = boost::interprocess::offset_ptr<superroot_t>;
-
-using segment_manager_t     = boost::interprocess::managed_mapped_file::segment_manager;
-using allocator_superroot_t = boost::interprocess::allocator<superroot_ptr_t, segment_manager_t>;
-using superroot_vector_t    = boost::interprocess::vector<superroot_ptr_t, allocator_superroot_t>;
-
-struct superroot_t {
-    node_ptr_t root;
-    calc_t     approx;
-    calc_t     error;
-};
-
-struct node_t {
-    node_ptr_t child_l;
-    node_ptr_t child_r;
-    calc_t     x;
-};
+#include "wavelet_tree.hpp"
 
 using mapped_file_ptr_t = std::shared_ptr<boost::interprocess::managed_mapped_file>;
 
@@ -55,27 +27,6 @@ boost::interprocess::offset_ptr<T> alloc_in_mapped_file(mapped_file_ptr_t& f) {
 template <typename T>
 void dealloc_in_mapped_file(mapped_file_ptr_t& f, const boost::interprocess::offset_ptr<T>& ptr) {
     f->deallocate(ptr.get());
-}
-
-namespace std {
-    template<>
-    struct hash<node_ptr_t> {
-        size_t operator()(const node_ptr_t& obj) const {
-            std::size_t seed = 0;
-            boost::hash_combine(seed, obj.get());
-            return seed;
-        }
-    };
-
-    template<>
-    struct hash<std::pair<node_ptr_t, node_ptr_t>> {
-        size_t operator()(const std::pair<node_ptr_t, node_ptr_t>& obj) const {
-            std::size_t seed = 0;
-            boost::hash_combine(seed, obj.first.get());
-            boost::hash_combine(seed, obj.second.get());
-            return seed;
-        }
-    };
 }
 
 class range_bucket_t {
@@ -450,114 +401,6 @@ class engine {
         }
 };
 
-class printer {
-    public:
-        printer(superroot_vector_t* superroots, const std::shared_ptr<idx_ngram_map_t>& idxmap) :
-            _superroots(superroots),
-            _idxmap(idxmap) {}
-
-        std::ostream& print_begin(std::ostream &out) {
-            out << "digraph treegraph {" << std::endl;
-            out << "  nodesep=0.1;" << std::endl;
-            out << "  ranksep=5;" << std::endl;
-            out << "  size=\"25,25\";" << std::endl;
-            out << std::endl;
-
-            return out;
-        }
-
-        std::ostream& print_end(std::ostream &out) {
-            out << "}" << std::endl;
-
-            return out;
-        }
-
-        std::ostream& print_tree(std::ostream &out, std::size_t i) {
-            superroot_ptr_t superroot = (*_superroots)[i];
-            print_superroot(out, superroot, (*_idxmap)[i]);
-
-            std::vector<node_ptr_t> todo;
-            todo.push_back(superroot->root);
-
-            while (!todo.empty()) {
-                node_ptr_t current = todo.back();
-                todo.pop_back();
-
-                print_node(out, current);
-
-                if (current->child_l) {
-                    todo.push_back(current->child_l);
-                }
-                if (current->child_r) {
-                    todo.push_back(current->child_r);
-                }
-            }
-
-            return out;
-        }
-
-    private:
-        superroot_vector_t*              _superroots;
-        std::shared_ptr<idx_ngram_map_t> _idxmap;
-        std::unordered_set<node_ptr_t>   _printed_nodes;
-
-        template <typename T>
-        std::ostream& print_address(std::ostream &out, T* addr) {
-            out << "addr" << addr;
-            return out;
-        }
-
-        template <typename T>
-        std::ostream& print_address(std::ostream &out, boost::interprocess::offset_ptr<T> addr) {
-            return print_address(out, addr.get());
-        }
-
-        std::ostream& print_superroot(std::ostream &out, superroot_ptr_t superroot, const ngram_t& ngram) {
-            out << "  ";
-            print_address(out, superroot);
-            out << " [label=\"" << boost::locale::conv::utf_to_utf<char>(ngram) << "\", shape=circle, fixedsize=true, width=6, height=6, fontsize=80];" << std::endl;
-
-            out << "  ";
-            print_address(out, superroot);
-            out << " -> ";
-            print_address(out, superroot->root);
-            out << ";" << std::endl;
-
-            out << std::endl;
-
-            return out;
-        }
-
-        std::ostream& print_node(std::ostream &out, node_ptr_t node) {
-            if (_printed_nodes.find(node) == _printed_nodes.end()) {
-                out << "  ";
-                print_address(out, node);
-                out << " [label=\"" << node->x << "\", shape=box, fixedsize=true, width=1.0, height=0.5, fontsize=8];" << std::endl;
-
-                if (node->child_l) {
-                    out << "  ";
-                    print_address(out, node);
-                    out << " -> ";
-                    print_address(out, node->child_l);
-                    out << ";" << std::endl;
-                }
-                if (node->child_r) {
-                    out << "  ";
-                    print_address(out, node);
-                    out << " -> ";
-                    print_address(out, node->child_r);
-                    out << ";" << std::endl;
-                }
-
-                out << std::endl;
-
-                _printed_nodes.insert(node);
-            }
-
-            return out;
-        }
-};
-
 double calc_compression_rate(const index_t* index, year_t ylength, std::size_t n) {
     std::size_t size_normal = sizeof(calc_t) * static_cast<std::size_t>(ylength) * n;
     std::size_t size_compression = sizeof(node_t) * index->node_count + sizeof(superroot_t) * n;
@@ -576,7 +419,6 @@ void print_process(const index_t* index, year_t ylength, std::size_t n, std::siz
 int main(int argc, char** argv) {
     std::string fname_binary;
     std::string fname_map;
-    std::string fname_dot;
     std::string fname_index;
     std::size_t index_size;
     year_t ylength;
@@ -587,13 +429,12 @@ int main(int argc, char** argv) {
         ("map", po::value(&fname_map)->required(), "ngram map file to read")
         ("ylength", po::value(&ylength)->required(), "number of years to store")
         ("error", po::value(&max_error)->required(), "maximum error during tree merge")
-        ("dotfile", po::value(&fname_dot), "dot file that represents the index (optional)")
         ("index", po::value(&fname_index)->required(), "index file")
         ("size", po::value(&index_size)->required(), "size of the index file (in bytes)")
     ;
 
     po::variables_map vm;
-    if (po_fill_vm(desc, vm, argc, argv, "index_dtw")) {
+    if (po_fill_vm(desc, vm, argc, argv, "index_wavelet")) {
         return 1;
     }
 
@@ -642,26 +483,18 @@ int main(int argc, char** argv) {
     });
     std::shuffle(indices.begin(), indices.end(), rng);
 
-    std::size_t n_test = 10000; // DEBUG
-    for (std::size_t i = 0; i < n_test; ++i) {
+    for (std::size_t i = 0; i < n; ++i) {
         if (i % 1000 == 0) {
-            print_process(&index, ylength, n_test, i);
+            print_process(&index, ylength, n, i);
         }
         eng.run(indices[i]);
     }
-    print_process(&index, ylength, n_test, n_test);
+    print_process(&index, ylength, n, n);
     std::cout << "done" << std::endl;
 
-    if (vm.count("dotfile")) {
-        std::ofstream out(fname_dot);
-        printer pr(superroots, idxmap);
-        pr.print_begin(std::cout);
-        for (std::size_t i = 0; i < 100; ++i) {
-            pr.print_tree(std::cout, i);
-        }
-        pr.print_end(std::cout);
-    }
-
     // free memory for sanity checking
-    index.delete_all_ptrs(findex);
+    // DONT! only for debugging!
+    //index.delete_all_ptrs(findex);
+
+    std::cout << "Free memory:" << (findex->get_free_memory() >> 10) << "k of " << (findex->get_size() >> 10) << "k" << std::endl;
 }

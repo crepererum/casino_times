@@ -127,6 +127,19 @@ target_link_libraries (
 )
 add_dependencies (index_wavelet project_wavelib)
 
+# executable: print_wavelet_tree
+add_executable (print_wavelet_tree "src/print_wavelet_tree.cpp")
+target_link_libraries (
+    print_wavelet_tree
+    parser
+    utils
+    boost_iostreams
+    boost_locale
+    boost_program_options
+    wavelib
+)
+add_dependencies (print_wavelet_tree project_wavelib)
+
 # executable: query_dtw_indexed
 add_executable (query_dtw_indexed "src/query_dtw_indexed.cpp")
 target_link_libraries (
