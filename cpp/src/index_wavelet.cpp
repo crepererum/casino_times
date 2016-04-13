@@ -10,6 +10,9 @@
 #include <vector>
 
 #include <boost/functional/hash.hpp>
+#include <boost/interprocess/allocators/allocator.hpp>
+#include <boost/interprocess/containers/vector.hpp>
+#include <boost/interprocess/managed_mapped_file.hpp>
 #include <boost/interprocess/offset_ptr.hpp>
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/iostreams/positioning.hpp>
@@ -23,11 +26,14 @@
 struct node_t;
 struct superroot_t;
 
-using node_ptr_t      = boost::interprocess::offset_ptr<node_t>;
-using superroot_ptr_t = boost::interprocess::offset_ptr<superroot_t>;
+using node_ptr_t            = boost::interprocess::offset_ptr<node_t>;
+using superroot_ptr_t       = boost::interprocess::offset_ptr<superroot_t>;
+
+using segment_manager_t     = boost::interprocess::managed_mapped_file::segment_manager;
+using allocator_superroot_t = boost::interprocess::allocator<superroot_ptr_t, segment_manager_t>;
+using superroot_vector_t    = boost::interprocess::vector<superroot_ptr_t, allocator_superroot_t>;
 
 struct superroot_t {
-    ngram_t    ngram;
     node_ptr_t root;
     calc_t     approx;
     calc_t     error;
@@ -38,6 +44,18 @@ struct node_t {
     node_ptr_t child_r;
     calc_t     x;
 };
+
+using mapped_file_ptr_t = std::shared_ptr<boost::interprocess::managed_mapped_file>;
+
+template <typename T>
+boost::interprocess::offset_ptr<T> alloc_in_mapped_file(mapped_file_ptr_t& f) {
+    return static_cast<T*>(f->allocate(sizeof(T)));
+}
+
+template <typename T>
+void dealloc_in_mapped_file(mapped_file_ptr_t& f, const boost::interprocess::offset_ptr<T>& ptr) {
+    f->deallocate(ptr.get());
+}
 
 namespace std {
     template<>
@@ -114,9 +132,9 @@ class range_bucket_t {
             return neighbors;
         }
 
-        void delete_all_ptrs() {
+        void delete_all_ptrs(mapped_file_ptr_t& f) {
             for (auto& node : _slot) {
-                delete node.get();
+                dealloc_in_mapped_file(f, node);
             }
         }
 
@@ -132,9 +150,9 @@ class range_index_t {
             return _index_struct[std::make_pair(node->child_l, node->child_r)];
         }
 
-        void delete_all_ptrs() {
+        void delete_all_ptrs(mapped_file_ptr_t& f) {
             for (auto& kv : _index_struct) {
-                kv.second.delete_all_ptrs();
+                kv.second.delete_all_ptrs(f);
             }
         }
 
@@ -144,25 +162,25 @@ class range_index_t {
 };
 
 struct index_t {
-    std::vector<superroot_ptr_t> superroots;
+    superroot_vector_t* superroots;
     std::vector<std::vector<range_index_t>> levels;
     std::size_t node_count;
 
-    index_t(std::size_t depth, std::size_t n) : superroots(n, nullptr), levels(depth), node_count(0) {
+    index_t(superroot_vector_t* superroots_, std::size_t depth) : superroots(superroots_), levels(depth), node_count(0) {
         for (std::size_t l = 0; l < depth; ++l) {
             levels[l] = std::vector<range_index_t>(1 << l);
         }
     }
 
-    void delete_all_ptrs() {
-        for (auto& sr : superroots) {
+    void delete_all_ptrs(mapped_file_ptr_t& f) {
+        for (auto& sr : *superroots) {
             if (sr != nullptr) {
-                delete sr.get();
+                dealloc_in_mapped_file(f, sr);
             }
         }
         for (auto& level : levels) {
             for (auto& range_index : level) {
-                range_index.delete_all_ptrs();
+                range_index.delete_all_ptrs(f);
             }
         }
     }
@@ -184,13 +202,14 @@ class transformer {
         superroot_ptr_t                      superroot;
         std::vector<std::vector<node_ptr_t>> levels;
 
-        transformer(std::size_t ylength, std::size_t depth) :
+        transformer(std::size_t ylength, std::size_t depth, const mapped_file_ptr_t& mapped_file) :
             superroot(nullptr),
             levels(depth),
             _ylength(ylength),
             _depth(depth),
             _mywt(std::make_shared<wavelet>("haar"), "dwt", static_cast<int>(_ylength), static_cast<int>(_depth)),
-            _influence_sqrt(_depth)
+            _influence_sqrt(_depth),
+            _mapped_file(mapped_file)
         {
             _mywt.extension("per");
             _mywt.conv("direct");
@@ -201,11 +220,10 @@ class transformer {
             }
         }
 
-        superroot_ptr_t data_to_tree(const calc_t* data, const ngram_t& ngram) {
+        superroot_ptr_t data_to_tree(const calc_t* data) {
             _mywt.run_dwt(data);
 
-            superroot = new superroot_t;
-            superroot->ngram  = ngram;
+            superroot = alloc_in_mapped_file<superroot_t>(_mapped_file);
             superroot->approx = _mywt.output()[0];
             superroot->error  = 0;
 
@@ -216,7 +234,7 @@ class transformer {
                 levels[l].clear();
 
                 for (std::size_t idx = 0; idx < width; ++idx) {
-                    node_ptr_t node  = new node_t;
+                    node_ptr_t node  = alloc_in_mapped_file<node_t>(_mapped_file);
                     node->child_l = nullptr;
                     node->child_r = nullptr;
                     node->x       = _mywt.output()[outdelta + idx] * _influence_sqrt[l];
@@ -275,23 +293,24 @@ class transformer {
         const std::size_t   _depth;
         wavelet_transform   _mywt;
         std::vector<double> _influence_sqrt;
+        mapped_file_ptr_t   _mapped_file;
 };
 
 class engine {
     public:
-        engine(std::size_t ylength, std::size_t depth, double max_error, const calc_t* base, const std::shared_ptr<idx_ngram_map_t>& idxmap, index_t* index)
+        engine(std::size_t ylength, std::size_t depth, double max_error, const calc_t* base, index_t* index, const mapped_file_ptr_t& mapped_file)
             : _ylength(ylength),
             _depth(depth),
             _max_error(max_error),
             _base(base),
-            _idxmap(idxmap),
             _index(index),
-            _transformer(_ylength, _depth) {}
+            _mapped_file(mapped_file),
+            _transformer(_ylength, _depth, _mapped_file) {}
 
         superroot_ptr_t run(std::size_t i) {
-            _transformer.data_to_tree(_base + (i * _ylength), (*_idxmap)[i]);
+            _transformer.data_to_tree(_base + (i * _ylength));
             _transformer.superroot->error = calc_error(i);  // correct error because of floating point errors
-            _index->superroots[i] = _transformer.superroot;
+            (*_index->superroots)[i] = _transformer.superroot;
             run_mergeloop(i);
             drain();
             _transformer.superroot->error = calc_error(i);  // correct error one last time
@@ -325,9 +344,9 @@ class engine {
         const std::size_t                _depth;
         double                           _max_error;
         const calc_t*                    _base;
-        std::shared_ptr<idx_ngram_map_t> _idxmap;
         index_t*                         _index;
         std::mt19937                     _rng;
+        mapped_file_ptr_t                _mapped_file;
         transformer                      _transformer;
 
         void run_mergeloop(std::size_t i) {
@@ -368,11 +387,15 @@ class engine {
                     }
 
                     if (in_error_range) {
-                        // execute merge
+                        // calculate approx. error
                         _transformer.superroot->error += best.dist;
                         error_is_approx = true;
+
+                        // execute merge
                         _transformer.link_to_parent(best.neighbor, best.l, best.idx);
-                        delete current_node.get();
+
+                        // remove old node and mark as merged
+                        dealloc_in_mapped_file(_mapped_file, current_node);
                         _transformer.levels[best.l][best.idx] = nullptr;
 
                         // generate new queue entries
@@ -438,6 +461,10 @@ class engine {
 
 class printer {
     public:
+        printer(superroot_vector_t* superroots, const std::shared_ptr<idx_ngram_map_t>& idxmap) :
+            _superroots(superroots),
+            _idxmap(idxmap) {}
+
         std::ostream& print_begin(std::ostream &out) {
             out << "digraph treegraph {" << std::endl;
             out << "  nodesep=0.1;" << std::endl;
@@ -454,8 +481,9 @@ class printer {
             return out;
         }
 
-        std::ostream& print_tree(std::ostream &out, superroot_ptr_t superroot) {
-            print_superroot(out, superroot);
+        std::ostream& print_tree(std::ostream &out, std::size_t i) {
+            superroot_ptr_t superroot = (*_superroots)[i];
+            print_superroot(out, superroot, (*_idxmap)[i]);
 
             std::vector<node_ptr_t> todo;
             todo.push_back(superroot->root);
@@ -478,7 +506,9 @@ class printer {
         }
 
     private:
-        std::unordered_set<node_ptr_t> _printed_nodes;
+        superroot_vector_t*              _superroots;
+        std::shared_ptr<idx_ngram_map_t> _idxmap;
+        std::unordered_set<node_ptr_t>   _printed_nodes;
 
         template <typename T>
         std::ostream& print_address(std::ostream &out, T* addr) {
@@ -491,10 +521,10 @@ class printer {
             return print_address(out, addr.get());
         }
 
-        std::ostream& print_superroot(std::ostream &out, superroot_ptr_t superroot) {
+        std::ostream& print_superroot(std::ostream &out, superroot_ptr_t superroot, const ngram_t& ngram) {
             out << "  ";
             print_address(out, superroot);
-            out << " [label=\"" << boost::locale::conv::utf_to_utf<char>(superroot->ngram) << "\", shape=circle, fixedsize=true, width=6, height=6, fontsize=80];" << std::endl;
+            out << " [label=\"" << boost::locale::conv::utf_to_utf<char>(ngram) << "\", shape=circle, fixedsize=true, width=6, height=6, fontsize=80];" << std::endl;
 
             out << "  ";
             print_address(out, superroot);
@@ -539,11 +569,7 @@ class printer {
 
 double calc_compression_rate(const index_t* index, year_t ylength, std::size_t n) {
     std::size_t size_normal = sizeof(calc_t) * static_cast<std::size_t>(ylength) * n;
-
-    // don't count the size for storing the actual ngram because that's additional information
-    // and not strictly part of the compression
-    std::size_t size_compression = sizeof(node_t) * index->node_count
-        + (sizeof(superroot_t) - sizeof(ngram_t)) * n;
+    std::size_t size_compression = sizeof(node_t) * index->node_count + sizeof(superroot_t) * n;
 
     return static_cast<double>(size_compression) / static_cast<double>(size_normal);
 }
@@ -560,6 +586,8 @@ int main(int argc, char** argv) {
     std::string fname_binary;
     std::string fname_map;
     std::string fname_dot;
+    std::string fname_index;
+    std::size_t index_size;
     year_t ylength;
     double max_error;
     auto desc = po_create_desc();
@@ -569,6 +597,8 @@ int main(int argc, char** argv) {
         ("ylength", po::value(&ylength)->required(), "number of years to store")
         ("error", po::value(&max_error)->required(), "maximum error during tree merge")
         ("dotfile", po::value(&fname_dot), "dot file that represents the index (optional)")
+        ("index", po::value(&fname_index)->required(), "index file")
+        ("size", po::value(&index_size)->required(), "size of the index file (in bytes)")
     ;
 
     po::variables_map vm;
@@ -598,11 +628,21 @@ int main(int argc, char** argv) {
     }
     auto base = reinterpret_cast<const calc_t*>(input.const_data());
 
-    std::size_t depth = power_of_2(ylength);
-    index_t index(depth, n);
-    engine eng(ylength, depth, max_error, base, idxmap, &index);
+    std::cout << "open index file..." << std::endl;
+    auto findex = std::make_shared<boost::interprocess::managed_mapped_file>(
+        boost::interprocess::create_only,
+        fname_index.c_str(),
+        index_size
+    );
+    auto segment_manager = findex->get_segment_manager();
+    allocator_superroot_t allocator_superroot(segment_manager);
+    auto superroots = findex->construct<superroot_vector_t>("superroots")(n, allocator_superroot);
+    std::cout << "done" << std::endl;
 
     std::cout << "build and merge trees" << std::endl;
+    std::size_t depth = power_of_2(ylength);
+    index_t index(superroots, depth);
+    engine eng(ylength, depth, max_error, base, &index, findex);
     std::mt19937 rng;
     std::size_t counter = 0;
     std::vector<std::size_t> indices(n);
@@ -611,7 +651,7 @@ int main(int argc, char** argv) {
     });
     std::shuffle(indices.begin(), indices.end(), rng);
 
-    std::size_t n_test = 100000; // DEBUG
+    std::size_t n_test = 10000; // DEBUG
     for (std::size_t i = 0; i < n_test; ++i) {
         if (i % 1000 == 0) {
             print_process(&index, ylength, n_test, i);
@@ -623,14 +663,14 @@ int main(int argc, char** argv) {
 
     if (vm.count("dotfile")) {
         std::ofstream out(fname_dot);
-        printer pr;
+        printer pr(superroots, idxmap);
         pr.print_begin(std::cout);
-        for (auto sr : index.superroots) {
-            pr.print_tree(std::cout, sr);
+        for (std::size_t i = 0; i < 100; ++i) {
+            pr.print_tree(std::cout, i);
         }
         pr.print_end(std::cout);
     }
 
     // free memory for sanity checking
-    index.delete_all_ptrs();
+    index.delete_all_ptrs(findex);
 }
