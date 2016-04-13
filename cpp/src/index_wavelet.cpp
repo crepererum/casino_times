@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <boost/functional/hash.hpp>
+#include <boost/interprocess/offset_ptr.hpp>
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/iostreams/positioning.hpp>
 #include <boost/locale.hpp>
@@ -22,26 +23,37 @@
 struct node_t;
 struct superroot_t;
 
+using node_ptr_t = boost::interprocess::offset_ptr<node_t>;
+
 struct superroot_t {
-    ngram_t ngram;
-    node_t* root;
-    calc_t  approx;
-    calc_t  error;
+    ngram_t    ngram;
+    node_ptr_t root;
+    calc_t     approx;
+    calc_t     error;
 };
 
 struct node_t {
-    node_t* child_l;
-    node_t* child_r;
-    calc_t  x;
+    node_ptr_t child_l;
+    node_ptr_t child_r;
+    calc_t     x;
 };
 
 namespace std {
     template<>
-    struct hash<std::pair<node_t*, node_t*>> {
-        size_t operator()(const std::pair<node_t*, node_t*>& obj) const {
+    struct hash<node_ptr_t> {
+        size_t operator()(const node_ptr_t& obj) const {
             std::size_t seed = 0;
-            boost::hash_combine(seed, obj.first);
-            boost::hash_combine(seed, obj.second);
+            boost::hash_combine(seed, obj.get());
+            return seed;
+        }
+    };
+
+    template<>
+    struct hash<std::pair<node_ptr_t, node_ptr_t>> {
+        size_t operator()(const std::pair<node_ptr_t, node_ptr_t>& obj) const {
+            std::size_t seed = 0;
+            boost::hash_combine(seed, obj.first.get());
+            boost::hash_combine(seed, obj.second.get());
             return seed;
         }
     };
@@ -51,21 +63,21 @@ class range_bucket_t {
     public:
         range_bucket_t() = default;
 
-        void insert(node_t* node) {
-            auto lower = std::lower_bound(_slot.begin(), _slot.end(), node, [](node_t* a, node_t* b){
+        void insert(node_ptr_t node) {
+            auto lower = std::lower_bound(_slot.begin(), _slot.end(), node, [](node_ptr_t a, node_ptr_t b){
                 return a->x < b->x;
             });
             _slot.insert(lower, node);
         }
 
-        std::vector<std::pair<node_t*, double>> get_nearest(node_t* node, double max_dist, std::size_t max_size) {
+        std::vector<std::pair<node_ptr_t, double>> get_nearest(node_ptr_t node, double max_dist, std::size_t max_size) {
             auto begin  = _slot.begin();
             auto end    = _slot.end();
-            auto center = std::lower_bound(begin, end, node, [](node_t* a, node_t* b) {
+            auto center = std::lower_bound(begin, end, node, [](node_ptr_t a, node_ptr_t b) {
                 return a->x < b->x;
             });
 
-            std::vector<std::pair<node_t*, double>> neighbors;
+            std::vector<std::pair<node_ptr_t, double>> neighbors;
             auto it_up       = center;
             auto it_down     = std::prev(center);
             double dist_up   = std::numeric_limits<double>::infinity();
@@ -103,19 +115,19 @@ class range_bucket_t {
 
         void delete_all_ptrs() {
             for (auto& node : _slot) {
-                delete node;
+                delete node.get();
             }
         }
 
     private:
-        std::vector<node_t*> _slot;
+        std::vector<node_ptr_t> _slot;
 };
 
 class range_index_t {
     public:
         range_index_t() = default;
 
-        range_bucket_t& get_bucket(const node_t* node) {
+        range_bucket_t& get_bucket(const node_ptr_t node) {
             return _index_struct[std::make_pair(node->child_l, node->child_r)];
         }
 
@@ -127,7 +139,7 @@ class range_index_t {
 
     private:
         // XXX: make node pointers in key const
-        std::unordered_map<std::pair<node_t*, node_t*>, range_bucket_t> _index_struct;
+        std::unordered_map<std::pair<node_ptr_t, node_ptr_t>, range_bucket_t> _index_struct;
 };
 
 struct index_t {
@@ -169,7 +181,7 @@ constexpr std::size_t power_of_2(std::size_t x) {
 class transformer {
     public:
         superroot_t*                      superroot;
-        std::vector<std::vector<node_t*>> levels;
+        std::vector<std::vector<node_ptr_t>> levels;
 
         transformer(std::size_t ylength, std::size_t depth) :
             superroot(nullptr),
@@ -203,7 +215,7 @@ class transformer {
                 levels[l].clear();
 
                 for (std::size_t idx = 0; idx < width; ++idx) {
-                    node_t* node  = new node_t;
+                    node_ptr_t node  = new node_t;
                     node->child_l = nullptr;
                     node->child_r = nullptr;
                     node->x       = _mywt.output()[outdelta + idx] * _influence_sqrt[l];
@@ -220,8 +232,8 @@ class transformer {
         void tree_to_data(calc_t* data) {
             // prepare idwt
             _mywt.output()[0] = superroot->approx;
-            std::vector<node_t*> layer_a{superroot->root};
-            std::vector<node_t*> layer_b;
+            std::vector<node_ptr_t> layer_a{superroot->root};
+            std::vector<node_ptr_t> layer_b;
             for (std::size_t l = 0; l < _depth; ++l) {
                 std::size_t width    = static_cast<std::size_t>(1) << l;
                 std::size_t outdelta = width; // same calculation
@@ -243,7 +255,7 @@ class transformer {
         /*
          * link specified node to the right parent above it (calculated by using l and idx)
          */
-        void link_to_parent(node_t* node, std::size_t l, std::size_t idx) {
+        void link_to_parent(node_ptr_t node, std::size_t l, std::size_t idx) {
             if (l == 0) {
                 superroot->root = node;
             } else {
@@ -291,9 +303,9 @@ class engine {
             double      dist;
             std::size_t l;
             std::size_t idx;
-            node_t*     neighbor;
+            node_ptr_t     neighbor;
 
-            queue_entry_t(double dist_, std::size_t l_, std::size_t idx_, node_t* neighbor_) :
+            queue_entry_t(double dist_, std::size_t l_, std::size_t idx_, node_ptr_t neighbor_) :
                 dist(dist_),
                 l(l_),
                 idx(idx_),
@@ -337,7 +349,7 @@ class engine {
                 auto best = queue.top();
                 queue.pop();
 
-                node_t* current_node = _transformer.levels[best.l][best.idx];
+                node_ptr_t current_node = _transformer.levels[best.l][best.idx];
 
                 // check if node was already merged and if distance is low enough
                 if (current_node != nullptr) {
@@ -359,7 +371,7 @@ class engine {
                         _transformer.superroot->error += best.dist;
                         error_is_approx = true;
                         _transformer.link_to_parent(best.neighbor, best.l, best.idx);
-                        delete current_node;
+                        delete current_node.get();
                         _transformer.levels[best.l][best.idx] = nullptr;
 
                         // generate new queue entries
@@ -373,7 +385,7 @@ class engine {
         }
 
         void generate_queue_entries(std::size_t l, std::size_t idx, queue_t& queue) {
-            node_t* current_node = _transformer.levels[l][idx];
+            node_ptr_t current_node = _transformer.levels[l][idx];
 
             if (current_node != nullptr) {
                 auto& current_index_slot = _index->levels[l][idx];
@@ -394,7 +406,7 @@ class engine {
                 std::size_t l = l_plus - 1;
 
                 for (std::size_t idx = 0; idx < _transformer.levels[l].size(); ++idx) {
-                    node_t* current_node = _transformer.levels[l][idx];
+                    node_ptr_t current_node = _transformer.levels[l][idx];
 
                     // node might already be merged
                     if (current_node != nullptr) {
@@ -444,11 +456,11 @@ class printer {
         std::ostream& print_tree(std::ostream &out, superroot_t* superroot) {
             print_superroot(out, superroot);
 
-            std::vector<node_t*> todo;
+            std::vector<node_ptr_t> todo;
             todo.push_back(superroot->root);
 
             while (!todo.empty()) {
-                node_t* current = todo.back();
+                node_ptr_t current = todo.back();
                 todo.pop_back();
 
                 print_node(out, current);
@@ -465,12 +477,17 @@ class printer {
         }
 
     private:
-        std::unordered_set<node_t*> _printed_nodes;
+        std::unordered_set<node_ptr_t> _printed_nodes;
 
         template <typename T>
         std::ostream& print_address(std::ostream &out, T* addr) {
             out << "addr" << addr;
             return out;
+        }
+
+        template <typename T>
+        std::ostream& print_address(std::ostream &out, boost::interprocess::offset_ptr<T> addr) {
+            return print_address(out, addr.get());
         }
 
         std::ostream& print_superroot(std::ostream &out, superroot_t* superroot) {
@@ -489,7 +506,7 @@ class printer {
             return out;
         }
 
-        std::ostream& print_node(std::ostream &out, node_t* node) {
+        std::ostream& print_node(std::ostream &out, node_ptr_t node) {
             if (_printed_nodes.find(node) == _printed_nodes.end()) {
                 out << "  ";
                 print_address(out, node);
