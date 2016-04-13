@@ -240,24 +240,68 @@ class transformer {
 
 class engine {
     public:
-        engine(std::size_t ylength, std::size_t depth, double max_error, const calc_t* base, index_t* index, const mapped_file_ptr_t& mapped_file)
+        engine(std::size_t ylength, std::size_t depth, double max_error, const calc_t* base, index_t* index, const mapped_file_ptr_t& mapped_file, std::size_t rng_state, double jitter)
             : _ylength(ylength),
             _depth(depth),
             _max_error(max_error),
             _base(base),
             _index(index),
+            _rng(rng_state),
             _mapped_file(mapped_file),
-            _transformer(_ylength, _depth, _mapped_file) {}
+            _transformer(_ylength, _depth, _mapped_file),
+            _jitter(jitter) {}
 
         superroot_ptr_t run(std::size_t i) {
+            _merged = 0;
             _transformer.data_to_tree(_base + (i * _ylength));
             _transformer.superroot->error = calc_error(i);  // correct error because of floating point errors
-            (*_index->superroots)[i] = _transformer.superroot;
             run_mergeloop(i);
-            drain();
             _transformer.superroot->error = calc_error(i);  // correct error one last time
 
             return _transformer.superroot;
+        }
+
+        void wipe() {
+            // do work bottom to top, might be important for some transaction implementaions later
+            for (std::size_t l_plus = _depth; l_plus > 0; --l_plus) {
+                std::size_t l = l_plus - 1;
+
+                for (std::size_t idx = 0; idx < _transformer.levels[l].size(); ++idx) {
+                    node_ptr_t current_node = _transformer.levels[l][idx];
+
+                    // node might already be merged
+                    if (current_node != nullptr) {
+                        dealloc_in_mapped_file(_mapped_file, current_node);
+                    }
+                }
+            }
+
+            dealloc_in_mapped_file(_mapped_file, _transformer.superroot);
+        }
+
+        void commit(std::size_t i) {
+            // do work bottom to top, might be important for some transaction implementaions later
+            for (std::size_t l_plus = _depth; l_plus > 0; --l_plus) {
+                std::size_t l = l_plus - 1;
+
+                for (std::size_t idx = 0; idx < _transformer.levels[l].size(); ++idx) {
+                    node_ptr_t current_node = _transformer.levels[l][idx];
+
+                    // node might already be merged
+                    if (current_node != nullptr) {
+                        auto& current_index_slot = _index->levels[l][idx];
+                        auto& bucket = current_index_slot.get_bucket(current_node);
+                        bucket.insert(current_node);
+                        ++_index->node_count;
+                    }
+                }
+            }
+
+            (*_index->superroots)[i] = _transformer.superroot;
+        }
+
+        std::size_t merged() const {
+            return _merged;
         }
 
     private:
@@ -290,6 +334,8 @@ class engine {
         std::mt19937                     _rng;
         mapped_file_ptr_t                _mapped_file;
         transformer                      _transformer;
+        std::size_t                      _merged;
+        double                           _jitter;
 
         void run_mergeloop(std::size_t i) {
             queue_t queue;
@@ -335,6 +381,7 @@ class engine {
 
                         // execute merge
                         _transformer.link_to_parent(best.neighbor, best.l, best.idx);
+                        ++_merged;
 
                         // remove old node and mark as merged
                         dealloc_in_mapped_file(_mapped_file, current_node);
@@ -356,31 +403,16 @@ class engine {
             if (current_node != nullptr) {
                 auto& current_index_slot = _index->levels[l][idx];
                 auto& bucket = current_index_slot.get_bucket(current_node);
-                auto neighbors = bucket.get_nearest(current_node, _max_error - _transformer.superroot->error, 1);
-                if (!neighbors.empty()) {
-                    queue.emplace(neighbors[0].second, l, idx, neighbors[0].first);
+
+                std::uniform_real_distribution<double> dist(0.0, 1.0);
+                std::size_t n = 1;
+                while (dist(_rng) < _jitter) {
+                    ++n;
                 }
-            }
-        }
 
-        /*
-         * adds all remaining to index, without any merges
-         */
-        void drain() {
-            // do work bottom to top, might be important for some transaction implementaions later
-            for (std::size_t l_plus = _depth; l_plus > 0; --l_plus) {
-                std::size_t l = l_plus - 1;
-
-                for (std::size_t idx = 0; idx < _transformer.levels[l].size(); ++idx) {
-                    node_ptr_t current_node = _transformer.levels[l][idx];
-
-                    // node might already be merged
-                    if (current_node != nullptr) {
-                        auto& current_index_slot = _index->levels[l][idx];
-                        auto& bucket = current_index_slot.get_bucket(current_node);
-                        bucket.insert(current_node);
-                        ++_index->node_count;
-                    }
+                auto neighbors = bucket.get_nearest(current_node, _max_error - _transformer.superroot->error, n);
+                if (!neighbors.empty()) {
+                    queue.emplace(neighbors[neighbors.size() - 1].second, l, idx, neighbors[neighbors.size() - 1].first);
                 }
             }
         }
@@ -399,6 +431,35 @@ class engine {
 
             return error;
         }
+};
+
+class engine_multi {
+    public:
+        engine_multi(std::size_t ylength, std::size_t depth, double max_error, const calc_t* base, index_t* index, const mapped_file_ptr_t& mapped_file) {
+                double one_minus_jitter = 1.0;
+                for (std::size_t e = 0; e < 10; ++e) {
+                    _engines.emplace_back(new engine(ylength, depth, max_error, base, index, mapped_file, e, 1.0 - one_minus_jitter));
+                    one_minus_jitter *= 0.998;
+                }
+            }
+
+        superroot_ptr_t run(std::size_t i) {
+            std::vector<std::pair<std::size_t, superroot_ptr_t>> results;
+            for (std::size_t e = 0; e < _engines.size(); ++e) {
+                results.push_back(std::make_pair(e, _engines[e]->run(i)));
+            }
+            std::sort(results.begin(), results.end(), [this](const auto& a, const auto& b) {
+                return this->_engines[a.first]->merged() > this->_engines[b.first]->merged();
+            });
+            _engines[results[0].first]->commit(i);
+            for (std::size_t e = 1; e < _engines.size(); ++e) {
+                _engines[results[e].first]->wipe();
+            }
+            return results[0].second;
+        }
+
+    private:
+        std::vector<std::unique_ptr<engine>> _engines;
 };
 
 double calc_compression_rate(const index_t* index, year_t ylength, std::size_t n) {
@@ -474,7 +535,7 @@ int main(int argc, char** argv) {
     std::cout << "build and merge trees" << std::endl;
     std::size_t depth = power_of_2(ylength);
     index_t index(superroots, depth);
-    engine eng(ylength, depth, max_error, base, &index, findex);
+    engine_multi eng(ylength, depth, max_error, base, &index, findex);
     std::mt19937 rng;
     std::size_t counter = 0;
     std::vector<std::size_t> indices(n);
@@ -483,6 +544,7 @@ int main(int argc, char** argv) {
     });
     std::shuffle(indices.begin(), indices.end(), rng);
 
+    n = 100000;
     for (std::size_t i = 0; i < n; ++i) {
         if (i % 1000 == 0) {
             print_process(&index, ylength, n, i);
