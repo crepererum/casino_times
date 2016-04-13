@@ -23,7 +23,8 @@
 struct node_t;
 struct superroot_t;
 
-using node_ptr_t = boost::interprocess::offset_ptr<node_t>;
+using node_ptr_t      = boost::interprocess::offset_ptr<node_t>;
+using superroot_ptr_t = boost::interprocess::offset_ptr<superroot_t>;
 
 struct superroot_t {
     ngram_t    ngram;
@@ -143,7 +144,7 @@ class range_index_t {
 };
 
 struct index_t {
-    std::vector<superroot_t*> superroots;
+    std::vector<superroot_ptr_t> superroots;
     std::vector<std::vector<range_index_t>> levels;
     std::size_t node_count;
 
@@ -156,7 +157,7 @@ struct index_t {
     void delete_all_ptrs() {
         for (auto& sr : superroots) {
             if (sr != nullptr) {
-                delete sr;
+                delete sr.get();
             }
         }
         for (auto& level : levels) {
@@ -180,7 +181,7 @@ constexpr std::size_t power_of_2(std::size_t x) {
 
 class transformer {
     public:
-        superroot_t*                      superroot;
+        superroot_ptr_t                      superroot;
         std::vector<std::vector<node_ptr_t>> levels;
 
         transformer(std::size_t ylength, std::size_t depth) :
@@ -200,7 +201,7 @@ class transformer {
             }
         }
 
-        superroot_t* data_to_tree(const calc_t* data, const ngram_t& ngram) {
+        superroot_ptr_t data_to_tree(const calc_t* data, const ngram_t& ngram) {
             _mywt.run_dwt(data);
 
             superroot = new superroot_t;
@@ -287,7 +288,7 @@ class engine {
             _index(index),
             _transformer(_ylength, _depth) {}
 
-        superroot_t* run(std::size_t i) {
+        superroot_ptr_t run(std::size_t i) {
             _transformer.data_to_tree(_base + (i * _ylength), (*_idxmap)[i]);
             _transformer.superroot->error = calc_error(i);  // correct error because of floating point errors
             _index->superroots[i] = _transformer.superroot;
@@ -453,7 +454,7 @@ class printer {
             return out;
         }
 
-        std::ostream& print_tree(std::ostream &out, superroot_t* superroot) {
+        std::ostream& print_tree(std::ostream &out, superroot_ptr_t superroot) {
             print_superroot(out, superroot);
 
             std::vector<node_ptr_t> todo;
@@ -490,7 +491,7 @@ class printer {
             return print_address(out, addr.get());
         }
 
-        std::ostream& print_superroot(std::ostream &out, superroot_t* superroot) {
+        std::ostream& print_superroot(std::ostream &out, superroot_ptr_t superroot) {
             out << "  ";
             print_address(out, superroot);
             out << " [label=\"" << boost::locale::conv::utf_to_utf<char>(superroot->ngram) << "\", shape=circle, fixedsize=true, width=6, height=6, fontsize=80];" << std::endl;
