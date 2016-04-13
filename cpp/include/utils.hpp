@@ -17,6 +17,15 @@ constexpr bool is_power_of_2(std::size_t v) {
     return v && !(v & (v - 1));
 }
 
+constexpr std::size_t power_of_2(std::size_t x) {
+    std::size_t p = 0;
+    while (x > 1) {
+        x = x >> 1;
+        ++p;
+    }
+    return p;
+}
+
 boost::program_options::options_description po_create_desc();
 int po_fill_vm(
     const boost::program_options::options_description& desc,

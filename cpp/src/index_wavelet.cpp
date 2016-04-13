@@ -188,15 +188,6 @@ struct index_t {
 
 namespace po = boost::program_options;
 
-constexpr std::size_t power_of_2(std::size_t x) {
-    std::size_t p = 0;
-    while (x > 1) {
-        x = x >> 1;
-        ++p;
-    }
-    return p;
-}
-
 class transformer {
     public:
         superroot_ptr_t                      superroot;
