@@ -8,6 +8,18 @@ project (ngrams)
 
 # bunch of external projects
 externalproject_add (
+    project_flann
+    PREFIX "${CMAKE_CURRENT_BINARY_DIR}/flann"
+    GIT_REPOSITORY "https://github.com/mariusmuja/flann.git"
+    GIT_TAG "31bcbefca205fb9febcaa6823139fd3525f21ed3"
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR> -DBUILD_C_BINDINGS=Off -DBUILD_PYTHON_BINDINGS=Off -DBUILD_MATLAB_BINDINGS=Off -DBUILD_CUDA_LIB=Off -DBUILD_EXAMPLES=Off -DBUILD_TESTS=Off -DBUILD_DOC=Off -DUSE_OPENMP=Off -DUSE_MPI=Off
+    BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR>
+    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory <BINARY_DIR>/lib <INSTALL_DIR>/lib
+    COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/src/cpp/flann <INSTALL_DIR>/include/flann
+    TEST_COMMAND ""
+)
+
+externalproject_add (
     project_libsimdpp
     PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libsimdpp"
     GIT_REPOSITORY "https://github.com/p12tic/libsimdpp.git"
@@ -57,11 +69,13 @@ include_directories (
 include_directories (
     SYSTEM
     "${CMAKE_CURRENT_BINARY_DIR}/libsimdpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/flann/include"
     "${CMAKE_CURRENT_BINARY_DIR}/wavelib/include"
 )
 
 # lib paths
 link_directories (
+    "${CMAKE_CURRENT_BINARY_DIR}/flann/lib"
     "${CMAKE_CURRENT_BINARY_DIR}/wavelib/lib"
 )
 
@@ -123,9 +137,14 @@ target_link_libraries (
     boost_iostreams
     boost_locale
     boost_program_options
+    flann_cpp
     wavelib
 )
-add_dependencies (index_wavelet project_wavelib)
+add_dependencies (
+    index_wavelet
+    project_flann
+    project_wavelib
+)
 
 # executable: query_dtw_indexed
 add_executable (query_dtw_indexed "src/query_dtw_indexed.cpp")

@@ -4,6 +4,7 @@
 #include <memory>
 #include <queue>
 #include <random>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -14,6 +15,8 @@
 #include <boost/iostreams/positioning.hpp>
 #include <boost/locale.hpp>
 #include <boost/program_options.hpp>
+
+#include <flann/flann.hpp>
 
 #include "parser.hpp"
 #include "utils.hpp"
@@ -45,6 +48,30 @@ namespace std {
             return seed;
         }
     };
+
+    template<>
+    struct hash<std::tuple<node_t*, node_t*, node_t*, node_t*>> {
+        size_t operator()(const std::tuple<node_t*, node_t*, node_t*, node_t*>& obj) const {
+            std::size_t seed = 0;
+            boost::hash_combine(seed, std::get<0>(obj));
+            boost::hash_combine(seed, std::get<1>(obj));
+            boost::hash_combine(seed, std::get<2>(obj));
+            boost::hash_combine(seed, std::get<3>(obj));
+            return seed;
+        }
+    };
+
+    template<std::size_t N>
+    struct hash<std::array<node_t*, N>> {
+        size_t operator()(const std::array<node_t*, N>& obj) const {
+            std::size_t seed = 0;
+            for (std::size_t i = 0; i < N; ++i) {
+                boost::hash_combine(seed, obj[i]);
+            }
+            return seed;
+        }
+    };
+
 }
 
 class range_bucket_t {
@@ -111,12 +138,179 @@ class range_bucket_t {
         std::vector<node_t*> _slot;
 };
 
+class range_bucket2_t {
+    public:
+        range_bucket2_t() = default;
+
+        void insert(node_t* node) {
+            if (node->child_l != nullptr && node->child_r != nullptr) {
+                std::unique_ptr<double[]> data(new double[3]);
+                data[0] = node->x;
+                data[1] = node->child_l->x;
+                data[2] = node->child_r->x;
+
+                flann::Matrix<double> matrix(data.get(), 1, 3);
+
+                if (_flann) {
+                    _flann->addPoints(matrix);
+                } else {
+                    _flann = std::make_unique<flann::Index<flann::L1<double>>>(matrix, flann::KDTreeSingleIndexParams());
+                    _flann->buildIndex();
+                }
+                _flann_helper.push_back(node);
+            }
+        }
+
+        std::vector<std::pair<node_t*, double>> get_nearest(node_t* node, double max_dist, std::size_t max_size) {
+            if (_flann) {
+                std::vector<int>    data_indices(max_size, -1);
+                std::vector<double> data_dist(max_size, std::numeric_limits<double>::infinity());
+                std::vector<double> data_pos(3);
+
+                data_pos[0] = node->x;
+                data_pos[1] = node->child_l->x;
+                data_pos[2] = node->child_r->x;
+
+                flann::Matrix<int> indices(data_indices.data(), 1, max_size);
+                flann::Matrix<double> dists(data_dist.data(), 1, max_size);
+                flann::Matrix<double> pos(data_pos.data(), 1, 3);
+
+                // do a knn search, using 128 checks
+                _flann->knnSearch(pos, indices, dists, max_size, flann::SearchParams(128));
+
+                // check results
+                std::vector<std::pair<node_t*, double>> result;
+                for (std::size_t i = 0; i < max_size; ++i) {
+                    int idx = data_indices[i];
+                    if (idx >= 0) {
+                        node_t* other = _flann_helper[static_cast<std::size_t>(idx)];
+                        double dist = std::abs(other->x - data_pos[0]) + std::abs(other->child_l->x - data_pos[1]) + std::abs(other->child_r->x - data_pos[2]);
+                        if (dist < max_dist) {
+                            result.push_back(std::make_pair(other, dist));
+                        }
+                    }
+                }
+
+                std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) {
+                    return a.second < b.second;
+                });
+
+                return result;
+            } else {
+                return {};
+            }
+        }
+
+    private:
+        std::unique_ptr<flann::Index<flann::L1<double>>> _flann;
+        std::vector<node_t*> _flann_helper;
+};
+
+class range_bucket4_t {
+    public:
+        range_bucket4_t() = default;
+
+        void insert(node_t* node) {
+            if (node->child_l != nullptr && node->child_r != nullptr && node->child_l->child_l != nullptr && node->child_l->child_r != nullptr && node->child_r->child_l != nullptr && node->child_r->child_r != nullptr) {
+                std::unique_ptr<double[]> data(new double[7]);
+                data[0] = node->x;
+                data[1] = node->child_l->x;
+                data[2] = node->child_r->x;
+                data[3] = node->child_l->child_l->x;
+                data[4] = node->child_l->child_r->x;
+                data[5] = node->child_r->child_l->x;
+                data[6] = node->child_r->child_r->x;
+
+                flann::Matrix<double> matrix(data.get(), 1, 7);
+
+                if (_flann) {
+                    _flann->addPoints(matrix);
+                } else {
+                    _flann = std::make_unique<flann::Index<flann::L1<double>>>(matrix, flann::KDTreeSingleIndexParams());
+                    _flann->buildIndex();
+                }
+                _flann_helper.push_back(node);
+            }
+        }
+
+        std::vector<std::pair<node_t*, double>> get_nearest(node_t* node, double max_dist, std::size_t max_size) {
+            if (_flann) {
+                std::vector<int>    data_indices(max_size, -1);
+                std::vector<double> data_dist(max_size, std::numeric_limits<double>::infinity());
+                std::vector<double> data_pos(7);
+
+                data_pos[0] = node->x;
+                data_pos[1] = node->child_l->x;
+                data_pos[2] = node->child_r->x;
+                data_pos[3] = node->child_l->child_l->x;
+                data_pos[4] = node->child_l->child_r->x;
+                data_pos[5] = node->child_r->child_l->x;
+                data_pos[6] = node->child_r->child_r->x;
+
+                flann::Matrix<int> indices(data_indices.data(), 1, max_size);
+                flann::Matrix<double> dists(data_dist.data(), 1, max_size);
+                flann::Matrix<double> pos(data_pos.data(), 1, 7);
+
+                // do a knn search, using 128 checks
+                _flann->knnSearch(pos, indices, dists, max_size, flann::SearchParams(128));
+
+                // check results
+                std::vector<std::pair<node_t*, double>> result;
+                for (std::size_t i = 0; i < max_size; ++i) {
+                    int idx = data_indices[i];
+                    if (idx >= 0) {
+                        node_t* other = _flann_helper[static_cast<std::size_t>(idx)];
+                        double dist = std::abs(other->x - data_pos[0])
+                            + std::abs(other->child_l->x - data_pos[1])
+                            + std::abs(other->child_r->x - data_pos[2])
+                            + std::abs(other->child_l->child_l->x - data_pos[3])
+                            + std::abs(other->child_l->child_r->x - data_pos[4])
+                            + std::abs(other->child_r->child_l->x - data_pos[5])
+                            + std::abs(other->child_r->child_r->x - data_pos[6]);
+                        if (dist < max_dist) {
+                            result.push_back(std::make_pair(other, dist));
+                        }
+                    }
+                }
+
+                std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) {
+                    return a.second < b.second;
+                });
+
+                return result;
+            } else {
+                return {};
+            }
+        }
+
+    private:
+        std::unique_ptr<flann::Index<flann::L1<double>>> _flann;
+        std::vector<node_t*> _flann_helper;
+};
+
 class range_index_t {
     public:
         range_index_t() = default;
 
         range_bucket_t& get_bucket(const node_t* node) {
             return _index_struct[std::make_pair(node->child_l, node->child_r)];
+        }
+
+        range_bucket2_t& get_bucket2(const node_t* node) {
+            return _index_struct2[std::make_tuple(node->child_l->child_l, node->child_l->child_r, node->child_r->child_l, node->child_r->child_r)];
+        }
+
+        range_bucket4_t& get_bucket4(const node_t* node) {
+            return _index_struct4[{{
+                node->child_l->child_l->child_l,
+                node->child_l->child_l->child_r,
+                node->child_l->child_r->child_l,
+                node->child_l->child_r->child_r,
+                node->child_r->child_l->child_l,
+                node->child_r->child_l->child_r,
+                node->child_r->child_r->child_l,
+                node->child_r->child_r->child_r
+            }}];
         }
 
         void delete_all_ptrs() {
@@ -127,7 +321,9 @@ class range_index_t {
 
     private:
         // XXX: make node pointers in key const
-        std::unordered_map<std::pair<node_t*, node_t*>, range_bucket_t> _index_struct;
+        std::unordered_map<std::pair<node_t*, node_t*>, range_bucket_t>                     _index_struct;
+        std::unordered_map<std::tuple<node_t*, node_t*, node_t*, node_t*>, range_bucket2_t> _index_struct2;
+        std::unordered_map<std::array<node_t*, 8>, range_bucket4_t>                         _index_struct4;
 };
 
 struct index_t {
@@ -287,22 +483,30 @@ class engine {
         }
 
     private:
-        struct queue_entry_t {
-            double      dist;
+        struct merge_entry_t {
             std::size_t l;
             std::size_t idx;
             node_t*     neighbor;
 
-            queue_entry_t(double dist_, std::size_t l_, std::size_t idx_, node_t* neighbor_) :
-                dist(dist_),
+            merge_entry_t(std::size_t l_, std::size_t idx_, node_t* neighbor_) :
                 l(l_),
                 idx(idx_),
                 neighbor(neighbor_) {}
         };
 
+        struct queue_entry_t {
+            double costs;
+            double sum_dist;
+            std::vector<merge_entry_t> merges;
+
+            queue_entry_t(double costs_, double sum_dist_) :
+                costs(costs_),
+                sum_dist(sum_dist_) {}
+        };
+
         struct queue_entry_compare {
             bool operator()(const queue_entry_t& a, const queue_entry_t& b) {
-                return a.dist > b.dist;
+                return a.costs > b.costs;
             }
         };
 
@@ -329,7 +533,7 @@ class engine {
             std::shuffle(indices.begin(), indices.end(), _rng);
             for (auto idx : indices) {
                 std::size_t l = _depth - 1;
-                generate_queue_entries(l, idx, queue);
+                generate_queue_entries(l + 1, idx << 1, queue);
             }
 
             // now run merge loop
@@ -337,42 +541,67 @@ class engine {
                 auto best = queue.top();
                 queue.pop();
 
-                node_t* current_node = _transformer.levels[best.l][best.idx];
+                bool all_notnull = std::all_of(best.merges.begin(), best.merges.end(), [this](const auto& obj){
+                    return this->_transformer.levels[obj.l][obj.idx] != nullptr;
+                });
 
                 // check if node was already merged and if distance is low enough
-                if (current_node != nullptr) {
+                if (all_notnull) {
                     // check if merge would be in error range (i.e. does not increase error beyond _max_error)
                     bool in_error_range = false;
-                    if (_transformer.superroot->error + best.dist < _max_error) {
+                    if (_transformer.superroot->error + best.sum_dist < _max_error) {
                         in_error_range = true;
                     } else if (error_is_approx) {
                         // ok, error is an approximation anyway, so lets calculate the right value and try again
                         _transformer.superroot->error = calc_error(i);
                         error_is_approx = false;
-                        if (_transformer.superroot->error + best.dist < _max_error) {
+                        if (_transformer.superroot->error + best.sum_dist < _max_error) {
                             in_error_range = true;
                         }
                     }
 
                     if (in_error_range) {
-                        // execute merge
-                        _transformer.superroot->error += best.dist;
+                        // adjust error
+                        _transformer.superroot->error += best.sum_dist;
                         error_is_approx = true;
-                        _transformer.link_to_parent(best.neighbor, best.l, best.idx);
-                        delete current_node;
-                        _transformer.levels[best.l][best.idx] = nullptr;
+
+                        // execute merges
+                        for (const auto& m : best.merges) {
+                            _transformer.link_to_parent(m.neighbor, m.l, m.idx);
+                            delete _transformer.levels[m.l][m.idx];
+                            _transformer.levels[m.l][m.idx] = nullptr;
+                        }
 
                         // generate new queue entries
-                        std::size_t idx_even = best.idx - (best.idx % 2);
-                        if ((best.l > 0) && (_transformer.levels[best.l][idx_even] == nullptr) && (_transformer.levels[best.l][idx_even + 1] == nullptr)) {
-                            generate_queue_entries(best.l - 1, best.idx >> 1, queue);
+                        // WARNING: do NOT merge with the merge loop, otherwise it won't generate all queue entries!
+                        for (const auto& m : best.merges) {
+                            generate_queue_entries(m.l, m.idx, queue);
                         }
                     }
                 }
             }
         }
 
-        void generate_queue_entries(std::size_t l, std::size_t idx, queue_t& queue) {
+        void generate_queue_entries(std::size_t l_done, std::size_t idx_done, queue_t& queue) {
+            std::size_t idx_even = idx_done - (idx_done % 2);
+            if ((l_done == _depth)
+                || ((l_done > 0) && (_transformer.levels[l_done][idx_even] == nullptr) && (_transformer.levels[l_done][idx_even + 1] == nullptr))) {
+                generate_queue_entries_single(l_done - 1, idx_even >> 1, queue);
+            }
+
+            std::size_t idx_4 = idx_done - (idx_done % 4);
+            if ((l_done == _depth)
+                || ((l_done > 1) && (_transformer.levels[l_done][idx_4] == nullptr) && (_transformer.levels[l_done][idx_4 + 1] == nullptr) && (_transformer.levels[l_done][idx_4 + 2] == nullptr) && (_transformer.levels[l_done][idx_4 + 3] == nullptr))) {
+                generate_queue_entries_pair(l_done - 1, idx_4 >> 1, queue);
+            }
+
+            std::size_t idx_8 = idx_done - (idx_done % 8);
+            if ((l_done == _depth) || ((l_done > 2) && (_transformer.levels[l_done][idx_8] == nullptr) && (_transformer.levels[l_done][idx_8 + 1] == nullptr) && (_transformer.levels[l_done][idx_8 + 2] == nullptr) && (_transformer.levels[l_done][idx_8 + 3] == nullptr) && (_transformer.levels[l_done][idx_8 + 4] == nullptr) && (_transformer.levels[l_done][idx_8 + 5] == nullptr) && (_transformer.levels[l_done][idx_8 + 6] == nullptr) && (_transformer.levels[l_done][idx_8 + 7] == nullptr))) {
+                generate_queue_entries_4(l_done - 1, idx_8 >> 1, queue);
+            }
+        }
+
+        void generate_queue_entries_single(std::size_t l, std::size_t idx, queue_t& queue) {
             node_t* current_node = _transformer.levels[l][idx];
 
             if (current_node != nullptr) {
@@ -380,7 +609,65 @@ class engine {
                 auto& bucket = current_index_slot.get_bucket(current_node);
                 auto neighbors = bucket.get_nearest(current_node, _max_error - _transformer.superroot->error, 1);
                 if (!neighbors.empty()) {
-                    queue.emplace(neighbors[0].second, l, idx, neighbors[0].first);
+                    queue_entry_t qe(neighbors[0].second, neighbors[0].second);
+                    qe.merges.emplace_back(l, idx, neighbors[0].first);
+                    queue.emplace(std::move(qe));
+                }
+            }
+        }
+
+        void generate_queue_entries_pair(std::size_t l, std::size_t idx, queue_t& queue) {
+            node_t* current_node_l  = _transformer.levels[l    ][idx     ];
+            node_t* current_node_r  = _transformer.levels[l    ][idx + 1 ];
+            node_t* current_node_up = _transformer.levels[l - 1][idx >> 1];
+
+            // upper node will also be not null at thes point
+            if (current_node_l != nullptr && current_node_r != nullptr) {
+                auto& current_index_slot = _index->levels[l - 1][idx >> 1];
+                auto& bucket = current_index_slot.get_bucket2(current_node_up);
+                auto neighbors = bucket.get_nearest(
+                    current_node_up,
+                    _max_error - _transformer.superroot->error,
+                    1
+                );
+
+                if (!neighbors.empty()) {
+                    queue_entry_t qe(neighbors[0].second / 3.0, neighbors[0].second);
+                    qe.merges.emplace_back(l    , idx     , neighbors[0].first->child_l);
+                    qe.merges.emplace_back(l    , idx + 1 , neighbors[0].first->child_r);
+                    qe.merges.emplace_back(l - 1, idx >> 1, neighbors[0].first);
+                    queue.emplace(std::move(qe));
+                }
+            }
+        }
+
+        void generate_queue_entries_4(std::size_t l, std::size_t idx, queue_t& queue) {
+            node_t* current_node_0  = _transformer.levels[l    ][idx     ];
+            node_t* current_node_1  = _transformer.levels[l    ][idx + 1 ];
+            node_t* current_node_2  = _transformer.levels[l    ][idx + 2 ];
+            node_t* current_node_3  = _transformer.levels[l    ][idx + 3 ];
+            node_t* current_node_up = _transformer.levels[l - 2][idx >> 2];
+
+            // upper node will also be not null at thes point
+            if (current_node_0 != nullptr && current_node_1 != nullptr && current_node_2 != nullptr && current_node_3 != nullptr) {
+                auto& current_index_slot = _index->levels[l - 1][idx >> 1];
+                auto& bucket = current_index_slot.get_bucket4(current_node_up);
+                auto neighbors = bucket.get_nearest(
+                    current_node_up,
+                    _max_error - _transformer.superroot->error,
+                    1
+                );
+
+                if (!neighbors.empty()) {
+                    queue_entry_t qe(neighbors[0].second / 7.0, neighbors[0].second);
+                    qe.merges.emplace_back(l    , idx     , neighbors[0].first->child_l->child_l);
+                    qe.merges.emplace_back(l    , idx + 1 , neighbors[0].first->child_l->child_r);
+                    qe.merges.emplace_back(l    , idx + 2 , neighbors[0].first->child_r->child_l);
+                    qe.merges.emplace_back(l    , idx + 3 , neighbors[0].first->child_r->child_r);
+                    qe.merges.emplace_back(l - 1, idx >> 1, neighbors[0].first->child_l);
+                    qe.merges.emplace_back(l - 1, (idx >> 1) + 1, neighbors[0].first->child_r);
+                    qe.merges.emplace_back(l - 2, idx >> 2, neighbors[0].first);
+                    queue.emplace(std::move(qe));
                 }
             }
         }
@@ -399,8 +686,19 @@ class engine {
                     // node might already be merged
                     if (current_node != nullptr) {
                         auto& current_index_slot = _index->levels[l][idx];
+
                         auto& bucket = current_index_slot.get_bucket(current_node);
                         bucket.insert(current_node);
+
+                        if ((current_node->child_l != nullptr) && (current_node->child_r != nullptr)) {
+                            auto& bucket2 = current_index_slot.get_bucket2(current_node);
+                            bucket2.insert(current_node);
+                        }
+                        if (current_node->child_l != nullptr && current_node->child_r != nullptr && current_node->child_l->child_l != nullptr && current_node->child_l->child_r != nullptr && current_node->child_r->child_l != nullptr && current_node->child_r->child_r != nullptr) {
+                            auto& bucket4 = current_index_slot.get_bucket4(current_node);
+                            bucket4.insert(current_node);
+                        }
+
                         ++_index->node_count;
                     }
                 }
