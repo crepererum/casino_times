@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -7,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include <boost/functional/hash.hpp>
 #include <boost/program_options.hpp>
 
 #include "utils.hpp"
@@ -38,30 +40,52 @@ class printer {
             superroot_ptr_t superroot = (*_superroots)[i];
             print_superroot(out, superroot, (*_idxmap)[i]);
 
-            std::vector<node_ptr_t> todo;
-            todo.push_back(superroot->root);
+            std::vector<std::pair<node_ptr_t, std::pair<std::size_t, std::size_t>>> todo;
+            todo.push_back(std::make_pair(superroot->root, std::make_pair(0, 0)));
 
             while (!todo.empty()) {
-                node_ptr_t current = todo.back();
+                auto current = todo.back();
                 todo.pop_back();
 
-                print_node(out, current);
+                print_node(out, current.first, current.second.first, current.second.second);
 
-                if (current->child_l) {
-                    todo.push_back(current->child_l);
+                if (current.first->child_l) {
+                    todo.push_back(std::make_pair(
+                        current.first->child_l,
+                        std::make_pair(current.second.first + 1, current.second.second << 1)
+                    ));
                 }
-                if (current->child_r) {
-                    todo.push_back(current->child_r);
+                if (current.first->child_r) {
+                    todo.push_back(std::make_pair(
+                        current.first->child_r,
+                        std::make_pair(current.second.first + 1, (current.second.second << 1) + 1)
+                    ));
                 }
             }
 
             return out;
         }
 
+        std::ostream& print_groups(std::ostream &out) {
+            for (const auto& kv : _groups) {
+                out << "  subgraph cluster_" << kv.first.first << "_" << kv.first.second << " {" << std::endl;
+                for (const auto& n : kv.second) {
+                    out << "    ";
+                    print_address(out, n);
+                    out << ";" << std::endl;
+                }
+                out << "  }" << std::endl;
+                out << std::endl;
+            }
+
+            return out;
+        }
+
     private:
-        superroot_vector_t*              _superroots;
-        std::shared_ptr<idx_ngram_map_t> _idxmap;
-        std::unordered_set<node_ptr_t>   _printed_nodes;
+        superroot_vector_t*                                                    _superroots;
+        std::shared_ptr<idx_ngram_map_t>                                       _idxmap;
+        std::unordered_set<node_ptr_t>                                         _printed_nodes;
+        std::map<std::pair<std::size_t, std::size_t>, std::vector<node_ptr_t>> _groups;
 
         template <typename T>
         std::ostream& print_address(std::ostream &out, T* addr) {
@@ -90,7 +114,7 @@ class printer {
             return out;
         }
 
-        std::ostream& print_node(std::ostream &out, node_ptr_t node) {
+        std::ostream& print_node(std::ostream &out, node_ptr_t node, std::size_t l, std::size_t idx) {
             if (_printed_nodes.find(node) == _printed_nodes.end()) {
                 out << "  ";
                 print_address(out, node);
@@ -114,6 +138,7 @@ class printer {
                 out << std::endl;
 
                 _printed_nodes.insert(node);
+                _groups[std::make_pair(l, idx)].push_back(node);
             }
 
             return out;
@@ -181,6 +206,7 @@ int main(int argc, char** argv) {
     for (std::size_t i : indices) {
         pr.print_tree(out, i);
     }
+    pr.print_groups(out);
     pr.print_end(out);
     std::cout << "done" << std::endl;
 }
