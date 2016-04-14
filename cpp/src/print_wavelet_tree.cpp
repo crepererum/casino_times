@@ -25,6 +25,7 @@ class printer {
             out << "  nodesep=0.1;" << std::endl;
             out << "  ranksep=5;" << std::endl;
             out << "  size=\"25,25\";" << std::endl;
+            out << "  splines=false;" << std::endl;
             out << std::endl;
 
             return out;
@@ -74,6 +75,7 @@ class printer {
                     print_address(out, n);
                     out << ";" << std::endl;
                 }
+                out << "    graph[style=dotted];" << std::endl;
                 out << "  }" << std::endl;
                 out << std::endl;
             }
@@ -105,9 +107,9 @@ class printer {
 
             out << "  ";
             print_address(out, superroot);
-            out << " -> ";
+            out << ":s -> ";
             print_address(out, superroot->root);
-            out << ";" << std::endl;
+            out << ":t:n;" << std::endl;
 
             out << std::endl;
 
@@ -118,21 +120,25 @@ class printer {
             if (_printed_nodes.find(node) == _printed_nodes.end()) {
                 out << "  ";
                 print_address(out, node);
-                out << " [label=\"" << node->x << "\", shape=box, fixedsize=true, width=1.0, height=0.5, fontsize=8];" << std::endl;
+                out << " [shape=none, margin=0, fixedsize=true, width=1.0, height=0.6, fontsize=8, label=<" << std::endl;
+                out << "    <table border=\"0\" cellborder=\"1\" cellspacing=\"0\" cellpadding=\"4\">" << std::endl;
+                out << "    <tr><td port=\"t\" colspan=\"2\" fixedsize=\"true\" width=\"60\" height=\"20\">" << node->x << "</td></tr>" << std::endl;
+                out << "    <tr><td port=\"0\">0</td><td port=\"1\">1</td></tr>" << std::endl;
+                out << "  </table>>];" << std::endl;
 
                 if (node->child_l) {
                     out << "  ";
                     print_address(out, node);
-                    out << " -> ";
+                    out << ":0:s -> ";
                     print_address(out, node->child_l);
-                    out << ";" << std::endl;
+                    out << ":t:n;" << std::endl;
                 }
                 if (node->child_r) {
                     out << "  ";
                     print_address(out, node);
-                    out << " -> ";
+                    out << ":1:s -> ";
                     print_address(out, node->child_r);
-                    out << ";" << std::endl;
+                    out << ":t:n;" << std::endl;
                 }
 
                 out << std::endl;
