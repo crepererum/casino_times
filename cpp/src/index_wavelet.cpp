@@ -115,9 +115,9 @@ class range_index_t {
 struct index_t {
     superroot_vector_t* superroots;
     std::vector<std::vector<range_index_t>> levels;
-    std::size_t node_count;
+    std::vector<std::size_t> node_counts;
 
-    index_t(superroot_vector_t* superroots_, std::size_t depth) : superroots(superroots_), levels(depth), node_count(0) {
+    index_t(superroot_vector_t* superroots_, std::size_t depth) : superroots(superroots_), levels(depth), node_counts(depth, 0) {
         for (std::size_t l = 0; l < depth; ++l) {
             levels[l] = std::vector<range_index_t>(1 << l);
         }
@@ -134,6 +134,15 @@ struct index_t {
                 range_index.delete_all_ptrs(f);
             }
         }
+    }
+
+    std::size_t total_node_count() const {
+        return std::accumulate(
+            node_counts.begin(),
+            node_counts.end(),
+            static_cast<std::size_t>(0),
+            std::plus<std::size_t>()
+        );
     }
 };
 
@@ -379,7 +388,7 @@ class engine {
                         auto& current_index_slot = _index->levels[l][idx];
                         auto& bucket = current_index_slot.get_bucket(current_node);
                         bucket.insert(current_node);
-                        ++_index->node_count;
+                        ++_index->node_counts[l];
                     }
                 }
             }
@@ -403,17 +412,37 @@ class engine {
 
 double calc_compression_rate(const index_t* index, year_t ylength, std::size_t n) {
     std::size_t size_normal = sizeof(calc_t) * static_cast<std::size_t>(ylength) * n;
-    std::size_t size_compression = sizeof(node_t) * index->node_count + sizeof(superroot_t) * n;
+    std::size_t size_compression = sizeof(node_t) * index->total_node_count() + sizeof(superroot_t) * n;
 
     return static_cast<double>(size_compression) / static_cast<double>(size_normal);
 }
 
 void print_process(const index_t* index, year_t ylength, std::size_t n, std::size_t i) {
     std::cout << "  process=" << i << "/" << n
-        << " #nodes=" << index->node_count
-        << " %nodes=" << (static_cast<double>(index->node_count) / static_cast<double>((ylength - 1) * i))
+        << " #nodes=" << index->total_node_count()
+        << " %nodes=" << (static_cast<double>(index->total_node_count()) / static_cast<double>((ylength - 1) * i))
         << " compression_rate=" << calc_compression_rate(index, ylength, i)
         << std::endl;
+}
+
+void print_stats(const index_t* index, std::size_t n) {
+    std::size_t sum_is = 0;
+    std::size_t sum_should = 0;
+
+    std::cout << "stats:" << std::endl;
+    for (std::size_t l = 0; l < index->node_counts.size(); ++l) {
+        std::size_t is = index->node_counts[l];
+        std::size_t should = (static_cast<std::size_t>(1) << l) * n;
+        double relative = static_cast<double>(is) / static_cast<double>(should);
+
+        std::cout << "  level=" << l << " #nodes=" << is << " %nodes=" << relative << std::endl;
+
+        sum_is += is;
+        sum_should += should;
+    }
+
+    double sum_relative = static_cast<double>(sum_is) / static_cast<double>(sum_should);
+    std::cout << "  level=X #nodes=" << sum_is << " %nodes=" << sum_relative << std::endl;
 }
 
 int main(int argc, char** argv) {
@@ -496,5 +525,7 @@ int main(int argc, char** argv) {
     // DONT! only for debugging!
     //index.delete_all_ptrs(findex);
 
-    std::cout << "Free memory:" << (findex->get_free_memory() >> 10) << "k of " << (findex->get_size() >> 10) << "k" << std::endl;
+    std::cout << "Free memory: " << (findex->get_free_memory() >> 10) << "k of " << (findex->get_size() >> 10) << "k" << std::endl;
+
+    print_stats(&index, n);
 }
