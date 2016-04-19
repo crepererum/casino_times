@@ -35,14 +35,14 @@ function applykernel(x, kernel)
     return result
 end
 
-function loaddata(fname, resolution, n)
+function loaddata(fname, resolution, n, t=UInt64)
     fp = open(fname)
-    return Mmap.mmap(fp, Matrix{UInt64}, (resolution, n))
+    return Mmap.mmap(fp, Matrix{t}, (resolution, n))
 end
 
-function loaddata_wd(fname, resolution, n)
+function loaddata_wd(fname, resolution, n, t=Float64)
     fp = open(fname, "w+")
-    return Mmap.mmap(fp, Matrix{Float64}, (resolution, n))
+    return Mmap.mmap(fp, Matrix{t}, (resolution, n))
 end
 
 function loadmap(fname)
@@ -76,12 +76,20 @@ function transform_log(x)
     return log(1.0 + x)
 end
 
+function transform_smooth1(x)
+    return applykernel(x, kernel_gauss_sigma1)
+end
+
+function transform_smooth2(x)
+    return applykernel(x, kernel_gauss_sigma2)
+end
+
 function transform_log_smooth1(x)
-    return applykernel(transform_log(x), kernel_gauss_sigma1)
+    return transform_smooth1(transform_log(x))
 end
 
 function transform_log_smooth2(x)
-    return applykernel(transform_log(x), kernel_gauss_sigma2)
+    return transform_smooth2(transform_log(x))
 end
 
 function transform_gradient(x)
@@ -90,6 +98,14 @@ end
 
 function transform_loggradient(x)
     return gradient(transform_log(x))
+end
+
+function transform_gradient_smooth1(x)
+    return gradient(transform_smooth1(x))
+end
+
+function transform_gradient_smooth2(x)
+    return gradient(transform_smooth2(x))
 end
 
 function transform_loggradient_smooth1(x)
