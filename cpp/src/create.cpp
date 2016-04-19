@@ -46,17 +46,9 @@ int main(int argc, char** argv) {
     std::tie(idxmap, ngmap) = parse_map_file(fname_mapin);
     std::size_t n = ngmap.size();
 
-
-    boost::iostreams::mapped_file_params params0;
-    boost::iostreams::mapped_file_params params1;
-    params0.path = fname_out0;
-    params1.path = fname_out1;
-    params0.flags = params1.flags = boost::iostreams::mapped_file::mapmode::readwrite;
-    params0.new_file_size = params1.new_file_size = static_cast<boost::iostreams::stream_offset>(n * ylength * sizeof(var_t));
-    params0.length = params1.length = static_cast<std::size_t>(n * ylength * sizeof(var_t));
-    params0.offset = params1.offset = 0;
-    boost::iostreams::mapped_file output0(params0);
-    boost::iostreams::mapped_file output1(params1);
+    std::size_t fsize = n * ylength * sizeof(var_t);
+    auto output0 = open_raw_file(fname_out0, fsize, true, true);
+    auto output1 = open_raw_file(fname_out1, fsize, true, true);
     if (!output0.is_open()) {
         std::cerr << "cannot write output file for var0" << std::endl;
         return 1;

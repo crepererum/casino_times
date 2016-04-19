@@ -2,6 +2,8 @@
 #include <exception>
 #include <iostream>
 
+#include <boost/iostreams/device/mapped_file.hpp>
+#include <boost/iostreams/positioning.hpp>
 #include <boost/locale.hpp>
 #include <boost/program_options.hpp>
 
@@ -64,4 +66,24 @@ std::unique_ptr<char[]> alloc_cs(const std::string& s) {
     std::copy(s.cbegin(), s.cend(), cs.get());
     cs[s.size()] = '\0';
     return cs;
+}
+
+boost::iostreams::mapped_file open_raw_file(const std::string& fname, std::size_t size, bool writable, bool create) {
+    boost::iostreams::mapped_file_params params;
+    params.path   = fname;
+    params.length = size;
+    params.offset = 0;
+
+    if (writable) {
+        params.flags = boost::iostreams::mapped_file::mapmode::readwrite;
+    } else {
+        params.flags = boost::iostreams::mapped_file::mapmode::readonly;
+    }
+
+    if (create) {
+        params.new_file_size = static_cast<boost::iostreams::stream_offset>(size);
+    }
+
+    boost::iostreams::mapped_file f(params);
+    return f;
 }

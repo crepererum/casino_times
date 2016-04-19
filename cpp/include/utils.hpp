@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 
+#include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/program_options.hpp>
 
 // http://stackoverflow.com/a/10791845/1718219
@@ -38,3 +39,5 @@ int po_fill_vm(
 int gen_locale(std::locale& loc);
 
 std::unique_ptr<char[]> alloc_cs(const std::string& s);
+
+boost::iostreams::mapped_file open_raw_file(const std::string& fname, std::size_t size, bool writable, bool create);

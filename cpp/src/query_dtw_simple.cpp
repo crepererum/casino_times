@@ -74,12 +74,7 @@ int main(int argc, char** argv) {
     }
     std::size_t i = ngram_it->second;
 
-    boost::iostreams::mapped_file_params params;
-    params.path   = fname_binary;
-    params.flags  = boost::iostreams::mapped_file::mapmode::readonly;
-    params.length = static_cast<std::size_t>(n * ylength * sizeof(calc_t));
-    params.offset = 0;
-    boost::iostreams::mapped_file input(params);
+    auto input = open_raw_file(fname_binary, n * ylength * sizeof(calc_t), false, false);
     if (!input.is_open()) {
         std::cerr << "cannot read input file" << std::endl;
         return 1;

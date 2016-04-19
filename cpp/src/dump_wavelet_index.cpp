@@ -56,15 +56,9 @@ int main(int argc, char** argv) {
     std::cout << "done" << std::endl;
 
     std::cout << "open output file..." << std::endl;
-    boost::iostreams::mapped_file_params params;
-    params.path = fname_out;
-    params.flags = boost::iostreams::mapped_file::mapmode::readwrite;
-    params.new_file_size = static_cast<boost::iostreams::stream_offset>(n * ylength * sizeof(calc_t));
-    params.length = static_cast<std::size_t>(n * ylength * sizeof(calc_t));
-    params.offset = 0;
-    boost::iostreams::mapped_file output(params);
+    auto output = open_raw_file(fname_out, n * ylength * sizeof(calc_t), true, true);
     if (!output.is_open()) {
-        std::cerr << "cannot write output file for var0" << std::endl;
+        std::cerr << "cannot write output file" << std::endl;
         return 1;
     }
     auto base = reinterpret_cast<calc_t*>(output.data());
