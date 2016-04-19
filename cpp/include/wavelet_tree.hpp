@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include <boost/functional/hash.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
 #include <boost/interprocess/containers/vector.hpp>
@@ -8,6 +10,8 @@
 #include <boost/locale.hpp>
 
 #include "parser.hpp"
+
+using mapped_file_ptr_t     = std::shared_ptr<boost::interprocess::managed_mapped_file>;
 
 struct node_t;
 struct superroot_t;
@@ -50,4 +54,14 @@ namespace std {
             return seed;
         }
     };
+}
+
+template <typename T>
+boost::interprocess::offset_ptr<T> alloc_in_mapped_file(mapped_file_ptr_t& f) {
+    return static_cast<T*>(f->allocate(sizeof(T)));
+}
+
+template <typename T>
+void dealloc_in_mapped_file(mapped_file_ptr_t& f, const boost::interprocess::offset_ptr<T>& ptr) {
+    f->deallocate(ptr.get());
 }
