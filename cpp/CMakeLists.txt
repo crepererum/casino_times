@@ -91,6 +91,19 @@ target_link_libraries (
     boost_program_options
 )
 
+# executable: dump_wavelet_index
+add_executable (dump_wavelet_index "src/dump_wavelet_index.cpp")
+target_link_libraries (
+    dump_wavelet_index
+    parser
+    utils
+    boost_iostreams
+    boost_locale
+    boost_program_options
+    wavelib
+)
+add_dependencies (dump_wavelet_index project_wavelib)
+
 # executable: normalize
 add_executable (normalize "src/normalize.cpp")
 target_link_libraries (
@@ -136,9 +149,7 @@ target_link_libraries (
     boost_iostreams
     boost_locale
     boost_program_options
-    wavelib
 )
-add_dependencies (print_wavelet_tree project_wavelib)
 
 # executable: query_dtw_indexed
 add_executable (query_dtw_indexed "src/query_dtw_indexed.cpp")
