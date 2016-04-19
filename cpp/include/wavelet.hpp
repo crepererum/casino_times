@@ -1,7 +1,8 @@
 #pragma once
 
-#include <string>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <wavelib.h>
 
@@ -36,6 +37,11 @@ class wavelet_transform {
         wavelet_transform(const std::shared_ptr<wavelet>& w, const std::string& method, int n, int j) : _w(w) {
             _cs_method = alloc_cs(method);
             _wt_obj = wt_init(_w->get_ptr(), _cs_method.get(), n, j);
+
+            // run dwt once to initialize all structures.
+            // not sure if this is an actual bug or undocumented behaviour in wavelib
+            std::vector<double> tmp(static_cast<std::size_t>(n), 0.0);
+            run_dwt(tmp.data());
         }
 
         ~wavelet_transform() {
