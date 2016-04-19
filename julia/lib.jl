@@ -76,8 +76,12 @@ function transform_log(x)
     return log(1.0 + x)
 end
 
-function transform_log_smooth(x)
-    return applykernel(log(1.0 + x), kernel_gauss_sigma2)
+function transform_log_smooth1(x)
+    return applykernel(transform_log(x), kernel_gauss_sigma1)
+end
+
+function transform_log_smooth2(x)
+    return applykernel(transform_log(x), kernel_gauss_sigma2)
 end
 
 function transform_gradient(x)
@@ -85,11 +89,15 @@ function transform_gradient(x)
 end
 
 function transform_loggradient(x)
-    return gradient(log(1.0 + x))
+    return gradient(transform_log(x))
 end
 
-function transform_loggradient_smooth(x)
-    return gradient(applykernel(log(1.0 + x), kernel_gauss_sigma2))
+function transform_loggradient_smooth1(x)
+    return gradient(transform_log_smooth1(x))
+end
+
+function transform_loggradient_smooth2(x)
+    return gradient(transform_log_smooth2(x))
 end
 
 function get_from_data(data, i, fnorm=norm_id, ftransform=transform_id)
