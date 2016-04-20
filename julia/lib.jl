@@ -174,3 +174,28 @@ function plot_all_that(data, map_s2i, t, ngrams, fnorm, ftransform, title, geo=G
     df = reduce(vcat, DataFrame(), dfs)
     plot_dataframe(df, title, geo, th)
 end
+
+function map_to_frequency(data, map_s2i, ftransform, ng)
+    x = get_from_data(data, map_s2i[ng], norm_id, ftransform)
+    abs(rfft(x ./ sum(x))[2:end])
+end
+
+function print_frequency_report(data, map_s2i, m, ngrams, ftransform, title)
+    xvals = collect(1:(m / 2))
+    dfs = map(ng -> DataFrame(x=xvals, y=map_to_frequency(data, map_s2i, ftransform, ng), label=ng), ngrams)
+    df = reduce(vcat, DataFrame(), dfs)
+    Gadfly.plot(
+        df,
+        x="x",
+        y="y",
+        color="label",
+        Geom.point,
+        Guide.xlabel("frequency"),
+        Guide.ylabel("amplitude"),
+        Guide.colorkey("ngram"),
+        Guide.title(@sprintf("Frequency report - %s", title)),
+        Guide.xticks(ticks=collect(1:(m / 16):(m / 2))),
+        Scale.y_log10,
+        Theme(default_point_size=0.5mm)
+    )
+end
