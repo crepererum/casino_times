@@ -11,8 +11,8 @@ include("../julia/lib.jl")
 t = Int64
 if fin_t == "Float64"
     t = Float64
-elseif fin_t == "Int64"
-    t = Int64
+elseif fin_t == "UInt64"
+    t = UInt64
 else
     println("What datatype?")
     exit(1)
