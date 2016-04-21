@@ -4,6 +4,7 @@
 
 #include <boost/functional/hash.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
+#include <boost/interprocess/allocators/adaptive_pool.hpp>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/managed_mapped_file.hpp>
 #include <boost/interprocess/offset_ptr.hpp>
@@ -11,17 +12,25 @@
 
 #include "parser.hpp"
 
-using mapped_file_ptr_t     = std::shared_ptr<boost::interprocess::managed_mapped_file>;
+constexpr std::size_t alloc_nodes = 1024 * 1024;
+
+using mapped_file_ptr_t         = std::shared_ptr<boost::interprocess::managed_mapped_file>;
 
 struct node_t;
 struct superroot_t;
 
-using node_ptr_t            = boost::interprocess::offset_ptr<node_t>;
-using superroot_ptr_t       = boost::interprocess::offset_ptr<superroot_t>;
+using node_ptr_t                = boost::interprocess::offset_ptr<node_t>;
+using superroot_ptr_t           = boost::interprocess::offset_ptr<superroot_t>;
 
-using segment_manager_t     = boost::interprocess::managed_mapped_file::segment_manager;
-using allocator_superroot_t = boost::interprocess::allocator<superroot_ptr_t, segment_manager_t>;
-using superroot_vector_t    = boost::interprocess::vector<superroot_ptr_t, allocator_superroot_t>;
+using segment_manager_t         = boost::interprocess::managed_mapped_file::segment_manager;
+template <typename T>
+using allocator_t               = boost::interprocess::adaptive_pool<T, segment_manager_t, alloc_nodes>;
+
+using allocator_node_t          = allocator_t<node_t>;
+using allocator_superroot_t     = allocator_t<superroot_t>;
+using allocator_superroot_ptr_t = allocator_t<superroot_ptr_t>;
+
+using superroot_vector_t        = boost::interprocess::vector<superroot_ptr_t, allocator_superroot_ptr_t>;
 
 struct superroot_t {
     node_ptr_t root;
@@ -57,11 +66,11 @@ namespace std {
 }
 
 template <typename T>
-boost::interprocess::offset_ptr<T> alloc_in_mapped_file(mapped_file_ptr_t& f) {
-    return static_cast<T*>(f->allocate(sizeof(T)));
+boost::interprocess::offset_ptr<T> alloc_in_mapped_file(allocator_t<T>& alloc) {
+    return alloc.allocate(1);
 }
 
 template <typename T>
-void dealloc_in_mapped_file(mapped_file_ptr_t& f, const boost::interprocess::offset_ptr<T>& ptr) {
-    f->deallocate(ptr.get());
+void dealloc_in_mapped_file(allocator_t<T>& alloc, const boost::interprocess::offset_ptr<T>& ptr) {
+    alloc.deallocate(ptr.get(), 1);
 }

@@ -72,8 +72,9 @@ class range_bucket_t {
         }
 
         void delete_all_ptrs(mapped_file_ptr_t& f) {
+            allocator_node_t alloc(f->get_segment_manager());
             for (auto& node : _slot) {
-                dealloc_in_mapped_file(f, node);
+                dealloc_in_mapped_file(alloc, node);
             }
         }
 
@@ -112,9 +113,10 @@ struct index_t {
     }
 
     void delete_all_ptrs(mapped_file_ptr_t& f) {
+        allocator_superroot_t alloc(f->get_segment_manager());
         for (auto& sr : *superroots) {
             if (sr != nullptr) {
-                dealloc_in_mapped_file(f, sr);
+                dealloc_in_mapped_file(alloc, sr);
             }
         }
         for (auto& level : levels) {
@@ -143,6 +145,7 @@ class engine {
             _base(base),
             _index(index),
             _mapped_file(mapped_file),
+            _alloc_node(_mapped_file->get_segment_manager()),
             _transformer(_ylength, _depth, _mapped_file) {}
 
         superroot_ptr_t run(std::size_t i) {
@@ -185,6 +188,7 @@ class engine {
         index_t*                         _index;
         std::mt19937                     _rng;
         mapped_file_ptr_t                _mapped_file;
+        allocator_node_t                 _alloc_node;
         transformer                      _transformer;
 
         void run_mergeloop(std::size_t i) {
@@ -233,7 +237,7 @@ class engine {
                         _transformer.link_to_parent(best.neighbor, best.l, best.idx);
 
                         // remove old node and mark as merged
-                        dealloc_in_mapped_file(_mapped_file, current_node);
+                        dealloc_in_mapped_file(_alloc_node, current_node);
                         _transformer.levels[best.l][best.idx] = nullptr;
 
                         // generate new queue entries
@@ -380,7 +384,7 @@ int main(int argc, char** argv) {
         index_size
     );
     auto segment_manager = findex->get_segment_manager();
-    allocator_superroot_t allocator_superroot(segment_manager);
+    allocator_superroot_ptr_t allocator_superroot(segment_manager);
     auto superroots = findex->construct<superroot_vector_t>("superroots")(n, allocator_superroot);
     std::cout << "done" << std::endl;
 

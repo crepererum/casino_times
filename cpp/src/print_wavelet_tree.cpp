@@ -197,7 +197,7 @@ int main(int argc, char** argv) {
         fname_index.c_str()
     );
     auto segment_manager = findex->get_segment_manager();
-    allocator_superroot_t allocator_superroot(segment_manager);
+    allocator_superroot_ptr_t allocator_superroot(segment_manager);
     std::tie(superroots, find_count) = findex->find<superroot_vector_t>("superroots");
     if (superroots == nullptr) {
         std::cerr << "cannot find index data!" << std::endl;
