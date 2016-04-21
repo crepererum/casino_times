@@ -80,6 +80,17 @@ target_link_libraries (
     boost_program_options
 )
 
+# executable: calc_dtw_simple
+add_executable (calc_dtw_simple "src/calc_dtw_simple.cpp")
+target_link_libraries (
+    calc_dtw_simple
+    parser
+    utils
+    boost_iostreams
+    boost_locale
+    boost_program_options
+)
+
 # executable: create
 add_executable (create "src/create.cpp")
 target_link_libraries (
