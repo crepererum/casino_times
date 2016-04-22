@@ -84,6 +84,6 @@ int main(int argc, char** argv) {
 
     dtw_simple mydtw_simple(base_in, ylength, r);
     for (std::size_t j = 0; j < n; ++j) {
-        base_out[j] = mydtw_simple.calc(i, j);
+        base_out[j] = std::sqrt(mydtw_simple.calc(i, j));
     }
 }
