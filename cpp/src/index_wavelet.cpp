@@ -136,9 +136,112 @@ struct index_t {
     }
 };
 
+class error_calculator {
+    public:
+        error_calculator(std::size_t ylength, std::size_t depth, const calc_t* base, double max_error, double p, const std::shared_ptr<transformer>& transf) :
+            _ylength(ylength),
+            _depth(depth),
+            _base(base),
+            _max_error(max_error),
+            _p(p),
+            _transformer(transf),
+            _delta(_ylength, 0.0),
+            _delta_copy(_ylength, 0.0),
+            _is_approx(false) {}
+
+        double recalc(const std::size_t i) {
+            // do idwt
+            std::vector<double> data_approximated(_ylength);
+            _transformer->tree_to_data(data_approximated.data());
+
+            // compare
+            const calc_t* local_base = _base + (i * _ylength);
+            for (std::size_t y = 0; y < _ylength; ++y) {
+                _delta[y] = std::abs(data_approximated[y] - local_base[y]);
+            }
+
+            // calc exact error
+            double error = error_from_delta(_delta);
+
+            _transformer->superroot->error = error;
+            _is_approx = false;
+
+            return error;
+        }
+
+        double update(std::size_t l, std::size_t idx, double dist) {
+            guess_delta_update(_delta, l, idx, dist);
+            double error = error_from_delta(_delta);
+            _transformer->superroot->error = error;
+            _is_approx = true;
+
+            return error;
+        }
+
+        double guess_error(std::size_t l, std::size_t idx, double dist) {
+            _delta_copy = _delta;
+            guess_delta_update(_delta_copy, l, idx, dist);
+            return error_from_delta(_delta_copy);
+        }
+
+        bool is_approx() const {
+            return _is_approx;
+        }
+
+        double p() const {
+            return _p;
+        }
+
+        bool is_in_range(std::size_t i, std::size_t l, std::size_t idx, double dist) {
+            bool in_range = false;
+
+            if (guess_error(l, idx, dist) < _max_error) {
+                in_range = true;
+            } else if (_is_approx) {
+                // ok, error is an approximation anyway, so lets calculate the right value and try again
+                recalc(i);
+
+                if (guess_error(l, idx, dist) < _max_error) {
+                    in_range = true;
+                }
+            }
+
+            return in_range;
+        }
+
+    private:
+        const std::size_t            _ylength;
+        const std::size_t            _depth;
+        const calc_t*                _base;
+        const double                 _max_error;
+        const double                 _p;
+        std::shared_ptr<transformer> _transformer;
+        std::vector<double>          _delta;
+        std::vector<double>          _delta_copy;
+        bool                         _is_approx;
+
+        double error_from_delta(const std::vector<double>& delta) const {
+            double error = 0.0;
+            for (std::size_t y = 0; y < _ylength; ++y) {
+                error += std::pow(std::abs(delta[y]), _p);
+            }
+            return std::pow(error, static_cast<double>(1) / _p) / static_cast<double>(_ylength);
+        }
+
+        void guess_delta_update(std::vector<double>& delta, std::size_t l, std::size_t idx, double dist) {
+            std::size_t influence = 1u << (_depth - l);
+            std::size_t shift     = influence * idx;
+            double dist_recalced  = dist / static_cast<double>(influence);
+
+            for (std::size_t y = shift; y < shift + influence; ++y) {
+                delta[y] += dist_recalced;
+            }
+        }
+};
+
 class engine {
     public:
-        engine(std::size_t ylength, std::size_t depth, double max_error, const calc_t* base, index_t* index, const mapped_file_ptr_t& mapped_file)
+        engine(std::size_t ylength, std::size_t depth, double max_error, double p, const calc_t* base, index_t* index, const mapped_file_ptr_t& mapped_file)
             : _ylength(ylength),
             _depth(depth),
             _max_error(max_error),
@@ -146,27 +249,30 @@ class engine {
             _index(index),
             _mapped_file(mapped_file),
             _alloc_node(_mapped_file->get_segment_manager()),
-            _transformer(_ylength, _depth, _mapped_file) {}
+            _transformer(std::make_shared<transformer>(_ylength, _depth, _mapped_file)),
+            _error_calc(_ylength, _depth, _base, _max_error, p, _transformer) {}
 
         superroot_ptr_t run(std::size_t i) {
-            _transformer.data_to_tree(_base + (i * _ylength));
-            _transformer.superroot->error = calc_error(i);  // correct error because of floating point errors
-            (*_index->superroots)[i] = _transformer.superroot;
+            _transformer->data_to_tree(_base + (i * _ylength));
+            _error_calc.recalc(i);  // correct error because of floating point errors
+            (*_index->superroots)[i] = _transformer->superroot;
             run_mergeloop(i);
             drain();
-            _transformer.superroot->error = calc_error(i);  // correct error one last time
+            _error_calc.recalc(i);  // correct error one last time
 
-            return _transformer.superroot;
+            return _transformer->superroot;
         }
 
     private:
         struct queue_entry_t {
+            double      score;
             double      dist;
             std::size_t l;
             std::size_t idx;
-            node_ptr_t     neighbor;
+            node_ptr_t  neighbor;
 
-            queue_entry_t(double dist_, std::size_t l_, std::size_t idx_, node_ptr_t neighbor_) :
+            queue_entry_t(double score_, double dist_, std::size_t l_, std::size_t idx_, node_ptr_t neighbor_) :
+                score(score_),
                 dist(dist_),
                 l(l_),
                 idx(idx_),
@@ -175,7 +281,7 @@ class engine {
 
         struct queue_entry_compare {
             bool operator()(const queue_entry_t& a, const queue_entry_t& b) {
-                return a.dist > b.dist;
+                return a.score > b.score;
             }
         };
 
@@ -189,14 +295,14 @@ class engine {
         std::mt19937                     _rng;
         mapped_file_ptr_t                _mapped_file;
         allocator_node_t                 _alloc_node;
-        transformer                      _transformer;
+        std::shared_ptr<transformer>     _transformer;
+        error_calculator                 _error_calc;
 
         void run_mergeloop(std::size_t i) {
             queue_t queue;
-            bool error_is_approx = false;
 
             // fill queue with entries from lowest level
-            std::vector<std::size_t> indices(_transformer.levels[_depth - 1].size());
+            std::vector<std::size_t> indices(_transformer->levels[_depth - 1].size());
             for (std::size_t idx = 0; idx < indices.size(); ++idx) {
                 indices[idx] = idx;
             }
@@ -211,38 +317,25 @@ class engine {
                 auto best = queue.top();
                 queue.pop();
 
-                node_ptr_t current_node = _transformer.levels[best.l][best.idx];
+                node_ptr_t current_node = _transformer->levels[best.l][best.idx];
 
                 // check if node was already merged and if distance is low enough
                 if (current_node != nullptr) {
                     // check if merge would be in error range (i.e. does not increase error beyond _max_error)
-                    bool in_error_range = false;
-                    if (_transformer.superroot->error + best.dist < _max_error) {
-                        in_error_range = true;
-                    } else if (error_is_approx) {
-                        // ok, error is an approximation anyway, so lets calculate the right value and try again
-                        _transformer.superroot->error = calc_error(i);
-                        error_is_approx = false;
-                        if (_transformer.superroot->error + best.dist < _max_error) {
-                            in_error_range = true;
-                        }
-                    }
-
-                    if (in_error_range) {
+                    if (_error_calc.is_in_range(i, best.l, best.idx, best.dist)) {
                         // calculate approx. error
-                        _transformer.superroot->error += best.dist;
-                        error_is_approx = true;
+                        _error_calc.update(best.l, best.idx, best.dist);
 
                         // execute merge
-                        _transformer.link_to_parent(best.neighbor, best.l, best.idx);
+                        _transformer->link_to_parent(best.neighbor, best.l, best.idx);
 
                         // remove old node and mark as merged
                         dealloc_in_mapped_file(_alloc_node, current_node);
-                        _transformer.levels[best.l][best.idx] = nullptr;
+                        _transformer->levels[best.l][best.idx] = nullptr;
 
                         // generate new queue entries
                         std::size_t idx_even = best.idx - (best.idx % 2);
-                        if ((best.l > 0) && (_transformer.levels[best.l][idx_even] == nullptr) && (_transformer.levels[best.l][idx_even + 1] == nullptr)) {
+                        if ((best.l > 0) && (_transformer->levels[best.l][idx_even] == nullptr) && (_transformer->levels[best.l][idx_even + 1] == nullptr)) {
                             generate_queue_entries(best.l - 1, best.idx >> 1, queue);
                         }
                     }
@@ -251,14 +344,16 @@ class engine {
         }
 
         void generate_queue_entries(std::size_t l, std::size_t idx, queue_t& queue) {
-            node_ptr_t current_node = _transformer.levels[l][idx];
+            node_ptr_t current_node = _transformer->levels[l][idx];
 
             if (current_node != nullptr) {
                 auto& current_index_slot = _index->levels[l][idx];
                 auto& bucket = current_index_slot.get_bucket(current_node);
-                auto neighbors = bucket.get_nearest(current_node, _max_error - _transformer.superroot->error, 1);
+                auto neighbors = bucket.get_nearest(current_node, _max_error - _transformer->superroot->error, 1);
                 if (!neighbors.empty()) {
-                    queue.emplace(neighbors[0].second, l, idx, neighbors[0].first);
+                    double error = _error_calc.guess_error(l, idx, neighbors[0].second);
+                    double score = error - _transformer->superroot->error;
+                    queue.emplace(score, neighbors[0].second, l, idx, neighbors[0].first);
                 }
             }
         }
@@ -271,8 +366,8 @@ class engine {
             for (std::size_t l_plus = _depth; l_plus > 0; --l_plus) {
                 std::size_t l = l_plus - 1;
 
-                for (std::size_t idx = 0; idx < _transformer.levels[l].size(); ++idx) {
-                    node_ptr_t current_node = _transformer.levels[l][idx];
+                for (std::size_t idx = 0; idx < _transformer->levels[l].size(); ++idx) {
+                    node_ptr_t current_node = _transformer->levels[l][idx];
 
                     // node might already be merged
                     if (current_node != nullptr) {
@@ -283,21 +378,6 @@ class engine {
                     }
                 }
             }
-        }
-
-        double calc_error(const std::size_t i) {
-            // do idwt
-            std::vector<double> data_approximated(_ylength);
-            _transformer.tree_to_data(data_approximated.data());
-
-            // compare
-            double error = 0.0;
-            const calc_t* local_base = _base + (i * _ylength);
-            for (std::size_t y = 0; y < _ylength; ++y) {
-                error += std::abs(data_approximated[y] - local_base[y]);
-            }
-
-            return error;
         }
 };
 
@@ -345,12 +425,14 @@ int main(int argc, char** argv) {
     std::size_t index_size;
     year_t ylength;
     double max_error;
+    double p;
     auto desc = po_create_desc();
     desc.add_options()
         ("binary", po::value(&fname_binary)->required(), "input binary file for var")
         ("map", po::value(&fname_map)->required(), "ngram map file to read")
         ("ylength", po::value(&ylength)->required(), "number of years to store")
         ("error", po::value(&max_error)->required(), "maximum error during tree merge")
+        ("p", po::value(&p)->default_value(2), "p-Norm for error calculation")
         ("index", po::value(&fname_index)->required(), "index file")
         ("size", po::value(&index_size)->required(), "size of the index file (in bytes)")
     ;
@@ -391,7 +473,7 @@ int main(int argc, char** argv) {
     std::cout << "build and merge trees" << std::endl;
     std::size_t depth = power_of_2(ylength);
     index_t index(superroots, depth);
-    engine eng(ylength, depth, max_error, base, &index, findex);
+    engine eng(ylength, depth, max_error, p, base, &index, findex);
     std::mt19937 rng;
     std::size_t counter = 0;
     std::vector<std::size_t> indices(n);
