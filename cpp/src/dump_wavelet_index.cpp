@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
 
     std::cout << "dump data..." << std::endl;
     std::size_t depth = power_of_2(ylength);
-    transformer trans(ylength, depth, findex);
+    transformer trans(ylength, depth);
     for (std::size_t i = 0; i < n; ++i) {
         std::size_t offset = i * ylength;
         trans.superroot = (*superroots)[i];

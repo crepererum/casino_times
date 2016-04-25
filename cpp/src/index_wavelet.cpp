@@ -248,17 +248,22 @@ class engine {
             _base(base),
             _index(index),
             _mapped_file(mapped_file),
+            _alloc_superroot(_mapped_file->get_segment_manager()),
             _alloc_node(_mapped_file->get_segment_manager()),
-            _transformer(std::make_shared<transformer>(_ylength, _depth, _mapped_file)),
+            _transformer(std::make_shared<transformer>(_ylength, _depth)),
             _error_calc(_ylength, _depth, _base, _max_error, p, _transformer) {}
 
         superroot_ptr_t run(std::size_t i) {
             _transformer->data_to_tree(_base + (i * _ylength));
             _error_calc.recalc(i);  // correct error because of floating point errors
-            (*_index->superroots)[i] = _transformer->superroot;
             run_mergeloop(i);
             drain();
             _error_calc.recalc(i);  // correct error one last time
+
+            // move superroot to mapped file
+            (*_index->superroots)[i] = alloc_in_mapped_file(_alloc_superroot);
+            *((*_index->superroots)[i]) = *(_transformer->superroot);
+            delete _transformer->superroot.get();
 
             return _transformer->superroot;
         }
@@ -294,6 +299,7 @@ class engine {
         index_t*                         _index;
         std::mt19937                     _rng;
         mapped_file_ptr_t                _mapped_file;
+        allocator_superroot_t            _alloc_superroot;
         allocator_node_t                 _alloc_node;
         std::shared_ptr<transformer>     _transformer;
         error_calculator                 _error_calc;
@@ -330,7 +336,7 @@ class engine {
                         _transformer->link_to_parent(best.neighbor, best.l, best.idx);
 
                         // remove old node and mark as merged
-                        dealloc_in_mapped_file(_alloc_node, current_node);
+                        delete current_node.get();
                         _transformer->levels[best.l][best.idx] = nullptr;
 
                         // generate new queue entries
@@ -362,7 +368,7 @@ class engine {
          * adds all remaining to index, without any merges
          */
         void drain() {
-            // do work bottom to top, might be important for some transaction implementaions later
+            // do work bottom to top, otherwise node relinking ain't working
             for (std::size_t l_plus = _depth; l_plus > 0; --l_plus) {
                 std::size_t l = l_plus - 1;
 
@@ -371,9 +377,14 @@ class engine {
 
                     // node might already be merged
                     if (current_node != nullptr) {
+                        auto node_stored = alloc_in_mapped_file(_alloc_node);
+                        *node_stored = *current_node;
+                        _transformer->link_to_parent(node_stored, l, idx);
+                        delete current_node.get();
+
                         auto& current_index_slot = _index->levels[l][idx];
-                        auto& bucket = current_index_slot.get_bucket(current_node);
-                        bucket.insert(current_node);
+                        auto& bucket = current_index_slot.get_bucket(node_stored);
+                        bucket.insert(node_stored);
                         ++_index->node_counts[l];
                     }
                 }

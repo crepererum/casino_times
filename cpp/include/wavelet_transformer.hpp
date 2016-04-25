@@ -8,16 +8,13 @@ class transformer {
         superroot_ptr_t                      superroot;
         std::vector<std::vector<node_ptr_t>> levels;
 
-        transformer(std::size_t ylength, std::size_t depth, const mapped_file_ptr_t& mapped_file) :
+        transformer(std::size_t ylength, std::size_t depth) :
             superroot(nullptr),
             levels(depth),
             _ylength(ylength),
             _depth(depth),
             _mywt(std::make_shared<wavelet>("haar"), "dwt", static_cast<int>(_ylength), static_cast<int>(_depth)),
-            _influence_sqrt(_depth),
-            _mapped_file(mapped_file),
-            _alloc_node(_mapped_file->get_segment_manager()),
-            _alloc_superroot(_mapped_file->get_segment_manager())
+            _influence_sqrt(_depth)
         {
             _mywt.extension("per");
             _mywt.conv("direct");
@@ -31,7 +28,7 @@ class transformer {
         superroot_ptr_t data_to_tree(const calc_t* data) {
             _mywt.run_dwt(data);
 
-            superroot = alloc_in_mapped_file<superroot_t>(_alloc_superroot);
+            superroot = new superroot_t;
             superroot->approx = _mywt.output()[0];
             superroot->error  = 0;
 
@@ -42,7 +39,7 @@ class transformer {
                 levels[l].clear();
 
                 for (std::size_t idx = 0; idx < width; ++idx) {
-                    node_ptr_t node  = alloc_in_mapped_file<node_t>(_alloc_node);
+                    node_ptr_t node  = new node_t;
                     node->child_l = nullptr;
                     node->child_r = nullptr;
                     node->x       = _mywt.output()[outdelta + idx] * _influence_sqrt[l];
@@ -101,7 +98,4 @@ class transformer {
         const std::size_t     _depth;
         wavelet_transform     _mywt;
         std::vector<double>   _influence_sqrt;
-        mapped_file_ptr_t     _mapped_file;
-        allocator_node_t      _alloc_node;
-        allocator_superroot_t _alloc_superroot;
 };
