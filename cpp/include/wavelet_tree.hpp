@@ -3,9 +3,8 @@
 #include <memory>
 
 #include <boost/functional/hash.hpp>
-#include <boost/interprocess/allocators/adaptive_pool.hpp>
-#include <boost/interprocess/allocators/allocator.hpp>
-#include <boost/interprocess/allocators/node_allocator.hpp>
+#include <boost/interprocess/allocators/private_adaptive_pool.hpp>
+#include <boost/interprocess/allocators/private_node_allocator.hpp>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/managed_mapped_file.hpp>
 #include <boost/interprocess/offset_ptr.hpp>
@@ -26,10 +25,10 @@ using superroot_ptr_t           = boost::interprocess::offset_ptr<superroot_t>;
 using segment_manager_t         = boost::interprocess::managed_mapped_file::segment_manager;
 
 template <typename T>
-using allocator_t               = boost::interprocess::node_allocator<T, segment_manager_t, alloc_nodes>;
+using allocator_t               = boost::interprocess::private_node_allocator<T, segment_manager_t, alloc_nodes>;
 
 template <typename T>
-using allocator_adaptive_t      = boost::interprocess::adaptive_pool<T, segment_manager_t, alloc_nodes>;
+using allocator_adaptive_t      = boost::interprocess::private_adaptive_pool<T, segment_manager_t, alloc_nodes>;
 
 using allocator_node_t          = allocator_t<node_t>;
 using allocator_superroot_t     = allocator_t<superroot_t>;
