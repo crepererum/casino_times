@@ -138,7 +138,7 @@ struct index_t {
 
 class error_calculator {
     public:
-        error_calculator(std::size_t ylength, std::size_t depth, const calc_t* base, double max_error, double p, const std::shared_ptr<transformer>& transf) :
+        error_calculator(std::size_t ylength, std::size_t depth, const calc_t* base, double max_error, int p, const std::shared_ptr<transformer>& transf) :
             _ylength(ylength),
             _depth(depth),
             _base(base),
@@ -214,7 +214,7 @@ class error_calculator {
         const std::size_t            _depth;
         const calc_t*                _base;
         const double                 _max_error;
-        const double                 _p;
+        const int                    _p;
         std::shared_ptr<transformer> _transformer;
         std::vector<double>          _delta;
         std::vector<double>          _delta_copy;
@@ -225,7 +225,7 @@ class error_calculator {
             for (std::size_t y = 0; y < _ylength; ++y) {
                 error += std::pow(std::abs(delta[y]), _p);
             }
-            return std::pow(error, static_cast<double>(1) / _p) / static_cast<double>(_ylength);
+            return std::pow(error, static_cast<double>(1) / static_cast<double>(_p)) / static_cast<double>(_ylength);
         }
 
         void guess_delta_update(std::vector<double>& delta, std::size_t l, std::size_t idx, double dist) {
@@ -241,7 +241,7 @@ class error_calculator {
 
 class engine {
     public:
-        engine(std::size_t ylength, std::size_t depth, double max_error, double p, const calc_t* base, index_t* index, const mapped_file_ptr_t& mapped_file)
+        engine(std::size_t ylength, std::size_t depth, double max_error, int p, const calc_t* base, index_t* index, const mapped_file_ptr_t& mapped_file)
             : _ylength(ylength),
             _depth(depth),
             _max_error(max_error),
@@ -436,7 +436,7 @@ int main(int argc, char** argv) {
     std::size_t index_size;
     year_t ylength;
     double max_error;
-    double p;
+    int p;
     auto desc = po_create_desc();
     desc.add_options()
         ("binary", po::value(&fname_binary)->required(), "input binary file for var")
@@ -455,6 +455,11 @@ int main(int argc, char** argv) {
 
     if (!is_power_of_2(ylength)) {
         std::cerr << "ylength has to be a power of 2!" << std::endl;
+        return 1;
+    }
+
+    if (p < 1) {
+        std::cerr << "p has to be >= 1!" << std::endl;
         return 1;
     }
 
