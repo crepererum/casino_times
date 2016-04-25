@@ -28,19 +28,19 @@ class range_bucket_t {
             _slot.insert(lower, node);
         }
 
-        std::vector<std::pair<node_ptr_t, double>> get_nearest(node_ptr_t node, double max_dist, std::size_t max_size) {
+        std::vector<std::pair<node_ptr_t, inexact_t>> get_nearest(node_ptr_t node, inexact_t max_dist, std::size_t max_size) {
             auto begin  = _slot.begin();
             auto end    = _slot.end();
             auto center = std::lower_bound(begin, end, node, [](node_ptr_t a, node_ptr_t b) {
                 return a->x < b->x;
             });
 
-            std::vector<std::pair<node_ptr_t, double>> neighbors;
-            auto it_up       = center;
-            auto it_down     = std::prev(center);
-            double dist_up   = std::numeric_limits<double>::infinity();
-            double dist_down = std::numeric_limits<double>::infinity();
-            auto prev_begin  = std::prev(begin); // let's also hope that std::prev(begin) works
+            std::vector<std::pair<node_ptr_t, inexact_t>> neighbors;
+            auto it_up          = center;
+            auto it_down        = std::prev(center);
+            inexact_t dist_up   = std::numeric_limits<inexact_t>::infinity();
+            inexact_t dist_down = std::numeric_limits<inexact_t>::infinity();
+            auto prev_begin     = std::prev(begin); // let's also hope that std::prev(begin) works
             if (it_up != end) {
                 dist_up = std::abs((*it_up)->x - node->x);
             }
@@ -55,7 +55,7 @@ class range_bucket_t {
                     if (it_up != end) {
                         dist_up = std::abs((*it_up)->x - node->x);
                     } else {
-                        dist_up = std::numeric_limits<double>::infinity();
+                        dist_up = std::numeric_limits<inexact_t>::infinity();
                     }
                 } else {
                     neighbors.push_back(std::make_pair(*it_down, dist_down));
@@ -63,7 +63,7 @@ class range_bucket_t {
                     if (it_down != prev_begin) {
                         dist_down = std::abs((*it_down)->x - node->x);
                     } else {
-                        dist_down = std::numeric_limits<double>::infinity();
+                        dist_down = std::numeric_limits<inexact_t>::infinity();
                     }
                 }
             }
@@ -138,7 +138,7 @@ struct index_t {
 
 class error_calculator {
     public:
-        error_calculator(std::size_t ylength, std::size_t depth, const calc_t* base, double max_error, int p, const std::shared_ptr<transformer>& transf) :
+        error_calculator(std::size_t ylength, std::size_t depth, const calc_t* base, inexact_t max_error, int p, const std::shared_ptr<transformer>& transf) :
             _ylength(ylength),
             _depth(depth),
             _base(base),
@@ -149,19 +149,19 @@ class error_calculator {
             _delta_copy(_ylength, 0.0),
             _is_approx(false) {}
 
-        double recalc(const std::size_t i) {
+        inexact_t recalc(const std::size_t i) {
             // do idwt
-            std::vector<double> data_approximated(_ylength);
+            std::vector<calc_t> data_approximated(_ylength);
             _transformer->tree_to_data(data_approximated.data());
 
             // compare
             const calc_t* local_base = _base + (i * _ylength);
             for (std::size_t y = 0; y < _ylength; ++y) {
-                _delta[y] = std::abs(data_approximated[y] - local_base[y]);
+                _delta[y] = std::abs(static_cast<inexact_t>(data_approximated[y] - local_base[y]));
             }
 
             // calc exact error
-            double error = error_from_delta(_delta);
+            inexact_t error = error_from_delta(_delta);
 
             _transformer->superroot->error = error;
             _is_approx = false;
@@ -169,16 +169,16 @@ class error_calculator {
             return error;
         }
 
-        double update(std::size_t l, std::size_t idx, double dist) {
+        inexact_t update(std::size_t l, std::size_t idx, inexact_t dist) {
             guess_delta_update(_delta, l, idx, dist);
-            double error = error_from_delta(_delta);
+            inexact_t error = error_from_delta(_delta);
             _transformer->superroot->error = error;
             _is_approx = true;
 
             return error;
         }
 
-        double guess_error(std::size_t l, std::size_t idx, double dist) {
+        inexact_t guess_error(std::size_t l, std::size_t idx, inexact_t dist) {
             _delta_copy = _delta;
             guess_delta_update(_delta_copy, l, idx, dist);
             return error_from_delta(_delta_copy);
@@ -188,11 +188,11 @@ class error_calculator {
             return _is_approx;
         }
 
-        double p() const {
+        int p() const {
             return _p;
         }
 
-        bool is_in_range(std::size_t i, std::size_t l, std::size_t idx, double dist) {
+        bool is_in_range(std::size_t i, std::size_t l, std::size_t idx, inexact_t dist) {
             bool in_range = false;
 
             if (guess_error(l, idx, dist) < _max_error) {
@@ -213,25 +213,25 @@ class error_calculator {
         const std::size_t            _ylength;
         const std::size_t            _depth;
         const calc_t*                _base;
-        const double                 _max_error;
+        const inexact_t              _max_error;
         const int                    _p;
         std::shared_ptr<transformer> _transformer;
-        std::vector<double>          _delta;
-        std::vector<double>          _delta_copy;
+        std::vector<inexact_t>       _delta;
+        std::vector<inexact_t>       _delta_copy;
         bool                         _is_approx;
 
-        double error_from_delta(const std::vector<double>& delta) const {
-            double error = 0.0;
+        inexact_t error_from_delta(const std::vector<inexact_t>& delta) const {
+            inexact_t error = 0.0;
             for (std::size_t y = 0; y < _ylength; ++y) {
                 error += std::pow(std::abs(delta[y]), _p);
             }
-            return std::pow(error, static_cast<double>(1) / static_cast<double>(_p)) / static_cast<double>(_ylength);
+            return std::pow(error, static_cast<inexact_t>(1) / static_cast<inexact_t>(_p)) / static_cast<inexact_t>(_ylength);
         }
 
-        void guess_delta_update(std::vector<double>& delta, std::size_t l, std::size_t idx, double dist) {
+        void guess_delta_update(std::vector<inexact_t>& delta, std::size_t l, std::size_t idx, inexact_t dist) {
             std::size_t influence = 1u << (_depth - l);
             std::size_t shift     = influence * idx;
-            double dist_recalced  = dist / static_cast<double>(influence);
+            inexact_t dist_recalced  = dist / static_cast<inexact_t>(influence);
 
             for (std::size_t y = shift; y < shift + influence; ++y) {
                 delta[y] += dist_recalced;
@@ -241,7 +241,7 @@ class error_calculator {
 
 class engine {
     public:
-        engine(std::size_t ylength, std::size_t depth, double max_error, int p, const calc_t* base, index_t* index, const mapped_file_ptr_t& mapped_file)
+        engine(std::size_t ylength, std::size_t depth, inexact_t max_error, int p, const calc_t* base, index_t* index, const mapped_file_ptr_t& mapped_file)
             : _ylength(ylength),
             _depth(depth),
             _max_error(max_error),
@@ -270,13 +270,13 @@ class engine {
 
     private:
         struct queue_entry_t {
-            double      score;
-            double      dist;
+            inexact_t   score;
+            inexact_t   dist;
             std::size_t l;
             std::size_t idx;
             node_ptr_t  neighbor;
 
-            queue_entry_t(double score_, double dist_, std::size_t l_, std::size_t idx_, node_ptr_t neighbor_) :
+            queue_entry_t(inexact_t score_, inexact_t dist_, std::size_t l_, std::size_t idx_, node_ptr_t neighbor_) :
                 score(score_),
                 dist(dist_),
                 l(l_),
@@ -294,7 +294,7 @@ class engine {
 
         const std::size_t                _ylength;
         const std::size_t                _depth;
-        double                           _max_error;
+        inexact_t                        _max_error;
         const calc_t*                    _base;
         index_t*                         _index;
         std::mt19937                     _rng;
@@ -357,8 +357,8 @@ class engine {
                 auto& bucket = current_index_slot.get_bucket(current_node);
                 auto neighbors = bucket.get_nearest(current_node, _max_error - _transformer->superroot->error, 1);
                 if (!neighbors.empty()) {
-                    double error = _error_calc.guess_error(l, idx, neighbors[0].second);
-                    double score = error - _transformer->superroot->error;
+                    inexact_t error = _error_calc.guess_error(l, idx, neighbors[0].second);
+                    inexact_t score = error - _transformer->superroot->error;
                     queue.emplace(score, neighbors[0].second, l, idx, neighbors[0].first);
                 }
             }
@@ -435,7 +435,7 @@ int main(int argc, char** argv) {
     std::string fname_index;
     std::size_t index_size;
     year_t ylength;
-    double max_error;
+    inexact_t max_error;
     int p;
     auto desc = po_create_desc();
     desc.add_options()

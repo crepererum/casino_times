@@ -29,7 +29,7 @@ class transformer {
             _mywt.run_dwt(data);
 
             superroot = new superroot_t;
-            superroot->approx = _mywt.output()[0];
+            superroot->approx = static_cast<inexact_t>(_mywt.output()[0]);
             superroot->error  = 0;
 
             for (std::size_t l = 0; l < _depth; ++l) {
@@ -42,7 +42,7 @@ class transformer {
                     node_ptr_t node  = new node_t;
                     node->child_l = nullptr;
                     node->child_r = nullptr;
-                    node->x       = _mywt.output()[outdelta + idx] * _influence_sqrt[l];
+                    node->x       = static_cast<inexact_t>(_mywt.output()[outdelta + idx] * _influence_sqrt[l]);
 
                     link_to_parent(node, l, idx);
 

@@ -37,16 +37,18 @@ using allocator_superroot_ptr_t = allocator_adaptive_t<superroot_ptr_t>;
 
 using superroot_vector_t        = boost::interprocess::vector<superroot_ptr_t, allocator_superroot_ptr_t>;
 
+using inexact_t = float;
+
 struct superroot_t {
     node_ptr_t root;
-    calc_t     approx;
-    calc_t     error;
+    inexact_t  approx;
+    inexact_t  error;
 };
 
-struct node_t {
+struct __attribute__((packed)) node_t {
     node_ptr_t child_l;
     node_ptr_t child_r;
-    calc_t     x;
+    inexact_t  x;
 };
 
 namespace std {
