@@ -50,17 +50,14 @@ class printer {
 
                 print_node(out, current.first, current.second.first, current.second.second);
 
-                if (current.first->child_l) {
-                    todo.push_back(std::make_pair(
-                        current.first->child_l,
-                        std::make_pair(current.second.first + 1, current.second.second << 1)
-                    ));
-                }
-                if (current.first->child_r) {
-                    todo.push_back(std::make_pair(
-                        current.first->child_r,
-                        std::make_pair(current.second.first + 1, (current.second.second << 1) + 1)
-                    ));
+                for (std::size_t c = 0; c < n_children; ++c) {
+                    if (current.first->children[c]) {
+                        // XXX: make group calculation (l and idx) generic
+                        todo.push_back(std::make_pair(
+                            current.first->children[c],
+                            std::make_pair(current.second.first + 1, (current.second.second << 1) + c)
+                        ));
+                    }
                 }
             }
 
@@ -122,23 +119,23 @@ class printer {
                 print_address(out, node);
                 out << " [shape=none, margin=0, fixedsize=true, width=1.0, height=0.6, fontsize=8, label=<" << std::endl;
                 out << "    <table border=\"0\" cellborder=\"1\" cellspacing=\"0\" cellpadding=\"4\">" << std::endl;
-                out << "    <tr><td port=\"t\" colspan=\"2\" fixedsize=\"true\" width=\"60\" height=\"20\">" << node->x << "</td></tr>" << std::endl;
-                out << "    <tr><td port=\"0\">0</td><td port=\"1\">1</td></tr>" << std::endl;
+                out << "    <tr><td port=\"t\" colspan=\"" << n_children << "\" fixedsize=\"true\" width=\"60\" height=\"20\">" << node->x << "</td></tr>" << std::endl;
+                out << "    <tr>";
+                for (std::size_t c = 0; c < n_children; ++c) {
+                    out << "<td port=\"" << c << "\">" << c << "</td>";
+                }
+                out << "</tr>" << std::endl;
                 out << "  </table>>];" << std::endl;
 
-                if (node->child_l) {
-                    out << "  ";
-                    print_address(out, node);
-                    out << ":0:s -> ";
-                    print_address(out, node->child_l);
-                    out << ":t:n;" << std::endl;
-                }
-                if (node->child_r) {
-                    out << "  ";
-                    print_address(out, node);
-                    out << ":1:s -> ";
-                    print_address(out, node->child_r);
-                    out << ":t:n;" << std::endl;
+                for (std::size_t c = 0; c < n_children; ++c) {
+                    if (node->children[c]) {
+                        out << "  ";
+                        print_address(out, node);
+                        out << ":" << c << ":s -> ";
+                        print_address(out, node->children[c]);
+                        out << ":t:n;" << std::endl;
+                    }
+
                 }
 
                 out << std::endl;

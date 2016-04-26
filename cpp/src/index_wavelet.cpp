@@ -87,7 +87,7 @@ class range_index_t {
         range_index_t() = default;
 
         range_bucket_t& get_bucket(const node_ptr_t node) {
-            return _index_struct[std::make_pair(node->child_l, node->child_r)];
+            return _index_struct[node->children];
         }
 
         void delete_all_ptrs(mapped_file_ptr_t& f) {
@@ -98,7 +98,7 @@ class range_index_t {
 
     private:
         // XXX: make node pointers in key const
-        std::unordered_map<std::pair<node_ptr_t, node_ptr_t>, range_bucket_t> _index_struct;
+        std::unordered_map<children_t, range_bucket_t> _index_struct;
 };
 
 struct index_t {

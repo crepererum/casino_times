@@ -40,8 +40,9 @@ class transformer {
 
                 for (std::size_t idx = 0; idx < width; ++idx) {
                     node_ptr_t node  = new node_t;
-                    node->child_l = nullptr;
-                    node->child_r = nullptr;
+                    for (std::size_t c = 0; c < n_children; ++c) {
+                        node->children[c] = nullptr;
+                    }
                     node->x       = static_cast<inexact_t>(_mywt.output()[outdelta + idx] * _influence_sqrt[l]);
 
                     link_to_parent(node, l, idx);
@@ -65,8 +66,8 @@ class transformer {
                 layer_b.clear();
                 for (std::size_t idx = 0; idx < width; ++idx) {
                     _mywt.output()[outdelta + idx] = layer_a[idx]->x / _influence_sqrt[l];
-                    layer_b.push_back(layer_a[idx]->child_l);
-                    layer_b.push_back(layer_a[idx]->child_r);
+                    layer_b.push_back(layer_a[idx]->children[0]);
+                    layer_b.push_back(layer_a[idx]->children[1]);
                 }
 
                 std::swap(layer_a, layer_b);
@@ -86,9 +87,9 @@ class transformer {
                 auto parent = levels[l - 1][idx >> 1];
 
                 if (idx & 1u) {
-                    parent->child_r = node;
+                    parent->children[1] = node;
                 } else {
-                    parent->child_l = node;
+                    parent->children[0] = node;
                 }
             }
         }
