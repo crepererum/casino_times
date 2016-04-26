@@ -138,12 +138,11 @@ struct index_t {
 
 class error_calculator {
     public:
-        error_calculator(std::size_t ylength, std::size_t depth, const calc_t* base, inexact_t max_error, int p, const std::shared_ptr<transformer>& transf) :
+        error_calculator(std::size_t ylength, std::size_t depth, const calc_t* base, inexact_t max_error, const std::shared_ptr<transformer>& transf) :
             _ylength(ylength),
             _depth(depth),
             _base(base),
             _max_error(max_error),
-            _p(p),
             _transformer(transf),
             _delta(_ylength, 0.0),
             _delta_copy(_ylength, 0.0),
@@ -188,10 +187,6 @@ class error_calculator {
             return _is_approx;
         }
 
-        int p() const {
-            return _p;
-        }
-
         bool is_in_range(std::size_t i, std::size_t l, std::size_t idx, inexact_t dist) {
             bool in_range = false;
 
@@ -214,7 +209,6 @@ class error_calculator {
         const std::size_t            _depth;
         const calc_t*                _base;
         const inexact_t              _max_error;
-        const int                    _p;
         std::shared_ptr<transformer> _transformer;
         std::vector<inexact_t>       _delta;
         std::vector<inexact_t>       _delta_copy;
@@ -222,10 +216,13 @@ class error_calculator {
 
         inexact_t error_from_delta(const std::vector<inexact_t>& delta) const {
             inexact_t error = 0.0;
+
+#pragma clang loop vectorize(enable) interleave(enable)
             for (std::size_t y = 0; y < _ylength; ++y) {
-                error += std::pow(std::abs(delta[y]), _p);
+                error += delta[y] * delta[y];
             }
-            return std::pow(error, static_cast<inexact_t>(1) / static_cast<inexact_t>(_p)) / static_cast<inexact_t>(_ylength);
+
+            return std::sqrt(error) / static_cast<inexact_t>(_ylength);
         }
 
         void guess_delta_update(std::vector<inexact_t>& delta, std::size_t l, std::size_t idx, inexact_t dist) {
@@ -241,7 +238,7 @@ class error_calculator {
 
 class engine {
     public:
-        engine(std::size_t ylength, std::size_t depth, inexact_t max_error, int p, const calc_t* base, index_t* index, const mapped_file_ptr_t& mapped_file)
+        engine(std::size_t ylength, std::size_t depth, inexact_t max_error, const calc_t* base, index_t* index, const mapped_file_ptr_t& mapped_file)
             : _ylength(ylength),
             _depth(depth),
             _max_error(max_error),
@@ -251,7 +248,7 @@ class engine {
             _alloc_superroot(_mapped_file->get_segment_manager()),
             _alloc_node(_mapped_file->get_segment_manager()),
             _transformer(std::make_shared<transformer>(_ylength, _depth)),
-            _error_calc(_ylength, _depth, _base, _max_error, p, _transformer) {}
+            _error_calc(_ylength, _depth, _base, _max_error, _transformer) {}
 
         superroot_ptr_t run(std::size_t i) {
             _transformer->data_to_tree(_base + (i * _ylength));
@@ -436,14 +433,12 @@ int main(int argc, char** argv) {
     std::size_t index_size;
     year_t ylength;
     inexact_t max_error;
-    int p;
     auto desc = po_create_desc();
     desc.add_options()
         ("binary", po::value(&fname_binary)->required(), "input binary file for var")
         ("map", po::value(&fname_map)->required(), "ngram map file to read")
         ("ylength", po::value(&ylength)->required(), "number of years to store")
         ("error", po::value(&max_error)->required(), "maximum error during tree merge")
-        ("p", po::value(&p)->default_value(2), "p-Norm for error calculation")
         ("index", po::value(&fname_index)->required(), "index file")
         ("size", po::value(&index_size)->required(), "size of the index file (in bytes)")
     ;
@@ -455,11 +450,6 @@ int main(int argc, char** argv) {
 
     if (!is_power_of_2(ylength)) {
         std::cerr << "ylength has to be a power of 2!" << std::endl;
-        return 1;
-    }
-
-    if (p < 1) {
-        std::cerr << "p has to be >= 1!" << std::endl;
         return 1;
     }
 
@@ -489,7 +479,7 @@ int main(int argc, char** argv) {
     std::cout << "build and merge trees" << std::endl;
     std::size_t depth = power_of_2(ylength);
     index_t index(superroots, depth);
-    engine eng(ylength, depth, max_error, p, base, &index, findex);
+    engine eng(ylength, depth, max_error, base, &index, findex);
     std::mt19937 rng;
     std::size_t counter = 0;
     std::vector<std::size_t> indices(n);
