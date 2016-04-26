@@ -38,27 +38,28 @@ class dtw_generic {
 
         using internal_t      = typename T::internal_t;
         using indices_t       = typename T::indices_t;
+        using source_t        = typename T::source_t;
 
-        dtw_generic(const calc_t* base, year_t ylength, std::size_t r) :
+        dtw_generic(source_t source, std::size_t length, std::size_t r) :
             _r(r),
             _r2(_r << 1),
             _r2_plus(_r2 + 1),
-            _base(base),
-            _ylength(ylength),
-            _ylength_minus(_ylength - 1),
-            _ylength_minus_r(_ylength - _r),
+            _source(source),
+            _length(length),
+            _length_minus(_length - 1),
+            _length_minus_r(_length - _r),
             _store_a(_r2_plus),
             _store_b(_r2_plus),
-            _store_tmp(ylength) {}
+            _store_tmp(_length) {}
 
         internal_t calc(std::size_t i, indices_t j0) {
-            const calc_t* local_base_i = _base + (i * _ylength);
+            base_t local_base_i = T::get_base(_source, _length, i);
             load_to_tmp(j0);
 
             std::fill(_store_a.begin(), _store_a.end(), T::infinity());
             T::store(&_store_a[_r], T::zero());
 
-            // remember: r <= ylength/2
+            // remember: r <= length/2
 
             for (std::size_t idx_i = 0; idx_i < _r; ++idx_i) {
                 std::size_t idx_j_min = 0;
@@ -67,16 +68,16 @@ class dtw_generic {
                 inner_loop(local_base_i, idx_i, idx_j_min, idx_j_max, _r - idx_i);
             }
 
-            for (std::size_t idx_i = _r; idx_i < _ylength_minus_r; ++idx_i) {
+            for (std::size_t idx_i = _r; idx_i < _length_minus_r; ++idx_i) {
                 std::size_t idx_j_min = idx_i - _r;
                 std::size_t idx_j_max = idx_i + _r;
 
                 inner_loop(local_base_i, idx_i, idx_j_min, idx_j_max, 0);
             }
 
-            for (std::size_t idx_i = _ylength_minus_r; idx_i < _ylength; ++idx_i) {
+            for (std::size_t idx_i = _length_minus_r; idx_i < _length; ++idx_i) {
                 std::size_t idx_j_min = idx_i - _r;
-                std::size_t idx_j_max = _ylength_minus;
+                std::size_t idx_j_max = _length_minus;
 
                 inner_loop(local_base_i, idx_i, idx_j_min, idx_j_max, 0);
             }
@@ -85,6 +86,7 @@ class dtw_generic {
         }
 
     private:
+        using base_t          = typename T::base_t;
         using bases_t         = typename T::bases_t;
         using store_t         = std::vector<internal_t, boost::alignment::aligned_allocator<internal_t, T::alignment>>;
         using difference_type = typename store_t::difference_type;
@@ -92,10 +94,10 @@ class dtw_generic {
         const std::size_t   _r;
         const std::size_t   _r2;
         const std::size_t   _r2_plus;
-        const calc_t* const _base;
-        const year_t        _ylength;
-        const year_t        _ylength_minus;
-        const std::size_t   _ylength_minus_r;
+        source_t            _source;
+        const std::size_t   _length;
+        const std::size_t   _length_minus;
+        const std::size_t   _length_minus_r;
         store_t             _store_a;
         store_t             _store_b;
         store_t             _store_tmp;
@@ -146,8 +148,8 @@ class dtw_generic {
         }
 
         void load_to_tmp(indices_t j0) {
-            bases_t local_bases_j = T::get_bases(_base, _ylength, j0);
-            for (std::size_t idx = 0; idx < _ylength; ++idx) {
+            bases_t local_bases_j = T::get_bases(_source, _length, j0);
+            for (std::size_t idx = 0; idx < _length; ++idx) {
                 T::store(&_store_tmp[idx], T::convert_multiple(local_bases_j, idx));
             }
         }
@@ -159,18 +161,24 @@ struct dtw_impl_simple {
 
     using internal_t = calc_t;
     using indices_t  = std::size_t;
+    using source_t   = const calc_t*;
+    using base_t     = const calc_t*;
     using bases_t    = const calc_t*;
 
     inline static internal_t convert_single(calc_t x) {
-        return static_cast<calc_t>(x);
+        return x;
     }
 
     inline static internal_t convert_multiple(bases_t bases, std::size_t idx) {
         return static_cast<calc_t>(bases[idx]);
     }
 
-    inline static bases_t get_bases(const calc_t* base, std::size_t ylength, indices_t j0) {
-        return base + (j0 * ylength);
+    inline static base_t get_base(source_t source, std::size_t length, std::size_t i) {
+        return source + (i * length);
+    }
+
+    inline static bases_t get_bases(source_t source, std::size_t length, indices_t j0) {
+        return source + (j0 * length);
     }
 
     inline static internal_t load(internal_t* ptr) {
@@ -204,6 +212,8 @@ struct dtw_impl_vectorized {
     static_assert(n >= SIMDPP_FAST_FLOAT64_SIZE, "dtw_impl_vectorized is not optimal!");
 
     using internal_t = simdpp::float64<n>;
+    using source_t   = const calc_t*;
+    using base_t     = const calc_t*;
     using bases_t    = std::array<const calc_t*, n>;
 
     inline static internal_t convert_single(calc_t x) {
@@ -231,6 +241,10 @@ struct dtw_impl_vectorized {
         );
     }
 
+    inline static base_t get_base(source_t source, std::size_t length, std::size_t i) {
+        return source + (i * length);
+    }
+
     inline static internal_t load(internal_t* ptr) {
         return simdpp::load(ptr);
     }
@@ -255,24 +269,24 @@ struct dtw_impl_vectorized {
 struct dtw_impl_vectorized_linear : dtw_impl_vectorized {
     using indices_t = std::size_t;
 
-    inline static bases_t get_bases(const calc_t* base, std::size_t ylength, indices_t j0) {
+    inline static bases_t get_bases(source_t source, std::size_t length, indices_t j0) {
         return {{
-            (base + ((j0 +  0) * ylength)),
-            (base + ((j0 +  1) * ylength)),
-            (base + ((j0 +  2) * ylength)),
-            (base + ((j0 +  3) * ylength)),
-            (base + ((j0 +  4) * ylength)),
-            (base + ((j0 +  5) * ylength)),
-            (base + ((j0 +  6) * ylength)),
-            (base + ((j0 +  7) * ylength)),
-            (base + ((j0 +  8) * ylength)),
-            (base + ((j0 +  9) * ylength)),
-            (base + ((j0 + 10) * ylength)),
-            (base + ((j0 + 11) * ylength)),
-            (base + ((j0 + 12) * ylength)),
-            (base + ((j0 + 13) * ylength)),
-            (base + ((j0 + 14) * ylength)),
-            (base + ((j0 + 15) * ylength))
+            (source + ((j0 +  0) * length)),
+            (source + ((j0 +  1) * length)),
+            (source + ((j0 +  2) * length)),
+            (source + ((j0 +  3) * length)),
+            (source + ((j0 +  4) * length)),
+            (source + ((j0 +  5) * length)),
+            (source + ((j0 +  6) * length)),
+            (source + ((j0 +  7) * length)),
+            (source + ((j0 +  8) * length)),
+            (source + ((j0 +  9) * length)),
+            (source + ((j0 + 10) * length)),
+            (source + ((j0 + 11) * length)),
+            (source + ((j0 + 12) * length)),
+            (source + ((j0 + 13) * length)),
+            (source + ((j0 + 14) * length)),
+            (source + ((j0 + 15) * length))
         }};
     }
 };
@@ -280,24 +294,24 @@ struct dtw_impl_vectorized_linear : dtw_impl_vectorized {
 struct dtw_impl_vectorized_shuffled : dtw_impl_vectorized {
     using indices_t = const std::array<std::size_t, n>&;
 
-    inline static bases_t get_bases(const calc_t* base, std::size_t ylength, indices_t j0) {
+    inline static bases_t get_bases(source_t source, std::size_t length, indices_t j0) {
         return {{
-            (base + (std::get< 0>(j0) * ylength)),
-            (base + (std::get< 1>(j0) * ylength)),
-            (base + (std::get< 2>(j0) * ylength)),
-            (base + (std::get< 3>(j0) * ylength)),
-            (base + (std::get< 4>(j0) * ylength)),
-            (base + (std::get< 5>(j0) * ylength)),
-            (base + (std::get< 6>(j0) * ylength)),
-            (base + (std::get< 7>(j0) * ylength)),
-            (base + (std::get< 8>(j0) * ylength)),
-            (base + (std::get< 9>(j0) * ylength)),
-            (base + (std::get<10>(j0) * ylength)),
-            (base + (std::get<11>(j0) * ylength)),
-            (base + (std::get<12>(j0) * ylength)),
-            (base + (std::get<13>(j0) * ylength)),
-            (base + (std::get<14>(j0) * ylength)),
-            (base + (std::get<15>(j0) * ylength)),
+            (source + (std::get< 0>(j0) * length)),
+            (source + (std::get< 1>(j0) * length)),
+            (source + (std::get< 2>(j0) * length)),
+            (source + (std::get< 3>(j0) * length)),
+            (source + (std::get< 4>(j0) * length)),
+            (source + (std::get< 5>(j0) * length)),
+            (source + (std::get< 6>(j0) * length)),
+            (source + (std::get< 7>(j0) * length)),
+            (source + (std::get< 8>(j0) * length)),
+            (source + (std::get< 9>(j0) * length)),
+            (source + (std::get<10>(j0) * length)),
+            (source + (std::get<11>(j0) * length)),
+            (source + (std::get<12>(j0) * length)),
+            (source + (std::get<13>(j0) * length)),
+            (source + (std::get<14>(j0) * length)),
+            (source + (std::get<15>(j0) * length)),
         }};
     }
 };
