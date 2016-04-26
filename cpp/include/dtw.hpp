@@ -40,7 +40,7 @@ class dtw_generic {
         using indices_t       = typename T::indices_t;
         using source_t        = typename T::source_t;
 
-        dtw_generic(source_t source, std::size_t length, std::size_t r) :
+        dtw_generic(source_t source, std::size_t length, std::size_t r, T t = T()) :
             _r(r),
             _r2(_r << 1),
             _r2_plus(_r2 + 1),
@@ -50,14 +50,15 @@ class dtw_generic {
             _length_minus_r(_length - _r),
             _store_a(_r2_plus),
             _store_b(_r2_plus),
-            _store_tmp(_length) {}
+            _store_tmp(_length),
+            _t(t) {}
 
         internal_t calc(std::size_t i, indices_t j0) {
-            base_t local_base_i = T::get_base(_source, _length, i);
+            base_t local_base_i = _t.get_base(_source, _length, i);
             load_to_tmp(j0);
 
-            std::fill(_store_a.begin(), _store_a.end(), T::infinity());
-            T::store(&_store_a[_r], T::zero());
+            std::fill(_store_a.begin(), _store_a.end(), _t.infinity());
+            _t.store(&_store_a[_r], _t.zero());
 
             // remember: r <= length/2
 
@@ -82,7 +83,7 @@ class dtw_generic {
                 inner_loop(local_base_i, idx_i, idx_j_min, idx_j_max, 0);
             }
 
-            return T::load(&_store_a[_r]);
+            return _t.load(&_store_a[_r]);
         }
 
     private:
@@ -101,30 +102,31 @@ class dtw_generic {
         store_t             _store_a;
         store_t             _store_b;
         store_t             _store_tmp;
+        T                   _t;
 
         void inner_loop(const calc_t* local_base_i, std::size_t idx_i, std::size_t idx_j_min, std::size_t idx_j_max, std::size_t store_delta) {
             std::size_t store_pos = store_delta;
 
-            internal_t current_value   = T::infinity();
-            internal_t last_value_here = T::infinity();  // will never be used
-            internal_t last_value_next = T::load(&_store_a[store_pos]);
+            internal_t current_value   = _t.infinity();
+            internal_t last_value_here = _t.infinity();  // will never be used
+            internal_t last_value_next = _t.load(&_store_a[store_pos]);
 
             std::fill(
                 _store_b.begin(),
                 _store_b.begin() + static_cast<difference_type>(store_pos),
-                T::infinity()
+                _t.infinity()
             );
 
             for (std::size_t idx_j = idx_j_min; idx_j <= idx_j_max; ++idx_j) {
-                internal_t a = T::convert_single(local_base_i[idx_i]);
-                internal_t b = T::load(&_store_tmp[idx_j]);
+                internal_t a = _t.convert_single(local_base_i[idx_i]);
+                internal_t b = _t.load(&_store_tmp[idx_j]);
                 internal_t cost = dist(a, b);
 
                 last_value_here = last_value_next;
                 if (store_pos < _r2) {
-                    last_value_next = T::load(&_store_a[store_pos + 1]);
+                    last_value_next = _t.load(&_store_a[store_pos + 1]);
                 } else {
-                    last_value_next = T::infinity();
+                    last_value_next = _t.infinity();
                 }
 
                 // rename variables (let's hope the compiler optimizes that)
@@ -132,8 +134,8 @@ class dtw_generic {
                 internal_t dtw_delete = current_value;  // value from last round
                 internal_t dtw_match  = last_value_here;
 
-                current_value = cost + T::min3(dtw_insert, dtw_delete, dtw_match);
-                T::store(&_store_b[store_pos], current_value);
+                current_value = cost + _t.min3(dtw_insert, dtw_delete, dtw_match);
+                _t.store(&_store_b[store_pos], current_value);
 
                 ++store_pos;
             }
@@ -141,16 +143,16 @@ class dtw_generic {
             std::fill(
                 _store_b.begin() + static_cast<difference_type>(store_pos),
                 _store_b.end(),
-                T::infinity()
+                _t.infinity()
             );
 
             std::swap(_store_a, _store_b);
         }
 
         void load_to_tmp(indices_t j0) {
-            bases_t local_bases_j = T::get_bases(_source, _length, j0);
+            bases_t local_bases_j = _t.get_bases(_source, _length, j0);
             for (std::size_t idx = 0; idx < _length; ++idx) {
-                T::store(&_store_tmp[idx], T::convert_multiple(local_bases_j, idx));
+                _t.store(&_store_tmp[idx], _t.convert_multiple(local_bases_j, idx));
             }
         }
 };
@@ -165,39 +167,39 @@ struct dtw_impl_simple {
     using base_t     = const calc_t*;
     using bases_t    = const calc_t*;
 
-    inline static internal_t convert_single(calc_t x) {
+    inline internal_t convert_single(calc_t x) {
         return x;
     }
 
-    inline static internal_t convert_multiple(bases_t bases, std::size_t idx) {
+    inline internal_t convert_multiple(bases_t bases, std::size_t idx) {
         return static_cast<calc_t>(bases[idx]);
     }
 
-    inline static base_t get_base(source_t source, std::size_t length, std::size_t i) {
+    inline base_t get_base(source_t source, std::size_t length, std::size_t i) {
         return source + (i * length);
     }
 
-    inline static bases_t get_bases(source_t source, std::size_t length, indices_t j0) {
+    inline bases_t get_bases(source_t source, std::size_t length, indices_t j0) {
         return source + (j0 * length);
     }
 
-    inline static internal_t load(internal_t* ptr) {
+    inline internal_t load(internal_t* ptr) {
         return *ptr;
     }
 
-    inline static internal_t min3(internal_t a, internal_t b, internal_t c) {
+    inline internal_t min3(internal_t a, internal_t b, internal_t c) {
         return std::min(a, std::min(b, c));
     }
 
-    inline static internal_t infinity() {
+    inline internal_t infinity() {
         return std::numeric_limits<calc_t>::infinity();
     }
 
-    inline static void store(internal_t* ptr, internal_t data) {
+    inline void store(internal_t* ptr, internal_t data) {
         *ptr = data;
     }
 
-    inline static internal_t zero() {
+    inline internal_t zero() {
         return 0.0;
     }
 };
@@ -216,11 +218,11 @@ struct dtw_impl_vectorized {
     using base_t     = const calc_t*;
     using bases_t    = std::array<const calc_t*, n>;
 
-    inline static internal_t convert_single(calc_t x) {
+    inline internal_t convert_single(calc_t x) {
         return simdpp::make_float(x);
     }
 
-    inline static internal_t convert_multiple(bases_t bases, std::size_t idx) {
+    inline internal_t convert_multiple(bases_t bases, std::size_t idx) {
         return simdpp::make_float(
             std::get< 0>(bases)[idx],
             std::get< 1>(bases)[idx],
@@ -241,27 +243,27 @@ struct dtw_impl_vectorized {
         );
     }
 
-    inline static base_t get_base(source_t source, std::size_t length, std::size_t i) {
+    inline base_t get_base(source_t source, std::size_t length, std::size_t i) {
         return source + (i * length);
     }
 
-    inline static internal_t load(internal_t* ptr) {
+    inline internal_t load(internal_t* ptr) {
         return simdpp::load(ptr);
     }
 
-    inline static internal_t min3(internal_t a, internal_t b, internal_t c) {
+    inline internal_t min3(internal_t a, internal_t b, internal_t c) {
         return simdpp::min(a, simdpp::min(b, c));
     }
 
-    inline static internal_t infinity() {
+    inline internal_t infinity() {
         return simdpp::make_float(std::numeric_limits<double>::infinity());
     }
 
-    inline static void store(internal_t* ptr, internal_t data) {
+    inline void store(internal_t* ptr, internal_t data) {
         simdpp::store(ptr, data);
     }
 
-    inline static internal_t zero() {
+    inline internal_t zero() {
         return simdpp::make_float(0.0);
     }
 };
@@ -269,7 +271,7 @@ struct dtw_impl_vectorized {
 struct dtw_impl_vectorized_linear : dtw_impl_vectorized {
     using indices_t = std::size_t;
 
-    inline static bases_t get_bases(source_t source, std::size_t length, indices_t j0) {
+    inline bases_t get_bases(source_t source, std::size_t length, indices_t j0) {
         return {{
             (source + ((j0 +  0) * length)),
             (source + ((j0 +  1) * length)),
@@ -294,7 +296,7 @@ struct dtw_impl_vectorized_linear : dtw_impl_vectorized {
 struct dtw_impl_vectorized_shuffled : dtw_impl_vectorized {
     using indices_t = const std::array<std::size_t, n>&;
 
-    inline static bases_t get_bases(source_t source, std::size_t length, indices_t j0) {
+    inline bases_t get_bases(source_t source, std::size_t length, indices_t j0) {
         return {{
             (source + (std::get< 0>(j0) * length)),
             (source + (std::get< 1>(j0) * length)),
