@@ -95,7 +95,7 @@ class dtw_generic {
         store_element_t     _store_tmp;
         T                   _t;
 
-        void inner_loop(const calc_t* local_base_i, std::size_t idx_i, std::size_t idx_j_min, std::size_t idx_j_max, std::size_t store_delta) {
+        void inner_loop(base_t local_base_i, std::size_t idx_i, std::size_t idx_j_min, std::size_t idx_j_max, std::size_t store_delta) {
             std::size_t store_pos = store_delta;
 
             dist_t current_value   = _t.infinity();
