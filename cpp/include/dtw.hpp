@@ -20,23 +20,12 @@
 #include <simdpp/simd.h>
 #pragma message "optimal vector size: " XSTR(SIMDPP_FAST_FLOAT64_SIZE)
 
-calc_t dist(calc_t a, calc_t b) {
-    calc_t d = a - b;
-    return d * d;
-}
-
-template <unsigned N>
-simdpp::float64<N> dist(simdpp::float64<N> a, simdpp::float64<N> b) {
-    simdpp::float64<N> d = sub(a, b);
-    return mul(d, d);
-}
-
 template <typename T>
 class dtw_generic {
     public:
         static constexpr std::size_t n = T::n;
 
-        using internal_t      = typename T::internal_t;
+        using dist_t          = typename T::dist_t;
         using indices_t       = typename T::indices_t;
         using source_t        = typename T::source_t;
 
@@ -53,12 +42,12 @@ class dtw_generic {
             _store_tmp(_length),
             _t(t) {}
 
-        internal_t calc(std::size_t i, indices_t j0) {
+        dist_t calc(std::size_t i, indices_t j0) {
             base_t local_base_i = _t.get_base(_source, _length, i);
             load_to_tmp(j0);
 
             std::fill(_store_a.begin(), _store_a.end(), _t.infinity());
-            _t.store(&_store_a[_r], _t.zero());
+            _t.store_dist(&_store_a[_r], _t.zero());
 
             // remember: r <= length/2
 
@@ -83,14 +72,16 @@ class dtw_generic {
                 inner_loop(local_base_i, idx_i, idx_j_min, idx_j_max, 0);
             }
 
-            return _t.load(&_store_a[_r]);
+            return _t.load_dist(&_store_a[_r]);
         }
 
     private:
+        using element_t       = typename T::element_t;
         using base_t          = typename T::base_t;
         using bases_t         = typename T::bases_t;
-        using store_t         = std::vector<internal_t, boost::alignment::aligned_allocator<internal_t, T::alignment>>;
-        using difference_type = typename store_t::difference_type;
+        using store_element_t = std::vector<element_t, boost::alignment::aligned_allocator<element_t, T::alignment>>;
+        using store_dist_t    = std::vector<dist_t,    boost::alignment::aligned_allocator<dist_t,    T::alignment>>;
+        using sdiff_dist_t    = typename store_dist_t::difference_type;
 
         const std::size_t   _r;
         const std::size_t   _r2;
@@ -99,49 +90,52 @@ class dtw_generic {
         const std::size_t   _length;
         const std::size_t   _length_minus;
         const std::size_t   _length_minus_r;
-        store_t             _store_a;
-        store_t             _store_b;
-        store_t             _store_tmp;
+        store_dist_t        _store_a;
+        store_dist_t        _store_b;
+        store_element_t     _store_tmp;
         T                   _t;
 
         void inner_loop(const calc_t* local_base_i, std::size_t idx_i, std::size_t idx_j_min, std::size_t idx_j_max, std::size_t store_delta) {
             std::size_t store_pos = store_delta;
 
-            internal_t current_value   = _t.infinity();
-            internal_t last_value_here = _t.infinity();  // will never be used
-            internal_t last_value_next = _t.load(&_store_a[store_pos]);
+            dist_t current_value   = _t.infinity();
+            dist_t last_value_here = _t.infinity();  // will never be used
+            dist_t last_value_next = _t.load_dist(&_store_a[store_pos]);
 
             std::fill(
                 _store_b.begin(),
-                _store_b.begin() + static_cast<difference_type>(store_pos),
+                _store_b.begin() + static_cast<sdiff_dist_t>(store_pos),
                 _t.infinity()
             );
 
             for (std::size_t idx_j = idx_j_min; idx_j <= idx_j_max; ++idx_j) {
-                internal_t a = _t.convert_single(local_base_i[idx_i]);
-                internal_t b = _t.load(&_store_tmp[idx_j]);
-                internal_t cost = dist(a, b);
+                element_t a = _t.convert_single(local_base_i, idx_i);
+                element_t b = _t.load_element(&_store_tmp[idx_j]);
+                dist_t cost = _t.dist(a, b);
 
                 last_value_here = last_value_next;
                 if (store_pos < _r2) {
-                    last_value_next = _t.load(&_store_a[store_pos + 1]);
+                    last_value_next = _t.load_dist(&_store_a[store_pos + 1]);
                 } else {
                     last_value_next = _t.infinity();
                 }
 
                 // rename variables (let's hope the compiler optimizes that)
-                internal_t dtw_insert = last_value_next;
-                internal_t dtw_delete = current_value;  // value from last round
-                internal_t dtw_match  = last_value_here;
+                dist_t dtw_insert = last_value_next;
+                dist_t dtw_delete = current_value;  // value from last round
+                dist_t dtw_match  = last_value_here;
 
-                current_value = cost + _t.min3(dtw_insert, dtw_delete, dtw_match);
-                _t.store(&_store_b[store_pos], current_value);
+                current_value = _t.add(
+                    cost,
+                    _t.min3(dtw_insert, dtw_delete, dtw_match)
+                );
+                _t.store_dist(&_store_b[store_pos], current_value);
 
                 ++store_pos;
             }
 
             std::fill(
-                _store_b.begin() + static_cast<difference_type>(store_pos),
+                _store_b.begin() + static_cast<sdiff_dist_t>(store_pos),
                 _store_b.end(),
                 _t.infinity()
             );
@@ -152,7 +146,7 @@ class dtw_generic {
         void load_to_tmp(indices_t j0) {
             bases_t local_bases_j = _t.get_bases(_source, _length, j0);
             for (std::size_t idx = 0; idx < _length; ++idx) {
-                _t.store(&_store_tmp[idx], _t.convert_multiple(local_bases_j, idx));
+                _t.store_element(&_store_tmp[idx], _t.convert_multiple(local_bases_j, idx));
             }
         }
 };
@@ -161,17 +155,18 @@ struct dtw_impl_simple {
     static constexpr std::size_t n         = 1;
     static constexpr std::size_t alignment = n * 8;
 
-    using internal_t = calc_t;
+    using element_t  = calc_t;
+    using dist_t     = calc_t;
     using indices_t  = std::size_t;
     using source_t   = const calc_t*;
     using base_t     = const calc_t*;
     using bases_t    = const calc_t*;
 
-    inline internal_t convert_single(calc_t x) {
-        return x;
+    inline element_t convert_single(base_t base, std::size_t idx) {
+        return base[idx];
     }
 
-    inline internal_t convert_multiple(bases_t bases, std::size_t idx) {
+    inline element_t convert_multiple(bases_t bases, std::size_t idx) {
         return static_cast<calc_t>(bases[idx]);
     }
 
@@ -183,23 +178,40 @@ struct dtw_impl_simple {
         return source + (j0 * length);
     }
 
-    inline internal_t load(internal_t* ptr) {
+    inline element_t load_element(element_t* ptr) {
         return *ptr;
     }
 
-    inline internal_t min3(internal_t a, internal_t b, internal_t c) {
-        return std::min(a, std::min(b, c));
+    inline dist_t load_dist(dist_t* ptr) {
+        return *ptr;
     }
 
-    inline internal_t infinity() {
-        return std::numeric_limits<calc_t>::infinity();
-    }
-
-    inline void store(internal_t* ptr, internal_t data) {
+    inline void store_element(element_t* ptr, element_t data) {
         *ptr = data;
     }
 
-    inline internal_t zero() {
+    inline void store_dist(dist_t* ptr, dist_t data) {
+        *ptr = data;
+    }
+
+    inline dist_t dist(element_t a, element_t b) {
+        calc_t d = a - b;
+        return d * d;
+    }
+
+    inline dist_t min3(dist_t a, dist_t b, dist_t c) {
+        return std::min(a, std::min(b, c));
+    }
+
+    inline dist_t add(dist_t a, dist_t b) {
+        return a + b;
+    }
+
+    inline dist_t infinity() {
+        return std::numeric_limits<calc_t>::infinity();
+    }
+
+    inline dist_t zero() {
         return 0.0;
     }
 };
@@ -213,16 +225,17 @@ struct dtw_impl_vectorized {
     static constexpr std::size_t alignment = n * 8;
     static_assert(n >= SIMDPP_FAST_FLOAT64_SIZE, "dtw_impl_vectorized is not optimal!");
 
-    using internal_t = simdpp::float64<n>;
+    using element_t  = simdpp::float64<n>;
+    using dist_t     = simdpp::float64<n>;
     using source_t   = const calc_t*;
     using base_t     = const calc_t*;
     using bases_t    = std::array<const calc_t*, n>;
 
-    inline internal_t convert_single(calc_t x) {
-        return simdpp::make_float(x);
+    inline element_t convert_single(base_t base, std::size_t idx) {
+        return simdpp::make_float(base[idx]);
     }
 
-    inline internal_t convert_multiple(bases_t bases, std::size_t idx) {
+    inline element_t convert_multiple(bases_t bases, std::size_t idx) {
         return simdpp::make_float(
             std::get< 0>(bases)[idx],
             std::get< 1>(bases)[idx],
@@ -247,23 +260,40 @@ struct dtw_impl_vectorized {
         return source + (i * length);
     }
 
-    inline internal_t load(internal_t* ptr) {
+    inline element_t load_element(element_t* ptr) {
         return simdpp::load(ptr);
     }
 
-    inline internal_t min3(internal_t a, internal_t b, internal_t c) {
-        return simdpp::min(a, simdpp::min(b, c));
+    inline dist_t load_dist(dist_t* ptr) {
+        return simdpp::load(ptr);
     }
 
-    inline internal_t infinity() {
-        return simdpp::make_float(std::numeric_limits<double>::infinity());
-    }
-
-    inline void store(internal_t* ptr, internal_t data) {
+    inline void store_element(element_t* ptr, element_t data) {
         simdpp::store(ptr, data);
     }
 
-    inline internal_t zero() {
+    inline void store_dist(dist_t* ptr, dist_t data) {
+        simdpp::store(ptr, data);
+    }
+
+    inline dist_t dist(element_t a, element_t b) {
+        dist_t d = sub(a, b);
+        return mul(d, d);
+    }
+
+    inline dist_t min3(dist_t a, dist_t b, dist_t c) {
+        return simdpp::min(a, simdpp::min(b, c));
+    }
+
+    inline dist_t add(dist_t a, dist_t b) {
+        return simdpp::add(a, b);
+    }
+
+    inline dist_t infinity() {
+        return simdpp::make_float(std::numeric_limits<double>::infinity());
+    }
+
+    inline dist_t zero() {
         return simdpp::make_float(0.0);
     }
 };

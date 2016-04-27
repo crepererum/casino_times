@@ -189,9 +189,9 @@ class temp_t {
                     _vindices[bd] = _buffer[b + bd];
                 }
 
-                _internal = _mydtw_vectorized.calc(_i, _vindices);
+                _dist = _mydtw_vectorized.calc(_i, _vindices);
 
-                simdpp::store(&_vresults, _internal);
+                simdpp::store(&_vresults, _dist);
 
                 for (std::size_t bd = 0; bd < dtw_vectorized_shuffled::n; ++bd) {
                     _queue.emplace(_vresults[bd], _buffer[b + bd]);
@@ -224,7 +224,7 @@ class temp_t {
         dtw_simple                                          _mydtw_simple;
         dtw_vectorized_shuffled                             _mydtw_vectorized;
         std::array<std::size_t, dtw_vectorized_shuffled::n> _vindices;
-        dtw_vectorized_shuffled::internal_t                 _internal;
+        dtw_vectorized_shuffled::dist_t                     _dist;
         std::array<calc_t, dtw_vectorized_shuffled::n>      _vresults;
         std::size_t                                         _i;
         std::vector<std::size_t>                            _buffer;
