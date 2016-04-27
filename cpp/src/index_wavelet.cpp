@@ -82,33 +82,23 @@ class range_bucket_t {
         std::vector<node_ptr_t> _slot;
 };
 
-class range_index_t {
-    public:
-        range_index_t() = default;
-
-        range_bucket_t& get_bucket(const node_ptr_t node) {
-            return _index_struct[node->children];
-        }
-
-        void delete_all_ptrs(mapped_file_ptr_t& f) {
-            for (auto& kv : _index_struct) {
-                kv.second.delete_all_ptrs(f);
-            }
-        }
-
-    private:
-        // XXX: make node pointers in key const
-        std::unordered_map<children_t, range_bucket_t> _index_struct;
-};
-
 struct index_t {
     superroot_vector_t* superroots;
-    std::vector<std::vector<range_index_t>> levels;
+    std::vector<range_bucket_t> lowest_level;
+    std::vector<std::unordered_map<children_t, range_bucket_t>> higher_levels;
     std::vector<std::size_t> node_counts;
 
-    index_t(superroot_vector_t* superroots_, std::size_t depth) : superroots(superroots_), levels(depth), node_counts(depth, 0) {
-        for (std::size_t l = 0; l < depth; ++l) {
-            levels[l] = std::vector<range_index_t>(1 << l);
+    index_t(superroot_vector_t* superroots_, std::size_t depth)
+        : superroots(superroots_),
+        lowest_level(1 << (depth - 1)),
+        higher_levels(depth - 1),
+        node_counts(depth, 0) {}
+
+    range_bucket_t& find_bucket(std::size_t l, std::size_t idx, node_ptr_t current_node) {
+        if (l >= higher_levels.size()) {
+            return lowest_level[idx];
+        } else {
+            return higher_levels[l][current_node->children];
         }
     }
 
@@ -119,9 +109,12 @@ struct index_t {
                 dealloc_in_mapped_file(alloc, sr);
             }
         }
-        for (auto& level : levels) {
-            for (auto& range_index : level) {
-                range_index.delete_all_ptrs(f);
+        for (auto& bucket : lowest_level) {
+            bucket.delete_all_ptrs(f);
+        }
+        for (auto& map : higher_levels) {
+            for (auto& kv : map) {
+                kv.second.delete_all_ptrs(f);
             }
         }
     }
@@ -248,14 +241,14 @@ class engine {
             _alloc_superroot(_mapped_file->get_segment_manager()),
             _alloc_node(_mapped_file->get_segment_manager()),
             _transformer(std::make_shared<transformer>(_ylength, _depth)),
-            _error_calc(_ylength, _depth, _base, _max_error, _transformer) {}
+            _error_calc(std::make_shared<error_calculator>(_ylength, _depth, _base, _max_error, _transformer)) {}
 
         superroot_ptr_t run(std::size_t i) {
             _transformer->data_to_tree(_base + (i * _ylength));
-            _error_calc.recalc(i);  // correct error because of floating point errors
+            _error_calc->recalc(i);  // correct error because of floating point errors
             run_mergeloop(i);
             drain();
-            _error_calc.recalc(i);  // correct error one last time
+            _error_calc->recalc(i);  // correct error one last time
 
             // move superroot to mapped file
             (*_index->superroots)[i] = alloc_in_mapped_file(_alloc_superroot);
@@ -273,6 +266,8 @@ class engine {
             std::size_t idx;
             node_ptr_t  neighbor;
 
+            queue_entry_t() = default;
+
             queue_entry_t(inexact_t score_, inexact_t dist_, std::size_t l_, std::size_t idx_, node_ptr_t neighbor_) :
                 score(score_),
                 dist(dist_),
@@ -289,17 +284,17 @@ class engine {
 
         using queue_t = std::priority_queue<queue_entry_t, std::vector<queue_entry_t>, queue_entry_compare>;
 
-        const std::size_t                _ylength;
-        const std::size_t                _depth;
-        inexact_t                        _max_error;
-        const calc_t*                    _base;
-        index_t*                         _index;
-        std::mt19937                     _rng;
-        mapped_file_ptr_t                _mapped_file;
-        allocator_superroot_t            _alloc_superroot;
-        allocator_node_t                 _alloc_node;
-        std::shared_ptr<transformer>     _transformer;
-        error_calculator                 _error_calc;
+        const std::size_t                 _ylength;
+        const std::size_t                 _depth;
+        inexact_t                         _max_error;
+        const calc_t*                     _base;
+        index_t*                          _index;
+        std::mt19937                      _rng;
+        mapped_file_ptr_t                 _mapped_file;
+        allocator_superroot_t             _alloc_superroot;
+        allocator_node_t                  _alloc_node;
+        std::shared_ptr<transformer>      _transformer;
+        std::shared_ptr<error_calculator> _error_calc;
 
         void run_mergeloop(std::size_t i) {
             queue_t queue;
@@ -325,9 +320,9 @@ class engine {
                 // check if node was already merged and if distance is low enough
                 if (current_node != nullptr) {
                     // check if merge would be in error range (i.e. does not increase error beyond _max_error)
-                    if (_error_calc.is_in_range(i, best.l, best.idx, best.dist)) {
+                    if (_error_calc->is_in_range(i, best.l, best.idx, best.dist)) {
                         // calculate approx. error
-                        _error_calc.update(best.l, best.idx, best.dist);
+                        _error_calc->update(best.l, best.idx, best.dist);
 
                         // execute merge
                         _transformer->link_to_parent(best.neighbor, best.l, best.idx);
@@ -350,11 +345,10 @@ class engine {
             node_ptr_t current_node = _transformer->levels[l][idx];
 
             if (current_node != nullptr) {
-                auto& current_index_slot = _index->levels[l][idx];
-                auto& bucket = current_index_slot.get_bucket(current_node);
+                auto& bucket = _index->find_bucket(l, idx, current_node);
                 auto neighbors = bucket.get_nearest(current_node, _max_error - _transformer->superroot->error, 1);
                 if (!neighbors.empty()) {
-                    inexact_t error = _error_calc.guess_error(l, idx, neighbors[0].second);
+                    inexact_t error = _error_calc->guess_error(l, idx, neighbors[0].second);
                     inexact_t score = error - _transformer->superroot->error;
                     queue.emplace(score, neighbors[0].second, l, idx, neighbors[0].first);
                 }
@@ -379,8 +373,7 @@ class engine {
                         _transformer->link_to_parent(node_stored, l, idx);
                         delete current_node.get();
 
-                        auto& current_index_slot = _index->levels[l][idx];
-                        auto& bucket = current_index_slot.get_bucket(node_stored);
+                        auto& bucket = _index->find_bucket(l, idx, node_stored);
                         bucket.insert(node_stored);
                         ++_index->node_counts[l];
                     }
