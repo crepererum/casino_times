@@ -12,6 +12,7 @@
 #include <boost/locale.hpp>
 #include <boost/program_options.hpp>
 
+#include "dtw.hpp"
 #include "parser.hpp"
 #include "utils.hpp"
 #include "wavelet_transformer.hpp"
@@ -284,6 +285,125 @@ class engine {
 
         using queue_t = std::priority_queue<queue_entry_t, std::vector<queue_entry_t>, queue_entry_compare>;
 
+        struct dtw_impl_my {
+            static constexpr std::size_t n         = 1;
+            static constexpr std::size_t alignment = n * 8;
+
+            using no_type    = bool;
+
+            using element_t  = std::size_t;
+            using dist_t     = std::pair<inexact_t, std::vector<queue_entry_t>>;
+            using indices_t  = std::size_t;
+            using source_t   = no_type;
+            using base_t     = no_type;
+            using bases_t    = no_type;
+
+            inline element_t convert_single(base_t, std::size_t idx) {
+                return idx;
+            }
+
+            inline element_t convert_multiple(bases_t, std::size_t idx) {
+                return idx;
+            }
+
+            inline base_t get_base(source_t, std::size_t, std::size_t) {
+                return no_type();
+            }
+
+            inline bases_t get_bases(source_t, std::size_t, indices_t) {
+                return no_type();
+            }
+
+            inline element_t load_element(element_t* ptr) {
+                return *ptr;
+            }
+
+            inline dist_t load_dist(dist_t* ptr) {
+                return *ptr;
+            }
+
+            inline void store_element(element_t* ptr, element_t data) {
+                *ptr = data;
+            }
+
+            inline void store_dist(dist_t* ptr, dist_t data) {
+                *ptr = data;
+            }
+
+            inline dist_t dist(element_t a, element_t b) {
+                std::size_t l = _depth - 1;
+                node_ptr_t current_node = _transformer->levels[l][a];
+
+                if (current_node != nullptr) {
+                    auto& bucket = _index->find_bucket(l, b, current_node);
+                    auto neighbors = bucket.get_nearest(current_node, _max_error - _transformer->superroot->error, 1);
+                    if (!neighbors.empty()) {
+                        inexact_t error = _error_calc->guess_error(l, a, neighbors[0].second);
+                        inexact_t score = error - _transformer->superroot->error;
+                        std::vector<queue_entry_t> path;
+                        path.emplace_back(score, neighbors[0].second, l, a, neighbors[0].first);
+                        return std::make_pair<inexact_t, std::vector<queue_entry_t>>(
+                            std::move(score),
+                            std::move(path)
+                        );
+                    } else {
+                        return infinity();
+                    }
+                } else {
+                    return infinity();
+                }
+            }
+
+            inline dist_t min3(dist_t a, dist_t b, dist_t c) {
+                if (a.first < b.first && a.first < c.first) {
+                    return a;
+                } else if (b.first < c.first) {
+                    return b;
+                } else {
+                    return c;
+                }
+            }
+
+            inline dist_t add(dist_t a, dist_t b) {
+                std::vector<queue_entry_t> path(a.second.size() + b.second.size());
+                std::copy(
+                    a.second.begin(),
+                    a.second.end(),
+                    path.begin()
+                );
+                std::copy(
+                    b.second.begin(),
+                    b.second.end(),
+                    path.begin() + static_cast<decltype(path)::difference_type>(a.second.size())
+                );
+
+                return std::make_pair(a.first + b.first, std::move(path));
+            }
+
+            inline dist_t infinity() {
+                return std::make_pair<inexact_t, std::vector<queue_entry_t>>(
+                    std::numeric_limits<calc_t>::infinity(),
+                    {}
+                );
+            }
+
+            inline dist_t zero() {
+                return std::make_pair<inexact_t, std::vector<queue_entry_t>>(
+                    0.0,
+                    {}
+                );
+            }
+
+            const std::size_t                 _depth;
+            const inexact_t                   _max_error;
+            index_t*                          _index;
+            std::shared_ptr<transformer>      _transformer;
+            std::shared_ptr<error_calculator> _error_calc;
+
+            dtw_impl_my(std::size_t depth, inexact_t max_error, index_t* index, const std::shared_ptr<transformer>& trans, const std::shared_ptr<error_calculator>& error_calc) : _depth(depth), _max_error(max_error), _index(index), _transformer(trans), _error_calc(error_calc) {}
+        };
+        using dtw_my = dtw_generic<dtw_impl_my>;
+
         const std::size_t                 _ylength;
         const std::size_t                 _depth;
         inexact_t                         _max_error;
@@ -300,14 +420,15 @@ class engine {
             queue_t queue;
 
             // fill queue with entries from lowest level
-            std::vector<std::size_t> indices(_transformer->levels[_depth - 1].size());
-            for (std::size_t idx = 0; idx < indices.size(); ++idx) {
-                indices[idx] = idx;
-            }
-            std::shuffle(indices.begin(), indices.end(), _rng);
-            for (auto idx : indices) {
-                std::size_t l = _depth - 1;
-                generate_queue_entries(l, idx, queue);
+            dtw_my dtw_obj(
+                dtw_impl_my::no_type(),
+                (1 << (_depth - 1)),
+                1, // XXX!
+                dtw_impl_my(_depth, _max_error, _index, _transformer, _error_calc)
+            );
+            auto best_warping = dtw_obj.calc(0, 0); // 0 is a no-op placeholder here
+            for (auto& qe : best_warping.second) {
+                queue.emplace(std::move(qe));
             }
 
             // now run merge loop
