@@ -131,11 +131,10 @@ struct index_t {
 
 class error_calculator {
     public:
-        error_calculator(std::size_t ylength, std::size_t depth, const calc_t* base, inexact_t max_error, const std::shared_ptr<transformer>& transf) :
+        error_calculator(std::size_t ylength, std::size_t depth, const calc_t* base, const std::shared_ptr<transformer>& transf) :
             _ylength(ylength),
             _depth(depth),
             _base(base),
-            _max_error(max_error),
             _transformer(transf),
             _delta(_ylength, 0.0),
             _delta_copy(_ylength, 0.0),
@@ -180,16 +179,16 @@ class error_calculator {
             return _is_approx;
         }
 
-        bool is_in_range(std::size_t i, std::size_t l, std::size_t idx, inexact_t dist) {
+        bool is_in_range(std::size_t i, std::size_t l, std::size_t idx, inexact_t dist, inexact_t max_error) {
             bool in_range = false;
 
-            if (guess_error(l, idx, dist) < _max_error) {
+            if (is_in_range_impl(l, idx, dist, max_error)) {
                 in_range = true;
             } else if (_is_approx) {
                 // ok, error is an approximation anyway, so lets calculate the right value and try again
                 recalc(i);
 
-                if (guess_error(l, idx, dist) < _max_error) {
+                if (is_in_range_impl(l, idx, dist, max_error)) {
                     in_range = true;
                 }
             }
@@ -201,7 +200,6 @@ class error_calculator {
         const std::size_t            _ylength;
         const std::size_t            _depth;
         const calc_t*                _base;
-        const inexact_t              _max_error;
         std::shared_ptr<transformer> _transformer;
         std::vector<inexact_t>       _delta;
         std::vector<inexact_t>       _delta_copy;
@@ -227,6 +225,16 @@ class error_calculator {
                 delta[y] += dist_recalced;
             }
         }
+
+        bool is_in_range_impl(std::size_t l, std::size_t idx, inexact_t dist, inexact_t max_error) {
+            inexact_t total    = guess_error(l, idx, dist);
+            inexact_t increase = total - _transformer->superroot->error;
+
+            inexact_t limit_total    = max_error;
+            inexact_t limit_increase = max_error / static_cast<inexact_t>(_ylength);
+
+            return (total < limit_total) && (increase < limit_increase);
+        }
 };
 
 class engine {
@@ -241,7 +249,7 @@ class engine {
             _alloc_superroot(_mapped_file->get_segment_manager()),
             _alloc_node(_mapped_file->get_segment_manager()),
             _transformer(std::make_shared<transformer>(_ylength, _depth)),
-            _error_calc(std::make_shared<error_calculator>(_ylength, _depth, _base, _max_error, _transformer)) {}
+            _error_calc(std::make_shared<error_calculator>(_ylength, _depth, _base, _transformer)) {}
 
         superroot_ptr_t run(std::size_t i) {
             _transformer->data_to_tree(_base + (i * _ylength));
@@ -319,8 +327,8 @@ class engine {
 
                 // check if node was already merged and if distance is low enough
                 if (current_node != nullptr) {
-                    // check if merge would be in error range (i.e. does not increase error beyond _max_error)
-                    if (_error_calc->is_in_range(i, best.l, best.idx, best.dist)) {
+                    // check if merge would be in error range (i.e. does not increase error beyond current_max_error)
+                    if (_error_calc->is_in_range(i, best.l, best.idx, best.dist, _max_error)) {
                         // calculate approx. error
                         _error_calc->update(best.l, best.idx, best.dist);
 
@@ -346,7 +354,7 @@ class engine {
 
             if (current_node != nullptr) {
                 auto& bucket = _index->find_bucket(l, idx, current_node);
-                auto neighbors = bucket.get_nearest(current_node, _max_error - _transformer->superroot->error, 1);
+                auto neighbors = bucket.get_nearest(current_node, std::numeric_limits<inexact_t>::infinity(), 1);
                 if (!neighbors.empty()) {
                     inexact_t error = _error_calc->guess_error(l, idx, neighbors[0].second);
                     inexact_t score = error - _transformer->superroot->error;
