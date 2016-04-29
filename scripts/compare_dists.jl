@@ -15,9 +15,15 @@ fp2 = open(fd2)
 data1 = Mmap.mmap(fp1, Matrix{Float64}, (n, 1))
 data2 = Mmap.mmap(fp2, Matrix{Float64}, (n, 1))
 
-norm = sort(data1[:,1])[2]
+function zero2one(x)
+    if x == 0
+        return 1
+    else
+        return x
+    end
+end
 
-delta = (data2 - data1) ./ norm
+delta = (data2 - data1) ./ map(zero2one, data1)
 
 @printf "mean:   %.5f\n" mean(delta)
 @printf "std:    %.5f\n" std(delta)
@@ -25,7 +31,9 @@ delta = (data2 - data1) ./ norm
 @printf "q0.02:  %.5f\n" quantile(delta[:,1], 0.02)
 @printf "q0.09:  %.5f\n" quantile(delta[:,1], 0.09)
 @printf "q0.25:  %.5f\n" quantile(delta[:,1], 0.25)
+@printf "q0.45:  %.5f\n" quantile(delta[:,1], 0.45)
 @printf "median: %.5f\n" median(delta)
+@printf "q0.55:  %.5f\n" quantile(delta[:,1], 0.55)
 @printf "q0.75:  %.5f\n" quantile(delta[:,1], 0.75)
 @printf "q0.91:  %.5f\n" quantile(delta[:,1], 0.91)
 @printf "q0.98:  %.5f\n" quantile(delta[:,1], 0.98)

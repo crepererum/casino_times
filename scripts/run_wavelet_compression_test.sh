@@ -77,8 +77,8 @@ echo "done"
 echo "compare results..."
 $scriptdir/compare_dists.jl \
     $mapfile \
-    $distfile \
-    $reffile | tee --append $logfile $reportfile > /dev/null
+    $reffile \
+    $distfile | tee --append $logfile $reportfile > /dev/null
 echo "done"
 
 echo "write outro to report..."
