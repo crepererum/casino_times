@@ -254,6 +254,7 @@ class engine {
         superroot_ptr_t run(std::size_t i) {
             _transformer->data_to_tree(_base + (i * _ylength));
             _error_calc->recalc(i);  // correct error because of floating point errors
+            prune(i);
             run_mergeloop(i);
             drain();
             _error_calc->recalc(i);  // correct error one last time
@@ -384,6 +385,41 @@ class engine {
                         auto& bucket = _index->find_bucket(l, idx, node_stored);
                         bucket.insert(node_stored);
                         ++_index->node_counts[l];
+                    }
+                }
+            }
+        }
+
+        static constexpr std::uint32_t gen_mask(std::size_t i) {
+            std::uint32_t mask = 0;
+            for (std::size_t j = 0; j < i; ++j) {
+                mask |= (static_cast<std::uint32_t>(1) << j);
+            }
+            return mask;
+        }
+
+        void prune(std::size_t i) {
+            for (std::size_t l_plus = _depth; l_plus > 0; --l_plus) {
+                std::size_t l = l_plus - 1;
+
+                for (std::size_t idx = 0; idx < _transformer->levels[l].size(); ++idx) {
+                    node_ptr_t current_node = _transformer->levels[l][idx];
+
+                    if (current_node != nullptr) {
+                        constexpr std::uint32_t mask = ~gen_mask(16);
+                        inexact_t target = current_node->x;
+                        reinterpret_cast<std::uint32_t&>(target) &= mask;
+
+                        if (target < 0.001f) {
+                            target = 0.0;
+                        }
+
+                        inexact_t dist = std::abs(current_node->x - target);
+
+                        if (_error_calc->is_in_range(i, l, idx, dist, _max_error)) {
+                            _error_calc->update(l, idx, dist);
+                            current_node->x = target;
+                        }
                     }
                 }
             }
