@@ -56,7 +56,7 @@ class transformer {
 
         void tree_to_data(calc_t* data) {
             // prepare idwt
-            _mywt.output()[0] = superroot->approx;
+            _mywt.output()[0] = static_cast<double>(superroot->approx);
             std::vector<node_ptr_t> layer_a{superroot->root};
             std::vector<node_ptr_t> layer_b;
             for (std::size_t l = 0; l < _depth; ++l) {
@@ -65,9 +65,16 @@ class transformer {
 
                 layer_b.clear();
                 for (std::size_t idx = 0; idx < width; ++idx) {
-                    _mywt.output()[outdelta + idx] = layer_a[idx]->x / _influence_sqrt[l];
-                    layer_b.push_back(layer_a[idx]->children[0]);
-                    layer_b.push_back(layer_a[idx]->children[1]);
+                    node_ptr_t current_node = layer_a[idx];
+                    if (current_node) {
+                        _mywt.output()[outdelta + idx] = static_cast<double>(layer_a[idx]->x) / _influence_sqrt[l];
+                        layer_b.push_back(layer_a[idx]->children[0]);
+                        layer_b.push_back(layer_a[idx]->children[1]);
+                    } else {
+                        _mywt.output()[outdelta + idx] = 0.0;
+                        layer_b.push_back(nullptr);
+                        layer_b.push_back(nullptr);
+                    }
                 }
 
                 std::swap(layer_a, layer_b);
