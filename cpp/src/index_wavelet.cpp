@@ -206,9 +206,9 @@ class error_calculator {
         bool                         _is_approx;
 
         inexact_t error_from_delta(const std::vector<inexact_t>& delta) const {
-            auto minmax = std::minmax_element(delta.begin(), delta.end());
+            auto it = std::max_element(delta.begin(), delta.end());
 
-            return *(minmax.second) - *(minmax.first);
+            return *it;
         }
 
         void guess_delta_update(std::vector<inexact_t>& delta, std::size_t l, std::size_t idx, inexact_t dist) {
