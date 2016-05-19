@@ -206,14 +206,9 @@ class error_calculator {
         bool                         _is_approx;
 
         inexact_t error_from_delta(const std::vector<inexact_t>& delta) const {
-            inexact_t error = 0.0;
+            auto minmax = std::minmax_element(delta.begin(), delta.end());
 
-#pragma clang loop vectorize(enable) interleave(enable)
-            for (std::size_t y = 0; y < _ylength; ++y) {
-                error += delta[y] * delta[y];
-            }
-
-            return std::sqrt(error) / static_cast<inexact_t>(_ylength);
+            return *(minmax.second) - *(minmax.first);
         }
 
         void guess_delta_update(std::vector<inexact_t>& delta, std::size_t l, std::size_t idx, inexact_t dist) {
@@ -227,13 +222,10 @@ class error_calculator {
         }
 
         bool is_in_range_impl(std::size_t l, std::size_t idx, inexact_t dist, inexact_t max_error) {
-            inexact_t total    = guess_error(l, idx, dist);
-            inexact_t increase = total - _transformer->superroot->error;
+            inexact_t total       = guess_error(l, idx, dist);
+            inexact_t limit_total = max_error;
 
-            inexact_t limit_total    = max_error;
-            inexact_t limit_increase = max_error / static_cast<inexact_t>(_ylength);
-
-            return (total < limit_total) && (increase < limit_increase);
+            return total < limit_total;
         }
 };
 
