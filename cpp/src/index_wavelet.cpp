@@ -147,8 +147,10 @@ class error_calculator {
 
             // compare
             const calc_t* local_base = _base + (i * _ylength);
+            std::get<1>(_delta) = -std::numeric_limits<inexact_t>::infinity();
             for (std::size_t y = 0; y < _ylength; ++y) {
-                _delta[y] = std::abs(static_cast<inexact_t>(data_approximated[y] - local_base[y]));
+                std::get<0>(_delta)[y] = std::abs(static_cast<inexact_t>(data_approximated[y] - local_base[y]));
+                std::get<1>(_delta) = std::max(std::get<1>(_delta), std::get<0>(_delta)[y]);
             }
 
             // calc exact error
@@ -197,27 +199,28 @@ class error_calculator {
         }
 
     private:
+        using delta_t = std::pair<std::vector<inexact_t>, inexact_t>;
+
         const std::size_t            _ylength;
         const std::size_t            _depth;
         const calc_t*                _base;
         std::shared_ptr<transformer> _transformer;
-        std::vector<inexact_t>       _delta;
-        std::vector<inexact_t>       _delta_copy;
+        delta_t                      _delta;
+        delta_t                      _delta_copy;
         bool                         _is_approx;
 
-        inexact_t error_from_delta(const std::vector<inexact_t>& delta) const {
-            auto it = std::max_element(delta.begin(), delta.end());
-
-            return *it;
+        inexact_t error_from_delta(const delta_t& delta) const {
+            return std::get<1>(delta);
         }
 
-        void guess_delta_update(std::vector<inexact_t>& delta, std::size_t l, std::size_t idx, inexact_t dist) {
+        void guess_delta_update(delta_t& delta, std::size_t l, std::size_t idx, inexact_t dist) {
             std::size_t influence = 1u << (_depth - l);
             std::size_t shift     = influence * idx;
             inexact_t dist_recalced  = dist / static_cast<inexact_t>(influence);
 
             for (std::size_t y = shift; y < shift + influence; ++y) {
-                delta[y] += dist_recalced;
+                std::get<0>(delta)[y] += dist_recalced;
+                std::get<1>(delta) = std::max(std::get<1>(delta), std::get<0>(delta)[y]);
             }
         }
 
