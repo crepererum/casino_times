@@ -27,6 +27,14 @@ constexpr std::size_t power_of_2(std::size_t x) {
     return p;
 }
 
+constexpr std::uint32_t gen_mask(std::size_t i) {
+    std::uint32_t mask = 0;
+    for (std::size_t j = 0; j < i; ++j) {
+        mask |= (static_cast<std::uint32_t>(1) << j);
+    }
+    return mask;
+}
+
 boost::program_options::options_description po_create_desc();
 int po_fill_vm(
     const boost::program_options::options_description& desc,
