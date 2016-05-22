@@ -19,6 +19,17 @@ externalproject_add (
 )
 
 externalproject_add (
+    project_sparsehash
+    PREFIX "${CMAKE_CURRENT_BINARY_DIR}/sparsehash"
+    GIT_REPOSITORY "https://github.com/sparsehash/sparsehash-c11.git"
+    GIT_TAG "3eda9ea2da8c91adaf052500220d14efec263bbc"
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/sparsehash <INSTALL_DIR>/sparsehash
+    TEST_COMMAND ""
+)
+
+externalproject_add (
     project_wavelib
     PREFIX "${CMAKE_CURRENT_BINARY_DIR}/wavelib"
     GIT_REPOSITORY "https://github.com/rafat/wavelib.git"
@@ -57,6 +68,7 @@ include_directories (
 include_directories (
     SYSTEM
     "${CMAKE_CURRENT_BINARY_DIR}/libsimdpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/sparsehash"
     "${CMAKE_CURRENT_BINARY_DIR}/wavelib/include"
 )
 
@@ -149,7 +161,7 @@ target_link_libraries (
     boost_program_options
     wavelib
 )
-add_dependencies (index_wavelet project_wavelib)
+add_dependencies (index_wavelet project_sparsehash project_wavelib)
 
 # executable: print_wavelet_tree
 add_executable (print_wavelet_tree "src/print_wavelet_tree.cpp")

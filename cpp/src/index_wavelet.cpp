@@ -14,6 +14,8 @@
 #include <boost/locale.hpp>
 #include <boost/program_options.hpp>
 
+#include <sparsehash/dense_hash_map>
+
 #include "parser.hpp"
 #include "utils.hpp"
 #include "wavelet_transformer.hpp"
@@ -87,14 +89,18 @@ class range_bucket_t {
 struct index_t {
     superroot_vector_t* superroots;
     std::vector<range_bucket_t> lowest_level;
-    std::vector<std::unordered_map<children_t, range_bucket_t>> higher_levels;
+    std::vector<google::dense_hash_map<children_t, range_bucket_t>> higher_levels;
     std::vector<std::size_t> node_counts;
 
     index_t(superroot_vector_t* superroots_, std::size_t depth)
         : superroots(superroots_),
         lowest_level(1 << (depth - 1)),
         higher_levels(depth - 1),
-        node_counts(depth, 0) {}
+        node_counts(depth, 0) {
+            for (std::size_t l = 0; l < depth; ++l) {
+                higher_levels[l].set_empty_key(children_t{});
+            }
+        }
 
     range_bucket_t& find_bucket(std::size_t l, std::size_t idx, node_ptr_t current_node) {
         if (l >= higher_levels.size()) {
