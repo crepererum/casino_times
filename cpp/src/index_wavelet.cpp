@@ -82,10 +82,12 @@ class range_bucket_t {
         std::vector<node_ptr_t> _slot;
 };
 
+using rbucket_t = std::unique_ptr<range_bucket_t>;
+
 struct index_t {
     superroot_vector_t* superroots;
-    std::vector<range_bucket_t> lowest_level;
-    std::vector<std::unordered_map<children_t, range_bucket_t>> higher_levels;
+    std::vector<rbucket_t> lowest_level;
+    std::vector<std::unordered_map<children_t, rbucket_t>> higher_levels;
     std::vector<std::size_t> node_counts;
 
     index_t(superroot_vector_t* superroots_, std::size_t depth)
@@ -94,11 +96,19 @@ struct index_t {
         higher_levels(depth - 1),
         node_counts(depth, 0) {}
 
-    range_bucket_t& find_bucket(std::size_t l, std::size_t idx, node_ptr_t current_node) {
+    rbucket_t& find_bucket(std::size_t l, std::size_t idx, node_ptr_t current_node) {
         if (l >= higher_levels.size()) {
-            return lowest_level[idx];
+            auto& b = lowest_level[idx];
+            if (!b) {
+                b = std::make_unique<range_bucket_t>();
+            }
+            return b;
         } else {
-            return higher_levels[l][current_node->children];
+            auto& b = higher_levels[l][current_node->children];
+            if (!b) {
+                b = std::make_unique<range_bucket_t>();
+            }
+            return b;
         }
     }
 
@@ -110,11 +120,11 @@ struct index_t {
             }
         }
         for (auto& bucket : lowest_level) {
-            bucket.delete_all_ptrs(f);
+            bucket->delete_all_ptrs(f);
         }
         for (auto& map : higher_levels) {
             for (auto& kv : map) {
-                kv.second.delete_all_ptrs(f);
+                kv.second->delete_all_ptrs(f);
             }
         }
     }
@@ -199,6 +209,7 @@ class error_calculator {
         }
 
     private:
+        // XXX: align vector to better use AVX
         using delta_t = std::pair<std::vector<inexact_t>, inexact_t>;
 
         const std::size_t            _ylength;
@@ -232,6 +243,242 @@ class error_calculator {
         }
 };
 
+struct queue_entry_t;
+using qentry_t = std::unique_ptr<queue_entry_t>;
+
+struct qentry_compare {
+    bool operator()(const qentry_t& a, const qentry_t& b);
+};
+
+using queue_t      = std::priority_queue<qentry_t, std::vector<qentry_t>, qentry_compare>;
+using generation_t = std::vector<std::vector<std::size_t>>;
+
+struct queue_entry_t {
+    inexact_t   score;
+    std::size_t l;
+    std::size_t idx;
+    std::size_t gen;
+
+    queue_entry_t(inexact_t score_, std::size_t l_, std::size_t idx_, std::size_t gen_) :
+        score(score_),
+        l(l_),
+        idx(idx_),
+        gen(gen_) {}
+    virtual ~queue_entry_t() = default;
+
+    void operator()(
+            inexact_t max_error,
+            index_t* index,
+            const std::shared_ptr<transformer>& transformer,
+            const std::shared_ptr<error_calculator>& error_calc,
+            std::size_t i,
+            queue_t& queue,
+            generation_t& generation
+        ) {
+        node_ptr_t current_node = transformer->levels[l][idx];
+        std::size_t current_gen = generation[l][idx];
+
+        // check if node was already merged
+        if ((current_node != nullptr) && (gen == current_gen)) {
+            operator_impl(max_error, index, transformer, error_calc, i, current_node, queue, generation);
+        }
+    }
+
+    virtual void operator_impl(
+            inexact_t max_error,
+            index_t* index,
+            const std::shared_ptr<transformer>& transformer,
+            const std::shared_ptr<error_calculator>& error_calc,
+            std::size_t i,
+            node_ptr_t current_node,
+            queue_t& queue,
+            generation_t& generation
+        ) = 0;
+};
+
+bool qentry_compare::operator()(const qentry_t& a, const qentry_t& b) {
+    return a->score > b->score;
+}
+
+struct queue_entry_merge_t : public queue_entry_t {
+    inexact_t       dist;
+    node_ptr_t      neighbor;
+    range_bucket_t* bucket;
+
+    queue_entry_merge_t(inexact_t score_, inexact_t dist_, std::size_t l_, std::size_t idx_, std::size_t gen_, node_ptr_t neighbor_, range_bucket_t* bucket_) :
+        queue_entry_t(score_, l_, idx_, gen_),
+        dist(dist_),
+        neighbor(neighbor_),
+        bucket(bucket_) {}
+
+    virtual void operator_impl(
+            inexact_t max_error,
+            index_t* index,
+            const std::shared_ptr<transformer>& transformer,
+            const std::shared_ptr<error_calculator>& error_calc,
+            std::size_t i,
+            node_ptr_t current_node,
+            queue_t& queue,
+            generation_t& generation) override {
+        // check if merge would be in error range (i.e. does not increase error beyond current_max_error)
+        if (error_calc->is_in_range(i, l, idx, dist, max_error)) {
+            // calculate approx. error
+            error_calc->update(l, idx, dist);
+
+            // execute merge
+            transformer->link_to_parent(neighbor, l, idx);
+
+            // remove old node and mark as merged
+            delete current_node.get();
+            transformer->levels[l][idx] = nullptr;
+
+            // generate new queue entries
+            std::size_t idx_even = idx - (idx % 2);
+            if ((l > 0) && (transformer->levels[l][idx_even] == nullptr) && (transformer->levels[l][idx_even + 1] == nullptr)) {
+                queue_entry_merge_t::generate(index, transformer, error_calc, l - 1, idx >> 1, queue, generation, nullptr);
+            }
+        }
+    }
+
+    static void generate(
+            index_t* index,
+            const std::shared_ptr<transformer>& transformer,
+            const std::shared_ptr<error_calculator>& error_calc,
+            std::size_t l,
+            std::size_t idx,
+            queue_t& queue,
+            generation_t& generation,
+            range_bucket_t* bucket = nullptr) {
+        node_ptr_t current_node = transformer->levels[l][idx];
+
+        if (current_node != nullptr) {
+            if (bucket == nullptr) {
+                bucket = (index->find_bucket(l, idx, current_node)).get();
+            }
+            auto neighbors = bucket->get_nearest(current_node, std::numeric_limits<inexact_t>::infinity(), 1);
+            if (!neighbors.empty()) {
+                inexact_t error = error_calc->guess_error(l, idx, neighbors[0].second);
+                inexact_t score = error - transformer->superroot->error;
+                queue.emplace(static_cast<queue_entry_t*>(
+                        new queue_entry_merge_t(score, neighbors[0].second, l, idx, generation[l][idx], neighbors[0].first, bucket)
+                ));
+            }
+        }
+    }
+};
+
+struct queue_entry_prune_t : public queue_entry_t {
+    static constexpr std::size_t stepsize = 2;
+    static constexpr std::size_t stepmax  = 30;
+
+    static constexpr std::uint32_t masks[] = {
+        ~gen_mask( 0),
+        ~gen_mask( 1),
+        ~gen_mask( 2),
+        ~gen_mask( 3),
+        ~gen_mask( 4),
+        ~gen_mask( 5),
+        ~gen_mask( 6),
+        ~gen_mask( 7),
+        ~gen_mask( 8),
+        ~gen_mask( 9),
+        ~gen_mask(10),
+        ~gen_mask(11),
+        ~gen_mask(12),
+        ~gen_mask(13),
+        ~gen_mask(14),
+        ~gen_mask(15),
+        ~gen_mask(16),
+        ~gen_mask(17),
+        ~gen_mask(18),
+        ~gen_mask(19),
+        ~gen_mask(20),
+        ~gen_mask(21),
+        ~gen_mask(22),
+        ~gen_mask(23),
+        ~gen_mask(24),
+        ~gen_mask(25),
+        ~gen_mask(26),
+        ~gen_mask(27),
+        ~gen_mask(28),
+        ~gen_mask(29),
+        ~gen_mask(30),
+    };
+    static_assert(sizeof(masks) / sizeof(std::uint32_t) == stepmax + 1, "mask array isn't consistent!");
+
+    inexact_t   target;
+    inexact_t   dist;
+    std::size_t p;
+
+    queue_entry_prune_t(inexact_t score_, inexact_t target_, inexact_t dist_, std::size_t l_, std::size_t idx_, std::size_t gen_, std::size_t p_) :
+        queue_entry_t(score_, l_, idx_, gen_),
+        target(target_),
+        dist(dist_),
+        p(p_) {}
+
+    virtual void operator_impl(
+            inexact_t max_error,
+            index_t* index,
+            const std::shared_ptr<transformer>& transformer,
+            const std::shared_ptr<error_calculator>& error_calc,
+            std::size_t i,
+            node_ptr_t current_node,
+            queue_t& queue,
+            generation_t& generation) override {
+        if (error_calc->is_in_range(i, l, idx, dist, max_error)) {
+            error_calc->update(l, idx, dist);
+            current_node->x = target;
+
+            // invalidate old merge requests
+            ++generation[l][idx];
+
+            // generate new queue entries
+            queue_entry_prune_t::generate(index, transformer, error_calc, l, idx, queue, generation, p + stepsize);
+            queue_entry_merge_t::generate(index, transformer, error_calc, l, idx, queue, generation);
+        }
+    }
+
+    static void generate(
+            index_t* index,
+            const std::shared_ptr<transformer>& transformer,
+            const std::shared_ptr<error_calculator>& error_calc,
+            std::size_t l,
+            std::size_t idx,
+            queue_t& queue,
+            generation_t& generation,
+            std::size_t p = stepsize) {
+        node_ptr_t current_node = transformer->levels[l][idx];
+
+        if (current_node != nullptr && p <= stepmax) {
+            inexact_t target = prune_value(current_node->x, p);
+
+            if (target == current_node->x) {  // exact comparison is legal and desired here, because of the bitmask trick
+                queue_entry_prune_t::generate(index, transformer, error_calc, l, idx, queue, generation, p + stepsize);
+            } else {
+                inexact_t dist = std::abs(current_node->x - target);
+                inexact_t error = error_calc->guess_error(l, idx, dist);
+                inexact_t score = error - transformer->superroot->error;
+                score *= 100.00f; // XXX: good? bad? config?
+                queue.emplace(static_cast<queue_entry_t*>(
+                    new queue_entry_prune_t{score, target, dist, l, idx, generation[l][idx], p}
+                ));
+            }
+        }
+    }
+
+    static inexact_t prune_value(inexact_t x, std::size_t n) {
+        union {
+            inexact_t f;
+            std::uint32_t i;
+        } u;
+        static_assert(sizeof(inexact_t) == sizeof(std::uint32_t), "that mask trick isn't working!");
+        u.f = x;
+        u.i &= masks[n];
+        return u.f;
+    }
+};
+constexpr std::uint32_t queue_entry_prune_t::masks[];  // C++ is weird
+
 class engine {
     public:
         engine(std::size_t ylength, std::size_t depth, inexact_t max_error, const calc_t* base, index_t* index, const mapped_file_ptr_t& mapped_file)
@@ -262,31 +509,6 @@ class engine {
         }
 
     private:
-        struct queue_entry_t {
-            inexact_t   score;
-            inexact_t   dist;
-            std::size_t l;
-            std::size_t idx;
-            node_ptr_t  neighbor;
-
-            queue_entry_t() = default;
-
-            queue_entry_t(inexact_t score_, inexact_t dist_, std::size_t l_, std::size_t idx_, node_ptr_t neighbor_) :
-                score(score_),
-                dist(dist_),
-                l(l_),
-                idx(idx_),
-                neighbor(neighbor_) {}
-        };
-
-        struct queue_entry_compare {
-            bool operator()(const queue_entry_t& a, const queue_entry_t& b) {
-                return a.score > b.score;
-            }
-        };
-
-        using queue_t = std::priority_queue<queue_entry_t, std::vector<queue_entry_t>, queue_entry_compare>;
-
         const std::size_t                 _ylength;
         const std::size_t                 _depth;
         inexact_t                         _max_error;
@@ -298,63 +520,43 @@ class engine {
         allocator_node_t                  _alloc_node;
         std::shared_ptr<transformer>      _transformer;
         std::shared_ptr<error_calculator> _error_calc;
+        queue_t                           _queue;
 
         void run_mergeloop(std::size_t i) {
-            queue_t queue;
+            // clear queue
+            while (!_queue.empty()) {
+                _queue.pop();
+            }
+
+            // build generation counter
+            generation_t generation(_depth);
+            for (std::size_t l = 0; l < _depth; ++l) {
+                generation[l] = std::vector<std::size_t>(1u << l, 0);
+            }
 
             // fill queue with entries from lowest level
-            std::vector<std::size_t> indices(_transformer->levels[_depth - 1].size());
-            for (std::size_t idx = 0; idx < indices.size(); ++idx) {
-                indices[idx] = idx;
+            std::vector<std::pair<std::size_t, std::size_t>> indices;
+            for (std::size_t l_plus = _depth; l_plus > 0; --l_plus) {
+                std::size_t l = l_plus - 1;
+
+                for (std::size_t idx = 0; idx < _transformer->levels[l].size(); ++idx) {
+                    indices.push_back(std::make_pair(l, idx));
+                }
             }
             std::shuffle(indices.begin(), indices.end(), _rng);
-            for (auto idx : indices) {
-                std::size_t l = _depth - 1;
-                generate_queue_entries(l, idx, queue);
+            for (auto p : indices) {
+                std::size_t l = p.first;
+                std::size_t idx = p.second;
+                queue_entry_merge_t::generate(_index, _transformer, _error_calc, l, idx, _queue, generation);
+                queue_entry_prune_t::generate(_index, _transformer, _error_calc, l, idx, _queue, generation);
             }
 
             // now run merge loop
-            while (!queue.empty()) {
-                auto best = queue.top();
-                queue.pop();
+            while (!_queue.empty()) {
+                qentry_t best = std::move(const_cast<qentry_t&>(_queue.top()));
+                _queue.pop();
 
-                node_ptr_t current_node = _transformer->levels[best.l][best.idx];
-
-                // check if node was already merged and if distance is low enough
-                if (current_node != nullptr) {
-                    // check if merge would be in error range (i.e. does not increase error beyond current_max_error)
-                    if (_error_calc->is_in_range(i, best.l, best.idx, best.dist, _max_error)) {
-                        // calculate approx. error
-                        _error_calc->update(best.l, best.idx, best.dist);
-
-                        // execute merge
-                        _transformer->link_to_parent(best.neighbor, best.l, best.idx);
-
-                        // remove old node and mark as merged
-                        delete current_node.get();
-                        _transformer->levels[best.l][best.idx] = nullptr;
-
-                        // generate new queue entries
-                        std::size_t idx_even = best.idx - (best.idx % 2);
-                        if ((best.l > 0) && (_transformer->levels[best.l][idx_even] == nullptr) && (_transformer->levels[best.l][idx_even + 1] == nullptr)) {
-                            generate_queue_entries(best.l - 1, best.idx >> 1, queue);
-                        }
-                    }
-                }
-            }
-        }
-
-        void generate_queue_entries(std::size_t l, std::size_t idx, queue_t& queue) {
-            node_ptr_t current_node = _transformer->levels[l][idx];
-
-            if (current_node != nullptr) {
-                auto& bucket = _index->find_bucket(l, idx, current_node);
-                auto neighbors = bucket.get_nearest(current_node, std::numeric_limits<inexact_t>::infinity(), 1);
-                if (!neighbors.empty()) {
-                    inexact_t error = _error_calc->guess_error(l, idx, neighbors[0].second);
-                    inexact_t score = error - _transformer->superroot->error;
-                    queue.emplace(score, neighbors[0].second, l, idx, neighbors[0].first);
-                }
+                (*best)(_max_error, _index, _transformer, _error_calc, i, _queue, generation);
             }
         }
 
@@ -377,7 +579,7 @@ class engine {
                         delete current_node.get();
 
                         auto& bucket = _index->find_bucket(l, idx, node_stored);
-                        bucket.insert(node_stored);
+                        bucket->insert(node_stored);
                         ++_index->node_counts[l];
                     }
                 }
@@ -484,6 +686,7 @@ int main(int argc, char** argv) {
     });
     std::shuffle(indices.begin(), indices.end(), rng);
 
+    n = 100000;  // DEBUG
     for (std::size_t i = 0; i < n; ++i) {
         if (i % 1000 == 0) {
             print_process(&index, ylength, n, i);
