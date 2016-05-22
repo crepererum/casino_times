@@ -1,3 +1,5 @@
+#include <cassert>
+
 #include <iostream>
 #include <iterator>
 #include <memory>
@@ -298,9 +300,10 @@ class engine {
         allocator_node_t                  _alloc_node;
         std::shared_ptr<transformer>      _transformer;
         std::shared_ptr<error_calculator> _error_calc;
+        queue_t                           _queue;
 
         void run_mergeloop(std::size_t i) {
-            queue_t queue;
+            assert(queue.empty());
 
             // fill queue with entries from lowest level
             std::vector<std::size_t> indices(_transformer->levels[_depth - 1].size());
@@ -310,13 +313,13 @@ class engine {
             std::shuffle(indices.begin(), indices.end(), _rng);
             for (auto idx : indices) {
                 std::size_t l = _depth - 1;
-                generate_queue_entries(l, idx, queue);
+                generate_queue_entries(l, idx, _queue);
             }
 
             // now run merge loop
-            while (!queue.empty()) {
-                auto best = queue.top();
-                queue.pop();
+            while (!_queue.empty()) {
+                auto best = _queue.top();
+                _queue.pop();
 
                 node_ptr_t current_node = _transformer->levels[best.l][best.idx];
 
@@ -337,7 +340,7 @@ class engine {
                         // generate new queue entries
                         std::size_t idx_even = best.idx - (best.idx % 2);
                         if ((best.l > 0) && (_transformer->levels[best.l][idx_even] == nullptr) && (_transformer->levels[best.l][idx_even + 1] == nullptr)) {
-                            generate_queue_entries(best.l - 1, best.idx >> 1, queue);
+                            generate_queue_entries(best.l - 1, best.idx >> 1, _queue);
                         }
                     }
                 }
