@@ -14,8 +14,6 @@
 #include <boost/locale.hpp>
 #include <boost/program_options.hpp>
 
-#include <sparsehash/dense_hash_map>
-
 #include "parser.hpp"
 #include "utils.hpp"
 #include "wavelet_transformer.hpp"
@@ -89,18 +87,14 @@ class range_bucket_t {
 struct index_t {
     superroot_vector_t* superroots;
     std::vector<range_bucket_t> lowest_level;
-    std::vector<google::dense_hash_map<children_t, range_bucket_t>> higher_levels;
+    std::vector<std::unordered_map<children_t, range_bucket_t>> higher_levels;
     std::vector<std::size_t> node_counts;
 
     index_t(superroot_vector_t* superroots_, std::size_t depth)
         : superroots(superroots_),
         lowest_level(1 << (depth - 1)),
         higher_levels(depth - 1),
-        node_counts(depth, 0) {
-            for (std::size_t l = 0; l < depth; ++l) {
-                higher_levels[l].set_empty_key(children_t{});
-            }
-        }
+        node_counts(depth, 0) {}
 
     range_bucket_t& find_bucket(std::size_t l, std::size_t idx, node_ptr_t current_node) {
         if (l >= higher_levels.size()) {
@@ -486,18 +480,31 @@ int main(int argc, char** argv) {
     index_t index(superroots, depth);
     engine eng(ylength, depth, max_error, base, &index, findex);
     std::mt19937 rng;
-    std::size_t counter = 0;
-    std::vector<std::size_t> indices(n);
-    std::generate(indices.begin(), indices.end(), [&counter](){
-        return counter++;
-    });
+    std::vector<std::pair<std::size_t, std::size_t>> indices;
+    constexpr std::size_t blocksize = 16;
+    for (std::size_t i = 0; i < n; i += blocksize) {
+        std::size_t begin = i;
+        std::size_t end = std::min(begin + blocksize, n);
+        indices.emplace_back(std::make_pair(begin, end));
+    }
     std::shuffle(indices.begin(), indices.end(), rng);
 
-    for (std::size_t i = 0; i < n; ++i) {
-        if (i % 1000 == 0) {
-            print_process(&index, ylength, n, i);
+    std::size_t counter = 0;
+    for (std::size_t b = 0; b < indices.size(); ++b) {
+        if (b % 50 == 0) {
+            print_process(&index, ylength, n, counter);
         }
-        eng.run(indices[i]);
+
+        const auto& block = indices[b];
+        std::size_t begin = block.first;
+        std::size_t end = block.second;
+
+        for (std::size_t i = begin; i < end; ++i) {
+            __builtin_prefetch(&base[(i + 1) * ylength], 0, 0);
+            eng.run(i);
+        }
+
+        counter += (end - begin);
     }
     print_process(&index, ylength, n, n);
     std::cout << "done" << std::endl;
