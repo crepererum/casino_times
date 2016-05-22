@@ -8,6 +8,10 @@ class transformer {
         superroot_ptr_t                      superroot;
         std::vector<std::vector<node_ptr_t>> levels;
 
+        // helper for transforming tree back to data
+        std::vector<node_ptr_t> layer_a;
+        std::vector<node_ptr_t> layer_b;
+
         transformer(std::size_t ylength, std::size_t depth) :
             superroot(nullptr),
             levels(depth),
@@ -57,8 +61,8 @@ class transformer {
         void tree_to_data(calc_t* data) {
             // prepare idwt
             _mywt.output()[0] = static_cast<double>(superroot->approx);
-            std::vector<node_ptr_t> layer_a{superroot->root};
-            std::vector<node_ptr_t> layer_b;
+            layer_a = {superroot->root};
+            layer_b.clear();
             for (std::size_t l = 0; l < _depth; ++l) {
                 std::size_t width    = static_cast<std::size_t>(1) << l;
                 std::size_t outdelta = width; // same calculation
