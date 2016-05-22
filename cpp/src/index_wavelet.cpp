@@ -6,6 +6,7 @@
 #include <queue>
 #include <random>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -85,10 +86,17 @@ class range_bucket_t {
 };
 
 struct index_t {
+    using parents_slot_t     = std::vector<node_ptr_t>;
+    using superroots_slot_t  = std::vector<std::size_t>;
+    using parents_table_t    = std::unordered_map<node_ptr_t, parents_slot_t>;
+    using superroots_table_t = std::unordered_map<node_ptr_t, superroots_slot_t>;
+
     superroot_vector_t* superroots;
     std::vector<range_bucket_t> lowest_level;
     std::vector<std::unordered_map<children_t, range_bucket_t>> higher_levels;
     std::vector<std::size_t> node_counts;
+    parents_table_t parents_table;
+    superroots_table_t superroots_table;
 
     index_t(superroot_vector_t* superroots_, std::size_t depth)
         : superroots(superroots_),
@@ -128,6 +136,32 @@ struct index_t {
             static_cast<std::size_t>(0),
             std::plus<std::size_t>()
         );
+    }
+
+    void register_parent(const node_ptr_t& node, const node_ptr_t& parent) {
+        parents_table[node].emplace_back(parent);
+    }
+
+    void register_superroot(const node_ptr_t& node, std::size_t superroot) {
+        superroots_table[node].emplace_back(superroot);
+    }
+
+    const parents_slot_t* find_parents(const node_ptr_t& node) const {
+        auto it = parents_table.find(node);
+        if (it != parents_table.end()) {
+            return &(it->second);
+        } else {
+            return nullptr;
+        }
+    }
+
+    const superroots_slot_t* find_superroots(const node_ptr_t& node) const {
+        auto it = superroots_table.find(node);
+        if (it != superroots_table.end()) {
+            return &(it->second);
+        } else {
+            return nullptr;
+        }
     }
 };
 
@@ -252,7 +286,7 @@ class engine {
             _transformer->data_to_tree(_base + (i * _ylength));
             _error_calc->recalc(i);  // correct error because of floating point errors
             run_mergeloop(i);
-            drain();
+            drain(i);
             _error_calc->recalc(i);  // correct error one last time
 
             // move superroot to mapped file
@@ -364,7 +398,7 @@ class engine {
         /*
          * adds all remaining to index, without any merges
          */
-        void drain() {
+        void drain(std::size_t i) {
             // do work bottom to top, otherwise node relinking ain't working
             for (std::size_t l_plus = _depth; l_plus > 0; --l_plus) {
                 std::size_t l = l_plus - 1;
@@ -374,11 +408,23 @@ class engine {
 
                     // node might already be merged
                     if (current_node != nullptr) {
+                        // recreate node within the mapped file
                         auto node_stored = alloc_in_mapped_file(_alloc_node);
                         *node_stored = *current_node;
                         _transformer->link_to_parent(node_stored, l, idx);
                         delete current_node.get();
 
+                        // register a new parent for the child nodes
+                        if (l == 0) {
+                            _index->register_superroot(node_stored, i);
+                        }
+                        for (const auto& c : node_stored->children) {
+                            if (c) {
+                                _index->register_parent(c, node_stored);
+                            }
+                        }
+
+                        // add node to value lookup system
                         auto& bucket = _index->find_bucket(l, idx, node_stored);
                         bucket.insert(node_stored);
                         ++_index->node_counts[l];
@@ -421,6 +467,74 @@ void print_stats(const index_t* index, std::size_t n) {
 
     double sum_relative = static_cast<double>(sum_is) / static_cast<double>(sum_should);
     std::cout << "  level=X #nodes=" << sum_is << " %nodes=" << sum_relative << std::endl;
+}
+
+std::unordered_set<std::size_t> trace_up(const std::vector<node_ptr_t>& nodes, const index_t* index) {
+    std::vector<node_ptr_t> next;
+    std::unordered_set<std::size_t> srs;
+
+    for (const auto& n : nodes) {
+        auto parents = index->find_parents(n);
+        if (parents) {
+            for (const auto& p : *parents) {
+                next.push_back(p);
+            }
+        }
+
+        auto superroots = index->find_superroots(n);
+        if (superroots) {
+            for (const auto& s : *superroots) {
+                srs.insert(s);
+            }
+        }
+    }
+
+    if (!next.empty()) {
+        auto srs_next = trace_up(next, index);
+        for (const auto& s : srs_next) {
+            srs.insert(s);
+        }
+    }
+
+    return srs;
+}
+
+void trace_down(const std::vector<node_ptr_t>& nodes, const index_t* index) {
+    std::unordered_set<std::size_t> srs_set;
+    std::vector<node_ptr_t> next;
+
+    std::cout << "  #nodes=" << nodes.size() << " :" << std::flush;
+
+    for (const auto& n : nodes) {
+        auto srs = trace_up({n}, index);
+        for (const auto& s : srs) {
+            srs_set.insert(s);
+        }
+
+        if (srs.size() == 1) {
+            std::cout << " .";
+        } else {
+            std::cout << " " << (srs.size() - 1);
+        }
+        std::cout << std::flush;
+
+        for (const auto& c : n->children) {
+            if (c != nullptr) {
+                next.push_back(c);
+            }
+        }
+    }
+
+    if (srs_set.size() == 1) {
+        std::cout << " = ." << std::endl;
+
+    } else {
+        std::cout << " = " << (srs_set.size() - 1) << std::endl;
+    }
+
+    if (!next.empty()) {
+        trace_down(next, index);
+    }
 }
 
 namespace po = boost::program_options;
@@ -508,6 +622,9 @@ int main(int argc, char** argv) {
     }
     print_process(&index, ylength, n, n);
     std::cout << "done" << std::endl;
+
+    std::cout << "trace one path:" << std::endl;
+    trace_down({(*superroots)[indices[indices.size() - 1].first]->root}, &index);  // XXX: find a better example trace
 
     // free memory for sanity checking
     // DONT! only for debugging!
