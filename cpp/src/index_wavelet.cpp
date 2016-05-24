@@ -25,18 +25,16 @@ class range_bucket_t {
         range_bucket_t() = default;
 
         void insert(node_ptr_t node) {
-            auto lower = std::lower_bound(_slot.begin(), _slot.end(), node, [](node_ptr_t a, node_ptr_t b){
-                return a->x < b->x;
-            });
-            _slot.insert(lower, node);
+            const slot_entry_t entry{node->x, node};
+            auto lower = find_lower(entry);
+            _slot.insert(lower, entry);
         }
 
-        std::vector<std::pair<node_ptr_t, inexact_t>> get_nearest(node_ptr_t node, inexact_t max_dist, std::size_t max_size) {
-            auto begin  = _slot.begin();
-            auto end    = _slot.end();
-            auto center = std::lower_bound(begin, end, node, [](node_ptr_t a, node_ptr_t b) {
-                return a->x < b->x;
-            });
+        std::vector<std::pair<node_ptr_t, inexact_t>> get_nearest(node_ptr_t node, inexact_t max_dist, std::size_t max_size) const {
+            auto begin  = _slot.cbegin();
+            auto end    = _slot.cend();
+            const slot_entry_t entry{node->x, node};
+            auto center = find_lower(entry);
 
             std::vector<std::pair<node_ptr_t, inexact_t>> neighbors;
             auto it_up          = center;
@@ -45,26 +43,26 @@ class range_bucket_t {
             inexact_t dist_down = std::numeric_limits<inexact_t>::infinity();
             auto prev_begin     = std::prev(begin); // let's also hope that std::prev(begin) works
             if (it_up != end) {
-                dist_up = std::abs((*it_up)->x - node->x);
+                dist_up = std::abs(it_up->first - entry.first);
             }
             if (it_down != prev_begin) {
-                dist_down = std::abs((*it_down)->x - node->x);
+                dist_down = std::abs(it_down->first - entry.first);
             }
             while ((neighbors.size() < max_size)
                     && (((it_up != end) && (dist_up <= max_dist)) || ((it_down != prev_begin) && (dist_down <= max_dist)))) {
                 if (dist_up < dist_down) {
-                    neighbors.push_back(std::make_pair(*it_up, dist_up));
+                    neighbors.push_back(std::make_pair(it_up->second, dist_up));
                     ++it_up;
                     if (it_up != end) {
-                        dist_up = std::abs((*it_up)->x - node->x);
+                        dist_up = std::abs(it_up->first - entry.first);
                     } else {
                         dist_up = std::numeric_limits<inexact_t>::infinity();
                     }
                 } else {
-                    neighbors.push_back(std::make_pair(*it_down, dist_down));
+                    neighbors.push_back(std::make_pair(it_down->second, dist_down));
                     --it_down;
                     if (it_down != prev_begin) {
-                        dist_down = std::abs((*it_down)->x - node->x);
+                        dist_down = std::abs(it_down->first - entry.first);
                     } else {
                         dist_down = std::numeric_limits<inexact_t>::infinity();
                     }
@@ -76,13 +74,20 @@ class range_bucket_t {
 
         void delete_all_ptrs(mapped_file_ptr_t& f) {
             allocator_node_t alloc(f->get_segment_manager());
-            for (auto& node : _slot) {
-                dealloc_in_mapped_file(alloc, node);
+            for (auto& entry : _slot) {
+                dealloc_in_mapped_file(alloc, entry.second);
             }
         }
 
     private:
-        std::vector<node_ptr_t> _slot;
+        using slot_entry_t = std::pair<inexact_t, node_ptr_t>;
+        std::vector<slot_entry_t> _slot;
+
+        decltype(_slot)::const_iterator find_lower(const slot_entry_t& entry) const {
+            return std::lower_bound(_slot.cbegin(), _slot.cend(), entry, [](const slot_entry_t& a, const slot_entry_t& b){
+                return a.first < b.first;
+            });
+        }
 };
 
 struct index_t {
