@@ -8,13 +8,10 @@ class transformer {
         superroot_ptr_t                      superroot;
         std::vector<std::vector<node_ptr_t>> levels;
 
-        // helper for transforming tree back to data
-        std::vector<node_ptr_t> layer_a;
-        std::vector<node_ptr_t> layer_b;
-
         transformer(std::size_t ylength, std::size_t depth) :
             superroot(nullptr),
             levels(depth),
+            _node_cache(1 << depth),
             _ylength(ylength),
             _depth(depth),
             _mywt(std::make_shared<wavelet>("haar"), "dwt", static_cast<int>(_ylength), static_cast<int>(_depth)),
@@ -32,7 +29,7 @@ class transformer {
         superroot_ptr_t data_to_tree(const calc_t* data) {
             _mywt.run_dwt(data);
 
-            superroot = new superroot_t;
+            superroot = &_superroot_cache;
             superroot->approx = static_cast<inexact_t>(_mywt.output()[0]);
             superroot->error  = 0;
 
@@ -43,7 +40,7 @@ class transformer {
                 levels[l].clear();
 
                 for (std::size_t idx = 0; idx < width; ++idx) {
-                    node_ptr_t node  = new node_t;
+                    node_ptr_t node  = &_node_cache[outdelta + idx - 1];
                     for (std::size_t c = 0; c < n_children; ++c) {
                         node->children[c] = nullptr;
                     }
@@ -61,27 +58,27 @@ class transformer {
         void tree_to_data(calc_t* data) {
             // prepare idwt
             _mywt.output()[0] = static_cast<double>(superroot->approx);
-            layer_a = {superroot->root};
-            layer_b.clear();
+            _layer_a = {superroot->root};
+            _layer_b.clear();
             for (std::size_t l = 0; l < _depth; ++l) {
                 std::size_t width    = static_cast<std::size_t>(1) << l;
                 std::size_t outdelta = width; // same calculation
 
-                layer_b.clear();
+                _layer_b.clear();
                 for (std::size_t idx = 0; idx < width; ++idx) {
-                    node_ptr_t current_node = layer_a[idx];
+                    node_ptr_t current_node = _layer_a[idx];
                     if (current_node) {
-                        _mywt.output()[outdelta + idx] = static_cast<double>(layer_a[idx]->x) / _influence_sqrt[l];
-                        layer_b.push_back(layer_a[idx]->children[0]);
-                        layer_b.push_back(layer_a[idx]->children[1]);
+                        _mywt.output()[outdelta + idx] = static_cast<double>(_layer_a[idx]->x) / _influence_sqrt[l];
+                        _layer_b.push_back(_layer_a[idx]->children[0]);
+                        _layer_b.push_back(_layer_a[idx]->children[1]);
                     } else {
                         _mywt.output()[outdelta + idx] = 0.0;
-                        layer_b.push_back(nullptr);
-                        layer_b.push_back(nullptr);
+                        _layer_b.push_back(nullptr);
+                        _layer_b.push_back(nullptr);
                     }
                 }
 
-                std::swap(layer_a, layer_b);
+                std::swap(_layer_a, _layer_b);
             }
 
             // do idwt
@@ -106,8 +103,14 @@ class transformer {
         }
 
     private:
-        const std::size_t     _ylength;
-        const std::size_t     _depth;
-        wavelet_transform     _mywt;
-        std::vector<double>   _influence_sqrt;
+        superroot_t             _superroot_cache;
+        std::vector<node_t>     _node_cache;
+        const std::size_t       _ylength;
+        const std::size_t       _depth;
+        wavelet_transform       _mywt;
+        std::vector<double>     _influence_sqrt;
+
+        // helper for transforming tree back to data
+        std::vector<node_ptr_t> _layer_a;
+        std::vector<node_ptr_t> _layer_b;
 };

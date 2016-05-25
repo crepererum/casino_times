@@ -297,7 +297,6 @@ class engine {
             // move superroot to mapped file
             (*_index->superroots)[i] = alloc_in_mapped_file(_alloc_superroot);
             *((*_index->superroots)[i]) = *(_transformer->superroot);
-            delete _transformer->superroot.get();
 
             return _transformer->superroot;
         }
@@ -373,7 +372,6 @@ class engine {
                         _transformer->link_to_parent(best.neighbor, best.l, best.idx);
 
                         // remove old node and mark as merged
-                        delete current_node.get();
                         _transformer->levels[best.l][best.idx] = nullptr;
 
                         // generate new queue entries
@@ -417,7 +415,6 @@ class engine {
                         auto node_stored = alloc_in_mapped_file(_alloc_node);
                         *node_stored = *current_node;
                         _transformer->link_to_parent(node_stored, l, idx);
-                        delete current_node.get();
 
                         // register a new parent for the child nodes
                         if (l == 0) {
