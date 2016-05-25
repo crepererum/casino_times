@@ -58,8 +58,9 @@ class transformer {
         void tree_to_data(calc_t* data) {
             // prepare idwt
             _mywt.output()[0] = static_cast<double>(superroot->approx);
-            _layer_a = {superroot->root};
+            _layer_a.clear();
             _layer_b.clear();
+            _layer_a.emplace_back(superroot->root);
             for (std::size_t l = 0; l < _depth; ++l) {
                 std::size_t width    = static_cast<std::size_t>(1) << l;
                 std::size_t outdelta = width; // same calculation
