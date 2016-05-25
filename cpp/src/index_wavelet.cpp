@@ -22,6 +22,8 @@
 
 class range_bucket_t {
     public:
+        using neighbors_t = std::vector<std::pair<node_ptr_t, inexact_t>>;
+
         range_bucket_t() = default;
 
         void insert(node_ptr_t node) {
@@ -30,13 +32,13 @@ class range_bucket_t {
             _slot.insert(lower, entry);
         }
 
-        std::vector<std::pair<node_ptr_t, inexact_t>> get_nearest(node_ptr_t node, inexact_t max_dist, std::size_t max_size) const {
+        void get_nearest(node_ptr_t node, inexact_t max_dist, std::size_t max_size, neighbors_t& neighbors) const {
             auto begin  = _slot.cbegin();
             auto end    = _slot.cend();
             const slot_entry_t entry{node->x, node};
             auto center = find_lower(entry);
 
-            std::vector<std::pair<node_ptr_t, inexact_t>> neighbors;
+            neighbors.clear();
             auto it_up          = center;
             auto it_down        = std::prev(center);
             inexact_t dist_up   = std::numeric_limits<inexact_t>::infinity();
@@ -68,8 +70,6 @@ class range_bucket_t {
                     }
                 }
             }
-
-            return neighbors;
         }
 
         void delete_all_ptrs(mapped_file_ptr_t& f) {
@@ -339,6 +339,7 @@ class engine {
         std::shared_ptr<transformer>      _transformer;
         std::shared_ptr<error_calculator> _error_calc;
         queue_t                           _queue;
+        range_bucket_t::neighbors_t       _neighbors;
 
         void run_mergeloop(std::size_t i) {
             assert(queue.empty());
@@ -389,11 +390,11 @@ class engine {
 
             if (current_node != nullptr) {
                 auto& bucket = _index->find_bucket(l, idx, current_node);
-                auto neighbors = bucket.get_nearest(current_node, std::numeric_limits<inexact_t>::infinity(), 1);
-                if (!neighbors.empty()) {
-                    inexact_t error = _error_calc->guess_error(l, idx, neighbors[0].second);
+                bucket.get_nearest(current_node, std::numeric_limits<inexact_t>::infinity(), 1, _neighbors);
+                if (!_neighbors.empty()) {
+                    inexact_t error = _error_calc->guess_error(l, idx, _neighbors[0].second);
                     inexact_t score = error - _transformer->superroot->error;
-                    queue.emplace(score, neighbors[0].second, l, idx, neighbors[0].first);
+                    queue.emplace(score, _neighbors[0].second, l, idx, _neighbors[0].first);
                 }
             }
         }
