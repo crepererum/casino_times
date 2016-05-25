@@ -31,6 +31,17 @@ externalproject_add (
 )
 
 externalproject_add (
+    project_libtcmalloc
+    PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libtcmalloc"
+    URL "https://github.com/gperftools/gperftools/releases/download/gperftools-2.5/gperftools-2.5.tar.gz"
+    URL_HASH SHA512=3e80c0d8816425d65673cf5cff28c6801b0c675501263f830828600f37ac01199fd775c2c51c9ccfa53fd4f9eadc09f7b2c73b31d57161e2cdfee2bd1868afa7
+    CONFIGURE_COMMAND cd <SOURCE_DIR> && env "CFLAGS=${external_flags}" "CXXFLAGS=${external_flags}" ./configure --disable-cpu-profiler --disable-heap-profiler --disable-heap-checker --enable-dynamic-sized-delete-support --enable-sized-delete --enable-static --disable-shared --prefix=<INSTALL_DIR>
+    BUILD_COMMAND cd <SOURCE_DIR> && make
+    INSTALL_COMMAND cd <SOURCE_DIR> && make install
+    TEST_COMMAND ""
+)
+
+externalproject_add (
     project_wavelib
     PREFIX "${CMAKE_CURRENT_BINARY_DIR}/wavelib"
     GIT_REPOSITORY "https://github.com/rafat/wavelib.git"
@@ -80,6 +91,7 @@ include_directories (
 # lib paths
 link_directories (
     "${CMAKE_CURRENT_BINARY_DIR}/libicu/lib"
+    "${CMAKE_CURRENT_BINARY_DIR}/libtcmalloc/lib"
     "${CMAKE_CURRENT_BINARY_DIR}/wavelib/lib"
 )
 
@@ -90,6 +102,7 @@ set (
     ngrams_dep
     project_libicu
     project_libsimdpp
+    project_libtcmalloc
     project_wavelib
 )
 set (
@@ -104,6 +117,7 @@ set (
     icudata  # after: icuuc
     wavelib
     m
+    tcmalloc_minimal
 )
 
 # lib: parser
