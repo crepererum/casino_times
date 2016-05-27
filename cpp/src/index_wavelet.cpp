@@ -472,9 +472,8 @@ void print_stats(const index_t* index, std::size_t n) {
     std::cout << "  level=X #nodes=" << sum_is << " %nodes=" << sum_relative << std::endl;
 }
 
-std::unordered_set<std::size_t> trace_up(const std::vector<node_ptr_t>& nodes, const index_t* index) {
+void trace_up(const std::vector<node_ptr_t>& nodes, const index_t* index, std::unordered_set<std::size_t>& srs) {
     std::vector<node_ptr_t> next;
-    std::unordered_set<std::size_t> srs;
 
     for (const auto& n : nodes) {
         auto parents = index->find_parents(n);
@@ -493,13 +492,8 @@ std::unordered_set<std::size_t> trace_up(const std::vector<node_ptr_t>& nodes, c
     }
 
     if (!next.empty()) {
-        auto srs_next = trace_up(next, index);
-        for (const auto& s : srs_next) {
-            srs.insert(s);
-        }
+        trace_up(next, index, srs);
     }
-
-    return srs;
 }
 
 void trace_down(const std::vector<node_ptr_t>& nodes, const index_t* index) {
@@ -509,15 +503,16 @@ void trace_down(const std::vector<node_ptr_t>& nodes, const index_t* index) {
     std::cout << "  #nodes=" << nodes.size() << " :" << std::flush;
 
     for (const auto& n : nodes) {
-        auto srs = trace_up({n}, index);
-        for (const auto& s : srs) {
+        std::unordered_set<std::size_t> srs_subset;
+        trace_up({n}, index, srs_subset);
+        for (const auto& s : srs_subset) {
             srs_set.insert(s);
         }
 
-        if (srs.size() == 1) {
+        if (srs_subset.size() == 1) {
             std::cout << " .";
         } else {
-            std::cout << " " << (srs.size() - 1);
+            std::cout << " " << (srs_subset.size() - 1);
         }
         std::cout << std::flush;
 
