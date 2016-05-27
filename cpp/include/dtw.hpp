@@ -29,12 +29,15 @@ class dtw_generic {
         using indices_t       = typename T::indices_t;
         using source_t        = typename T::source_t;
 
-        dtw_generic(source_t source, std::size_t length, std::size_t r, T t = T()) :
+        dtw_generic(source_t source, std::size_t blocksize, std::size_t begin, std::size_t end, std::size_t r, T t = T()) :
             _r(r),
             _r2(_r << 1),
             _r2_plus(_r2 + 1),
             _source(source),
-            _length(length),
+            _blocksize(blocksize),
+            _begin(begin),
+            _end(end),
+            _length(_end - _begin),
             _length_minus(_length - 1),
             _length_minus_r(_length - _r),
             _store_a(_r2_plus),
@@ -43,7 +46,7 @@ class dtw_generic {
             _t(t) {}
 
         dist_t calc(std::size_t i, indices_t j0) {
-            base_t local_base_i = _t.get_base(_source, _length, i);
+            base_t local_base_i = _t.get_base(_source, _blocksize, _begin, i);
             load_to_tmp(j0);
 
             std::fill(_store_a.begin(), _store_a.end(), _t.infinity());
@@ -87,6 +90,9 @@ class dtw_generic {
         const std::size_t   _r2;
         const std::size_t   _r2_plus;
         source_t            _source;
+        const std::size_t   _blocksize;
+        const std::size_t   _begin;
+        const std::size_t   _end;
         const std::size_t   _length;
         const std::size_t   _length_minus;
         const std::size_t   _length_minus_r;
@@ -144,7 +150,7 @@ class dtw_generic {
         }
 
         void load_to_tmp(indices_t j0) {
-            bases_t local_bases_j = _t.get_bases(_source, _length, j0);
+            bases_t local_bases_j = _t.get_bases(_source, _blocksize, _begin, j0);
             for (std::size_t idx = 0; idx < _length; ++idx) {
                 _t.store_element(&_store_tmp[idx], _t.convert_multiple(local_bases_j, idx));
             }
@@ -170,12 +176,12 @@ struct dtw_impl_simple {
         return static_cast<calc_t>(bases[idx]);
     }
 
-    inline base_t get_base(source_t source, std::size_t length, std::size_t i) {
-        return source + (i * length);
+    inline base_t get_base(source_t source, std::size_t blocksize, std::size_t begin, std::size_t i) {
+        return source + (i * blocksize) + begin;
     }
 
-    inline bases_t get_bases(source_t source, std::size_t length, indices_t j0) {
-        return source + (j0 * length);
+    inline bases_t get_bases(source_t source, std::size_t blocksize, std::size_t begin, indices_t j0) {
+        return source + (j0 * blocksize) + begin;
     }
 
     inline element_t load_element(element_t* ptr) {
@@ -256,8 +262,8 @@ struct dtw_impl_vectorized {
         );
     }
 
-    inline base_t get_base(source_t source, std::size_t length, std::size_t i) {
-        return source + (i * length);
+    inline base_t get_base(source_t source, std::size_t blocksize, std::size_t begin, std::size_t i) {
+        return source + (i * blocksize) + begin;
     }
 
     inline element_t load_element(element_t* ptr) {
@@ -301,24 +307,24 @@ struct dtw_impl_vectorized {
 struct dtw_impl_vectorized_linear : dtw_impl_vectorized {
     using indices_t = std::size_t;
 
-    inline bases_t get_bases(source_t source, std::size_t length, indices_t j0) {
+    inline bases_t get_bases(source_t source, std::size_t blocksize, std::size_t begin, indices_t j0) {
         return {{
-            (source + ((j0 +  0) * length)),
-            (source + ((j0 +  1) * length)),
-            (source + ((j0 +  2) * length)),
-            (source + ((j0 +  3) * length)),
-            (source + ((j0 +  4) * length)),
-            (source + ((j0 +  5) * length)),
-            (source + ((j0 +  6) * length)),
-            (source + ((j0 +  7) * length)),
-            (source + ((j0 +  8) * length)),
-            (source + ((j0 +  9) * length)),
-            (source + ((j0 + 10) * length)),
-            (source + ((j0 + 11) * length)),
-            (source + ((j0 + 12) * length)),
-            (source + ((j0 + 13) * length)),
-            (source + ((j0 + 14) * length)),
-            (source + ((j0 + 15) * length))
+            (source + ((j0 +  0) * blocksize) + begin),
+            (source + ((j0 +  1) * blocksize) + begin),
+            (source + ((j0 +  2) * blocksize) + begin),
+            (source + ((j0 +  3) * blocksize) + begin),
+            (source + ((j0 +  4) * blocksize) + begin),
+            (source + ((j0 +  5) * blocksize) + begin),
+            (source + ((j0 +  6) * blocksize) + begin),
+            (source + ((j0 +  7) * blocksize) + begin),
+            (source + ((j0 +  8) * blocksize) + begin),
+            (source + ((j0 +  9) * blocksize) + begin),
+            (source + ((j0 + 10) * blocksize) + begin),
+            (source + ((j0 + 11) * blocksize) + begin),
+            (source + ((j0 + 12) * blocksize) + begin),
+            (source + ((j0 + 13) * blocksize) + begin),
+            (source + ((j0 + 14) * blocksize) + begin),
+            (source + ((j0 + 15) * blocksize) + begin)
         }};
     }
 };
@@ -326,24 +332,24 @@ struct dtw_impl_vectorized_linear : dtw_impl_vectorized {
 struct dtw_impl_vectorized_shuffled : dtw_impl_vectorized {
     using indices_t = const std::array<std::size_t, n>&;
 
-    inline bases_t get_bases(source_t source, std::size_t length, indices_t j0) {
+    inline bases_t get_bases(source_t source, std::size_t blocksize, std::size_t begin, indices_t j0) {
         return {{
-            (source + (std::get< 0>(j0) * length)),
-            (source + (std::get< 1>(j0) * length)),
-            (source + (std::get< 2>(j0) * length)),
-            (source + (std::get< 3>(j0) * length)),
-            (source + (std::get< 4>(j0) * length)),
-            (source + (std::get< 5>(j0) * length)),
-            (source + (std::get< 6>(j0) * length)),
-            (source + (std::get< 7>(j0) * length)),
-            (source + (std::get< 8>(j0) * length)),
-            (source + (std::get< 9>(j0) * length)),
-            (source + (std::get<10>(j0) * length)),
-            (source + (std::get<11>(j0) * length)),
-            (source + (std::get<12>(j0) * length)),
-            (source + (std::get<13>(j0) * length)),
-            (source + (std::get<14>(j0) * length)),
-            (source + (std::get<15>(j0) * length)),
+            (source + (std::get< 0>(j0) * blocksize) + begin),
+            (source + (std::get< 1>(j0) * blocksize) + begin),
+            (source + (std::get< 2>(j0) * blocksize) + begin),
+            (source + (std::get< 3>(j0) * blocksize) + begin),
+            (source + (std::get< 4>(j0) * blocksize) + begin),
+            (source + (std::get< 5>(j0) * blocksize) + begin),
+            (source + (std::get< 6>(j0) * blocksize) + begin),
+            (source + (std::get< 7>(j0) * blocksize) + begin),
+            (source + (std::get< 8>(j0) * blocksize) + begin),
+            (source + (std::get< 9>(j0) * blocksize) + begin),
+            (source + (std::get<10>(j0) * blocksize) + begin),
+            (source + (std::get<11>(j0) * blocksize) + begin),
+            (source + (std::get<12>(j0) * blocksize) + begin),
+            (source + (std::get<13>(j0) * blocksize) + begin),
+            (source + (std::get<14>(j0) * blocksize) + begin),
+            (source + (std::get<15>(j0) * blocksize) + begin),
         }};
     }
 };

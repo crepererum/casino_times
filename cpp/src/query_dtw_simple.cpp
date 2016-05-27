@@ -36,11 +36,15 @@ int main(int argc, char** argv) {
     std::string query;
     std::size_t r;
     std::size_t limit;
+    year_t begin;
+    year_t end;
     year_t ylength;
     auto desc = po_create_desc();
     desc.add_options()
         ("binary", po::value(&fname_binary)->required(), "input binary file for var")
         ("map", po::value(&fname_map)->required(), "ngram map file to read")
+        ("begin", po::value(&begin), "first year that should be queried (starts at 0), defaults to 0")
+        ("end", po::value(&end), "end of the year range (last year + 1), defaults to ylength")
         ("ylength", po::value(&ylength)->required(), "number of years to store")
         ("r", po::value(&r)->required(), "radius of Sakoe-Chiba Band")
         ("limit", po::value(&limit)->required(), "number of ngrams to look for")
@@ -56,8 +60,22 @@ int main(int argc, char** argv) {
         std::cerr << "ylength has to be a power of 2!" << std::endl;
         return 1;
     }
-    if (r > (ylength >> 1)) {
-        std::cerr << "r has to be <= ylength/2!" << std::endl;
+    if (!vm.count("begin")) {
+        begin = 0;
+    }
+    if (!vm.count("end")) {
+        end = ylength;
+    }
+    if (end <= begin) {
+        std::cerr << "end has to be greater than begin!" << std::endl;
+        return 1;
+    }
+    if (end > ylength) {
+        std::cerr << "end has to be at max ylength!" << std::endl;
+        return 1;
+    }
+    if (r > ((end - begin) >> 1)) {
+        std::cerr << "r has to be <= (end - begin)/2!" << std::endl;
         return 1;
     }
 
@@ -86,7 +104,7 @@ int main(int argc, char** argv) {
     std::size_t n_over = n % static_cast<std::size_t>(dtw_vectorized_linear::n);
     std::size_t n_good = n - n_over;
 
-    dtw_vectorized_linear mydtw_vectorized(base, ylength, r);
+    dtw_vectorized_linear mydtw_vectorized(base, ylength, begin, end, r);
     for (std::size_t j = 0; j < n_good; j += dtw_vectorized_linear::n) {
         auto v_results = mydtw_vectorized.calc(i, j);
 
@@ -98,7 +116,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    dtw_simple mydtw_simple(base, ylength, r);
+    dtw_simple mydtw_simple(base, ylength, begin, end, r);
     for (std::size_t j = n_good; j < n; ++j) {
         distances[j] = std::make_pair(j, mydtw_simple.calc(i, j));
     }
@@ -140,7 +158,7 @@ int main(int argc, char** argv) {
             << " | "
             << std::setw(colw1) << distances[j].first
             << " | "
-            << std::setw(colw2) << std::sqrt(distances[j].second)
+            << std::setw(colw2) << (std::sqrt(distances[j].second) / static_cast<calc_t>(end - begin))
             << " |"
             << std::endl;
     }

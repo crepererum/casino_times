@@ -167,7 +167,7 @@ class temp_t {
     public:
         static constexpr std::size_t max_buffer_size = 128;
 
-        temp_t(const calc_t* base, year_t ylength, std::size_t r, std::size_t i): _mydtw_simple(base, ylength, r), _mydtw_vectorized(base, ylength, r), _i(i) {
+        temp_t(const calc_t* base, year_t ylength, std::size_t r, std::size_t i): _mydtw_simple(base, ylength, 0, ylength, r), _mydtw_vectorized(base, ylength, 0, ylength, r), _i(i) {
             _buffer.reserve(max_buffer_size);
         }
 
@@ -417,7 +417,7 @@ int main(int argc, char** argv) {
             << " | "
             << std::setw(colw1) << element.idx
             << " | "
-            << std::setw(colw2) << element.dist
+            << std::setw(colw2) << (element.dist / static_cast<calc_t>(ylength))
             << " |"
             << std::endl;
     }

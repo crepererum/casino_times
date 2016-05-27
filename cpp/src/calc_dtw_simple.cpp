@@ -30,11 +30,15 @@ int main(int argc, char** argv) {
     std::string fname_out;
     std::string query;
     std::size_t r;
+    year_t begin;
+    year_t end;
     year_t ylength;
     auto desc = po_create_desc();
     desc.add_options()
         ("binary",  po::value(&fname_binary)->required(), "input binary file for var")
         ("map",     po::value(&fname_map)->required(),    "ngram map file to read")
+        ("begin", po::value(&begin), "first year that should be queried (starts at 0), defaults to 0")
+        ("end", po::value(&end), "end of the year range (last year + 1), defaults to ylength")
         ("ylength", po::value(&ylength)->required(),      "number of years to store")
         ("r",       po::value(&r)->required(),            "radius of Sakoe-Chiba Band")
         ("query",   po::value(&query)->required(),        "query ngram")
@@ -50,8 +54,22 @@ int main(int argc, char** argv) {
         std::cerr << "ylength has to be a power of 2!" << std::endl;
         return 1;
     }
-    if (r > (ylength >> 1)) {
-        std::cerr << "r has to be <= ylength/2!" << std::endl;
+    if (!vm.count("begin")) {
+        begin = 0;
+    }
+    if (!vm.count("end")) {
+        end = ylength;
+    }
+    if (end <= begin) {
+        std::cerr << "end has to be greater than begin!" << std::endl;
+        return 1;
+    }
+    if (end > ylength) {
+        std::cerr << "end has to be at max ylength!" << std::endl;
+        return 1;
+    }
+    if (r > ((end - begin) >> 1)) {
+        std::cerr << "r has to be <= (end - begin)/2!" << std::endl;
         return 1;
     }
 
@@ -82,8 +100,8 @@ int main(int argc, char** argv) {
     }
     auto base_out = reinterpret_cast<calc_t*>(output.data());
 
-    dtw_simple mydtw_simple(base_in, ylength, r);
+    dtw_simple mydtw_simple(base_in, ylength, begin, end, r);
     for (std::size_t j = 0; j < n; ++j) {
-        base_out[j] = std::sqrt(mydtw_simple.calc(i, j));
+        base_out[j] = (std::sqrt(mydtw_simple.calc(i, j)) / static_cast<calc_t>(end - begin));
     }
 }
