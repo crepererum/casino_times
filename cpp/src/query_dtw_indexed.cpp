@@ -417,7 +417,7 @@ int main(int argc, char** argv) {
             << " | "
             << std::setw(colw1) << element.idx
             << " | "
-            << std::setw(colw2) << (element.dist / static_cast<calc_t>(ylength))
+            << std::setw(colw2) << (element.dist / std::sqrt(static_cast<calc_t>(ylength)))
             << " |"
             << std::endl;
     }

@@ -158,7 +158,7 @@ int main(int argc, char** argv) {
             << " | "
             << std::setw(colw1) << distances[j].first
             << " | "
-            << std::setw(colw2) << (std::sqrt(distances[j].second) / static_cast<calc_t>(end - begin))
+            << std::setw(colw2) << (std::sqrt(distances[j].second / static_cast<calc_t>(end - begin)))
             << " |"
             << std::endl;
     }
