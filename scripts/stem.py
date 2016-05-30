@@ -27,7 +27,15 @@ def fix_spelling(word):
 
 for ngram in args.fin:
     ngram_stripped = ngram.strip()
-    ngram_corrected = ngram_stripped  #fix_spelling(ngram_stripped)
-    ngram_lem = wnl.lemmatize(ngram_corrected, 'v')
-    ngram_stem = sbs.stem(ngram_lem)
-    args.fout.write('{} -> {}\n'.format(ngram_stripped, ngram_stem))
+    words = ngram_stripped.split(' ')
+    words_corrected = words  #fix_spelling(...)
+    words_lem = (
+        wnl.lemmatize(w, 'v')
+        for w in words_corrected
+    )
+    words_stem = (
+        sbs.stem(w)
+        for w in words_lem
+    )
+    ngram_final = ' '.join(words_stem)
+    args.fout.write('{} -> {}\n'.format(ngram_stripped, ngram_final))
