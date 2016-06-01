@@ -3,21 +3,22 @@
 set -euo pipefail
 
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+datadir=$dir/../data
 
 letter=$1
 ystart=1753
 ylength=256
 prune_threshold=1000
-input_file=$dir/../data/googlebooks-eng-all-1gram-20120701-$letter
-map_raw=$dir/../data/$letter-raw.map
-map_filtered=$dir/../data/$letter-filtered.map
-map_normal=$dir/../data/$letter-normalized.map
-map_stems=$dir/../data/$letter-stems.map
-map_final=$dir/../data/$letter-final.map
-trans_stem=$dir/../data/$letter-stems.trans
+input_file=$datadir/googlebooks-eng-all-1gram-20120701-$letter
+map_raw=$datadir/$letter-raw.map
+map_filtered=$datadir/$letter-filtered.map
+map_normal=$datadir/$letter-normalized.map
+map_stems=$datadir/$letter-stems.map
+map_final=$datadir/$letter-final.map
+trans_stem=$datadir/$letter-stems.trans
 
-storage_pre_v0=$dir/../data/${letter}-v0.data
-storage_pre_v1=$dir/../data/${letter}-v1.data
+storage_pre_v0=$datadir/${letter}-v0.data
+storage_pre_v1=$datadir/${letter}-v1.data
 
 venv_python=~/venv3.5/bin/python
 
