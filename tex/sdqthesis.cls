@@ -1,6 +1,6 @@
 %% LaTeX2e class for student theses
 %% sdthesis.cls
-%% 
+%%
 %% Karlsruhe Institute of Technology
 %% Institute for Program Structures and Data Organization
 %% Chair for Software Design and Quality (SDQ)
@@ -83,6 +83,13 @@
 %% | Title page |
 %% --------------
 
+\RequirePackage{tikz}
+\newcommand{\diameter}{15}
+\newcommand{\xone}{-15}
+\newcommand{\xtwo}{145}
+\newcommand{\yone}{25}
+\newcommand{\ytwo}{-243}
+
 % Logos
 \newcommand{\thegrouplogo}{sdqlogo}
 \newcommand{\grouplogo}[1]{\renewcommand{\thegrouplogo}{#1}}
@@ -90,16 +97,28 @@
 \newcommand{\nogrouplogo}{\renewcommand{\printgrouplogo}{}}
 
 \titlehead{%
+\begin{tikzpicture}[overlay]
+\draw[color=gray]
+ 		 (\xone mm, \yone mm)
+  -- (\xtwo mm, \yone mm)
+ arc (90:0:\diameter mm)
+  -- (\xtwo mm + \diameter mm , \ytwo mm)
+	-- (\xone mm + \diameter mm , \ytwo mm)
+ arc (270:180:\diameter mm)
+	-- (\xone mm, \yone mm);
+\end{tikzpicture}
 % KIT logo german/english
+\begin{center}
 \iflanguage{ngerman}
-{\includegraphics[height=1.8cm]{logos/kitlogo_de_cmyk}}
-{\includegraphics[height=1.8cm]{logos/kitlogo_en_cmyk}}
-\hfill
+{\includegraphics[height=2.8cm]{logos/kitlogo_de_cmyk}}
+{\includegraphics[height=2.8cm]{logos/kitlogo_en_cmyk}}
+\end{center}
+%\hfill
 % SDQ logo
-\printgrouplogo
-\ThisCenterWallPaper{1}{title-background.pdf}
+%\printgrouplogo
+%\ThisCenterWallPaper{1}{title-background.pdf}
 }
-		
+
 %
 \setkomafont{title}{\huge\sffamily\bfseries}
 \setkomafont{subtitle}{\normalfont\large}
@@ -115,8 +134,8 @@
 \newcommand{\thereviewertwo}{}
 \newcommand{\theadvisorone}{}
 \newcommand{\theadvisortwo}{}
-\newcommand{\theeditstart}{}
-\newcommand{\theeditend}{}
+\newcommand{\thesubmissiondate}{}
+\newcommand{\thepresentationdate}{}
 
 %% formatting commands for titlepage
 \newcommand{\thesistype}[1]{\subtitle{\vskip2em #1 \iflanguage{english}{of}{von}}%
@@ -126,13 +145,8 @@
 \newcommand{\reviewertwo}[1]{\renewcommand{\thereviewertwo}{#1}}
 \newcommand{\advisorone}[1]{\renewcommand{\theadvisorone}{#1}}
 \newcommand{\advisortwo}[1]{\renewcommand{\theadvisortwo}{#1}}
-
-\newcommand{\editingtime}[2]{%
-\renewcommand{\theeditstart}{#1}%
-\renewcommand{\theeditend}{#2}%
-%% do not show the date
-\date{}
-}
+\newcommand{\submissiondate}[1]{\renewcommand{\thesubmissiondate}{#1}\date{}}
+\newcommand{\presentationdate}[1]{\renewcommand{\thepresentationdate}{#1}\date{}}
 
 \newcommand{\settitle}{%
 \publishers{%
@@ -141,25 +155,27 @@
 {an der Fakultät für Informatik}\\
 \theinstitute\\[2em]
 \begin{tabular}{l l}
-  \iflanguage{english}{Reviewer}{Erstgutachter}: & \thereviewerone\\
-  \iflanguage{english}{Second reviewer}{Zweitgutachter}: & \thereviewertwo\\
-  \iflanguage{english}{Advisor}{Betreuender Mitarbeiter}: &  \theadvisorone\\
-  % if there is no second advisor, do not output this line
-  \ifthenelse{\equal{\theadvisortwo}{}}{}{%
-  \iflanguage{english}{Second advisor}{Zweiter betreuender Mitarbeiter}: & \theadvisortwo\\
-  }
+    \iflanguage{english}{Reviewer}{Erstgutachter}: & \thereviewerone\\
+    \iflanguage{english}{Second reviewer}{Zweitgutachter}: & \thereviewertwo\\
+    \iflanguage{english}{Advisor}{Betreuender Mitarbeiter}: &  \theadvisorone\\
+    % if there is no second advisor, do not output this line
+    \ifthenelse{\equal{\theadvisortwo}{}}{}{%
+    \iflanguage{english}{Second advisor}{Zweiter betreuender Mitarbeiter}: & \theadvisortwo\\
+    }
+    \noalign{\vskip2em}
+    Submission Date: & \thesubmissiondate\\
+    Presentation Date: & \thepresentationdate\\
 \end{tabular}
-\vskip2em
-\theeditstart{} -- \theeditend
 }
 }
+
 
 %% -----------------------------
 %% | Abstract/Acknowledgements |
 %% -----------------------------
 
 \newcommand{\abstract}[1][\abstractname]{\chapter*{#1}}
-\newcommand{\Abstract}[1][\abstractname]{\chapter*{#1}\addcontentsline{toc}{chapter}{#1}} 
+\newcommand{\Abstract}[1][\abstractname]{\chapter*{#1}\addcontentsline{toc}{chapter}{#1}}
 
 \def\ackname{Acknowledgments}
 \def\abstractname{Abstract}
@@ -235,7 +251,7 @@
 
 % PDF specific packages
 \RequirePackage[hyphens]{url}
-\RequirePackage[breaklinks,colorlinks=false]{hyperref}
+\RequirePackage[breaklinks,colorlinks=false,linktoc=all,final]{hyperref}
 \newcommand\setpdf{\hypersetup{%
     pdftitle={\thethesistype},%
     pdfsubject={\@title},%
