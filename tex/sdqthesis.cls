@@ -235,11 +235,12 @@
 \setkeys{Gin}{draft=false}
 
 % % Mathematics package
-% \RequirePackage{amsmath}
-% \let\openbox\relax
-% \RequirePackage{amsthm}
-% \RequirePackage{amssymb}
-% \RequirePackage{mathtools}
+\RequirePackage{amsmath}
+\let\openbox\relax
+\RequirePackage{amsthm}
+\RequirePackage{amssymb}
+\RequirePackage{mathtools}
+\RequirePackage{siunitx}
 
 % appendix
 \RequirePackage[toc,title,header]{appendix}

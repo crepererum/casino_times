@@ -1,0 +1,59 @@
+\chapter{Baseline}
+\label{ch:baseline}
+
+\section{Data}
+\label{sec:baseline:data}
+
+\begin{figure}
+    \centering
+    \input{figures/clean_up_sums.tex}
+    \caption{Relative amount of pruned data per letter}
+    \label{fig:clean_up_sums}
+\end{figure}
+
+We perform the following clean up steps:
+
+\begin{enumerate}
+\itemsep0em
+\item download and parsing
+\item string filtering
+\item string normalization
+\item word normalization
+\item pruning
+\end{enumerate}
+
+Note that swapping the string-based steps does not lead a different output. \autoref{fig:clean_up_sums} show how much data is pruned by every step. The exact numbers can be found in \autoref{tab:clean_up_numbers}.
+
+\subsection{Download and Parsing}
+\label{ssec:baseline:data:download}
+As a first step we download the raw data from the Google server. A complete list of download URLs can be obtained here:
+
+\url{https://storage.googleapis.com/books/ngrams/books/datasetsv2.html}
+
+The data is mangled by a high-performance C++ implementation to speed-up the upcoming steps. During the first steps, only the nGram content is required without any knowledge of the actual time series data. We exploit this fact and delay the actual parsing and storage of the time series until the data is required and focus on the handling of the string data as long as possible.
+
+\subsection{String filtering}
+\label{ssec:baseline:data:filter}
+It seems that the nGrams that Google extracted does not only contain pure words but also punctuation characters and word classes. To simplify storage of the strings and because our users are not interested in searching for whole word types, we filter out all entries that contain characters of the following class:
+
+\code{\[_.,!'0-9\]}
+
+\subsection{String Normalization}
+\label{ssec:baseline:data:snorm}
+Since the data the nGrams are described by Unicode strings, there may exist string describing the same content. We apply NFKC normalization as described in \cite{unicode8annex15} to solve this issue. Furthermore we lowercase all inputs with respect to the Unicode standard. If this procedure will lead to duplicate nGrams, they are joined by adding the coresponding time series data.
+
+Notice that the lowercase transformation may not work as expected for other languages than English since it may lead to a lose of important information.
+
+\subsection{Word Normalization}
+\label{ssec:baseline:data:wnorm}
+The words forming the nGrams exist in multiple variants, e.g. different terms for verbs or singular and plural form for nouns. Naturally the resulting time series are very similar and do not contain valuable information, neither for our algorithms nor for a human analyst. We solve this issue by applying the WordNet lemmatizer (\cite{wordnet}) and afterwards the snowball stemmer (\cite{porter2}) to all words. In case of same output nGrams the related time series are added again.
+
+As for the former transformation step be aware of the language problem. Other languages may require other word normalization techniques. Also there may be more advanced techniques that exploit the knowledge of the entire nGram instead of single words.
+
+We decided not to run any OCR (optical character recognization) error recognization since we are not aware of any general purpose approach that does not transform rare words or names like a na\"{\i}ve spell checker would do.
+
+\subsection{Pruning}
+\label{ssec:baseline:data:prune}
+The original data sets contains a lot of very rare nGrams that, in our opinion, do not provide enough statistical information to be considered during the further analysis. The same applies to all nGrams for the early years that are contained in the data. We decided to only use the last \num{256} years of the time series data and that we drop all nGrams where the related match count time series is too small, or in mathematical terms where $\sum_{1753 \leq y \leq 2008} v_{0, y} < 1000$ ($v_0$ is the "match count") applies. Notice that this is the first step where the actual time series content is required. Therefore it is also the first step where we parse the time series data for all nGram strings which survived up to this point.
+
+The selection of the time range of \num{256} years has other advantages apart from the pure pruning. Since it is a power of \num{2} it is easier to apply many transformations (e.g. Fourier or Discrete Wavelet Transformation) to it without the need to think about and justify additional edge case handling.
