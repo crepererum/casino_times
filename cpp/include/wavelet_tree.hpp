@@ -12,7 +12,11 @@
 #include <boost/locale.hpp>
 #include <boost/unordered_map.hpp>
 
+#include <half.hpp>
+
 #include "parser.hpp"
+
+using half_float::half;
 
 constexpr std::size_t alloc_nodes = 1024 * 1024;
 constexpr std::size_t n_children  = 2;
@@ -76,16 +80,17 @@ using superroots_table_t        = boost::unordered_map<node_ptr_t, superroot_vec
 using children_t                = std::array<node_ptr_t, n_children>;
 
 using inexact_t = float;
+using approx_t  = half;
 
 struct superroot_t {
     node_ptr_t root;
-    inexact_t  approx;
+    approx_t   approx;
     inexact_t  error;
 };
 
 struct __attribute__((packed)) node_t {
     children_t children;
-    inexact_t  x;
+    approx_t   x;
 };
 
 namespace std {

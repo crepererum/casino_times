@@ -8,6 +8,18 @@ project (ngrams)
 
 # bunch of external projects
 set (external_flags "-fPIC -fdata-sections -ffunction-sections")
+
+externalproject_add (
+    project_half
+    PREFIX "${CMAKE_CURRENT_BINARY_DIR}/half"
+    URL "http://downloads.sourceforge.net/project/half/half/1.11.0/half-1.11.0.zip"
+    URL_HASH SHA512=e8c21a4a596482d0d32ee085140dd34b24ba3088fe50096557f5ac3d1f3be1b826b58161452cb115cbd31534fba9d5116ddcbd70b1cd0486a856cebbe0880b30
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/include <INSTALL_DIR>/include
+    TEST_COMMAND ""
+)
+
 externalproject_add (
     project_libicu
     PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libicu"
@@ -84,6 +96,7 @@ include_directories (
 
 include_directories (
     SYSTEM
+    "${CMAKE_CURRENT_BINARY_DIR}/half/include"
     "${CMAKE_CURRENT_BINARY_DIR}/libsimdpp"
     "${CMAKE_CURRENT_BINARY_DIR}/wavelib/include"
 )
