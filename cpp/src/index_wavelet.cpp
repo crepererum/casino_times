@@ -91,23 +91,47 @@ class range_bucket_t {
 };
 
 struct index_t {
-    using parents_slot_t     = std::vector<node_ptr_t>;
-    using superroots_slot_t  = std::vector<std::size_t>;
-    using parents_table_t    = std::unordered_map<node_ptr_t, parents_slot_t>;
-    using superroots_table_t = std::unordered_map<node_ptr_t, superroots_slot_t>;
-
     superroot_vector_t* superroots;
+    parents_table_t*    parents_table;
+    superroots_table_t* superroots_table;
+
+    allocator_node_ptr_t      alloc_node_ptr;
+    allocator_superroot_ptr_t alloc_superroot_ptr;
+
     std::vector<range_bucket_t> lowest_level;
     std::vector<std::unordered_map<children_t, range_bucket_t>> higher_levels;
     std::vector<std::size_t> node_counts;
-    parents_table_t parents_table;
-    superroots_table_t superroots_table;
 
-    index_t(superroot_vector_t* superroots_, std::size_t depth)
-        : superroots(superroots_),
+    index_t(std::shared_ptr<boost::interprocess::managed_mapped_file> findex, std::size_t depth, std::size_t n)
+        : alloc_node_ptr(findex->get_segment_manager()),
+        alloc_superroot_ptr(findex->get_segment_manager()),
         lowest_level(1 << (depth - 1)),
         higher_levels(depth - 1),
-        node_counts(depth, 0) {}
+        node_counts(depth, 0) {
+
+        void* anchor  = findex->construct<std::uint8_t>("hash_anchor")();
+
+        superroots    = findex->construct<superroot_vector_t>("superroots")(
+            n,
+            alloc_superroot_ptr
+        );
+
+        allocator_node_vector_t alloc_node_vector(findex->get_segment_manager());
+        parents_table = findex->construct<parents_table_t>("parents_table")(
+            0,
+            offset_hash<node_t>{anchor},
+            std::equal_to<node_ptr_t>{},
+            alloc_node_vector
+        );
+
+        allocator_superroot_vector_t alloc_superroot_vector(findex->get_segment_manager());
+        superroots_table = findex->construct<superroots_table_t>("superroots_table")(
+            0,
+            offset_hash<node_t>{anchor},
+            std::equal_to<node_ptr_t>{},
+            alloc_superroot_vector
+        );
+    }
 
     range_bucket_t& find_bucket(std::size_t l, std::size_t idx, node_ptr_t current_node) {
         if (l >= higher_levels.size()) {
@@ -144,25 +168,35 @@ struct index_t {
     }
 
     void register_parent(const node_ptr_t& node, const node_ptr_t& parent) {
-        parents_table[node].emplace_back(parent);
+        auto it = parents_table->find(node);
+        if (it == parents_table->end()) {
+            bool tmp;
+            std::tie(it, tmp) = parents_table->emplace(std::make_pair(node, node_vector_t{0, alloc_node_ptr}));
+        }
+        it->second.emplace_back(parent);
     }
 
-    void register_superroot(const node_ptr_t& node, std::size_t superroot) {
-        superroots_table[node].emplace_back(superroot);
+    void register_superroot(const node_ptr_t& node, const superroot_ptr_t& superroot) {
+        auto it = superroots_table->find(node);
+        if (it == superroots_table->end()) {
+            bool tmp;
+            std::tie(it, tmp) = superroots_table->emplace(std::make_pair(node, superroot_vector_t{0, alloc_superroot_ptr}));
+        }
+        it->second.emplace_back(superroot);
     }
 
-    const parents_slot_t* find_parents(const node_ptr_t& node) const {
-        auto it = parents_table.find(node);
-        if (it != parents_table.end()) {
+    const node_vector_t* find_parents(const node_ptr_t& node) const {
+        auto it = parents_table->find(node);
+        if (it != parents_table->end()) {
             return &(it->second);
         } else {
             return nullptr;
         }
     }
 
-    const superroots_slot_t* find_superroots(const node_ptr_t& node) const {
-        auto it = superroots_table.find(node);
-        if (it != superroots_table.end()) {
+    const superroot_vector_t* find_superroots(const node_ptr_t& node) const {
+        auto it = superroots_table->find(node);
+        if (it != superroots_table->end()) {
             return &(it->second);
         } else {
             return nullptr;
@@ -419,7 +453,7 @@ class engine {
 
                         // register a new parent for the child nodes
                         if (l == 0) {
-                            _index->register_superroot(node_stored, i);
+                            _index->register_superroot(node_stored, (*(_index->superroots))[i]);
                         }
                         for (const auto& c : node_stored->children) {
                             if (c) {
@@ -472,7 +506,7 @@ void print_stats(const index_t* index, std::size_t n) {
     std::cout << "  level=X #nodes=" << sum_is << " %nodes=" << sum_relative << std::endl;
 }
 
-void trace_up(const std::vector<node_ptr_t>& nodes, const index_t* index, std::unordered_set<std::size_t>& srs) {
+void trace_up(const std::vector<node_ptr_t>& nodes, const index_t* index, std::unordered_set<superroot_ptr_t>& srs) {
     std::vector<node_ptr_t> next;
 
     for (const auto& n : nodes) {
@@ -497,13 +531,13 @@ void trace_up(const std::vector<node_ptr_t>& nodes, const index_t* index, std::u
 }
 
 void trace_down(const std::vector<node_ptr_t>& nodes, const index_t* index) {
-    std::unordered_set<std::size_t> srs_set;
+    std::unordered_set<superroot_ptr_t> srs_set;
     std::vector<node_ptr_t> next;
 
     std::cout << "  #nodes=" << nodes.size() << " :" << std::flush;
 
     for (const auto& n : nodes) {
-        std::unordered_set<std::size_t> srs_subset;
+        std::unordered_set<superroot_ptr_t> srs_subset;
         trace_up({n}, index, srs_subset);
         for (const auto& s : srs_subset) {
             srs_set.insert(s);
@@ -582,14 +616,11 @@ int main(int argc, char** argv) {
         fname_index.c_str(),
         index_size
     );
-    auto segment_manager = findex->get_segment_manager();
-    allocator_superroot_ptr_t allocator_superroot(segment_manager);
-    auto superroots = findex->construct<superroot_vector_t>("superroots")(n, allocator_superroot);
     std::cout << "done" << std::endl;
 
     std::cout << "build and merge trees" << std::endl;
     std::size_t depth = power_of_2(ylength);
-    index_t index(superroots, depth);
+    index_t index(findex, depth, n);
     engine eng(ylength, depth, max_error, base, &index, findex);
     std::mt19937 rng;
     std::vector<std::pair<std::size_t, std::size_t>> indices;
@@ -622,7 +653,7 @@ int main(int argc, char** argv) {
     std::cout << "done" << std::endl;
 
     std::cout << "trace one path:" << std::endl;
-    trace_down({(*superroots)[indices[indices.size() - 1].first]->root}, &index);  // XXX: find a better example trace
+    trace_down({(*index.superroots)[indices[indices.size() - 1].first]->root}, &index);  // XXX: find a better example trace
 
     // free memory for sanity checking
     // DONT! only for debugging!
