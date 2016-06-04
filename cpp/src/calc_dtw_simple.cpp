@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
     ;
 
     po::variables_map vm;
-    if (po_fill_vm(desc, vm, argc, argv, "calc_dtw_simple")) {
+    if (po_fill_vm(desc, vm, argc, argv, "calc_dtw_simple") != 0) {
         return 1;
     }
 
@@ -54,10 +54,10 @@ int main(int argc, char** argv) {
         std::cerr << "ylength has to be a power of 2!" << std::endl;
         return 1;
     }
-    if (!vm.count("begin")) {
+    if (vm.count("begin") == 0u) {
         begin = 0;
     }
-    if (!vm.count("end")) {
+    if (vm.count("end") == 0u) {
         end = ylength;
     }
     if (end <= begin) {

@@ -19,7 +19,7 @@ constexpr std::size_t n_children  = 2;
 
 template <typename T>
 struct offset_hash {
-    offset_hash(void* anchor_) : anchor(anchor_) {}
+    explicit offset_hash(void* anchor_) : anchor(anchor_) {}
 
     size_t operator()(const boost::interprocess::offset_ptr<T>& obj) const {
         union {

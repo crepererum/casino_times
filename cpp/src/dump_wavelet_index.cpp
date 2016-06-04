@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
     ;
 
     po::variables_map vm;
-    if (po_fill_vm(desc, vm, argc, argv, "dump_wavelet_index")) {
+    if (po_fill_vm(desc, vm, argc, argv, "dump_wavelet_index") != 0) {
         return 1;
     }
 

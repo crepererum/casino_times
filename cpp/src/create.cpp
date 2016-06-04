@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
     ;
 
     po::variables_map vm;
-    if (po_fill_vm(desc, vm, argc, argv, "create")) {
+    if (po_fill_vm(desc, vm, argc, argv, "create") != 0) {
         return 1;
     }
 

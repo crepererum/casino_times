@@ -105,7 +105,7 @@ struct index_t {
     index_t(std::shared_ptr<boost::interprocess::managed_mapped_file> findex, std::size_t depth, std::size_t n)
         : alloc_node_ptr(findex->get_segment_manager()),
         alloc_superroot_ptr(findex->get_segment_manager()),
-        lowest_level(1 << (depth - 1)),
+        lowest_level(std::size_t{1} << (depth - 1)),
         higher_levels(depth - 1),
         node_counts(depth, 0) {
 
