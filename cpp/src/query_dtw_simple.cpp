@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
 
     std::string fname_binary;
     std::string fname_map;
-    std::string query;
+    std::vector<std::string> query;
     std::size_t r;
     std::size_t limit;
     year_t begin;
@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
         ("ylength", po::value(&ylength)->required(), "number of years to store")
         ("r", po::value(&r)->required(), "radius of Sakoe-Chiba Band")
         ("limit", po::value(&limit)->required(), "number of ngrams to look for")
-        ("query", po::value(&query)->required(), "query ngram")
+        ("query", po::value(&query)->required()->multitoken(), "query ngram")
     ;
 
     po::variables_map vm;
@@ -84,13 +84,16 @@ int main(int argc, char** argv) {
     std::tie(idxmap, ngmap) = parse_map_file(fname_map);
     std::size_t n = ngmap.size();
 
-    auto query_utf32 = boost::locale::conv::utf_to_utf<char32_t>(query);
-    auto ngram_it = ngmap.find(query_utf32);
-    if (ngram_it == ngmap.end()) {
-        std::cerr << "unkown ngram" << std::endl;
-        return 1;
+    std::vector<std::size_t> i;
+    for (const auto& q : query) {
+        auto query_utf32 = boost::locale::conv::utf_to_utf<char32_t>(q);
+        auto ngram_it = ngmap.find(query_utf32);
+        if (ngram_it == ngmap.end()) {
+            std::cerr << "unkown ngram: \"" << q << "\"" << std::endl;
+            return 1;
+        }
+        i.emplace_back(ngram_it->second);
     }
-    std::size_t i = ngram_it->second;
 
     auto input = open_raw_file(fname_binary, n * ylength * sizeof(calc_t), false, false);
     if (!input.is_open()) {
@@ -99,28 +102,41 @@ int main(int argc, char** argv) {
     }
     auto base = reinterpret_cast<const calc_t*>(input.const_data());
 
-    std::size_t usable_limit = std::min(limit, n);
     std::vector<std::pair<std::size_t, calc_t>> distances(n);
-    std::size_t n_over = n % static_cast<std::size_t>(dtw_vectorized_linear::n);
-    std::size_t n_good = n - n_over;
+    for (std::size_t j = 0; j < n; ++j) {
+        distances[j] = std::make_pair(j, 0.0);
+    }
+
+    const std::size_t n_over = n % static_cast<std::size_t>(dtw_vectorized_linear::n);
+    const std::size_t n_good = n - n_over;
 
     dtw_vectorized_linear mydtw_vectorized(base, ylength, begin, end, r);
+    dtw_simple mydtw_simple(base, ylength, begin, end, r);
+
+    // this loop order is faster than the opposite way
     for (std::size_t j = 0; j < n_good; j += dtw_vectorized_linear::n) {
-        auto v_results = mydtw_vectorized.calc(i, j);
+        for (const std::size_t i_part : i) {
+            auto v_results = mydtw_vectorized.calc(i_part, j);
 
-        std::array<double, dtw_vectorized_linear::n> d_results;
-        simdpp::store(&d_results, v_results);
+            std::array<double, dtw_vectorized_linear::n> d_results;
+            simdpp::store(&d_results, v_results);
 
-        for (std::size_t idx = 0; idx < dtw_vectorized_linear::n; ++idx) {
-            distances[j + idx] = std::make_pair(j + idx, d_results[idx]);
+            for (std::size_t idx = 0; idx < dtw_vectorized_linear::n; ++idx) {
+                // d_results are squared at this point!
+                distances[j + idx].second += d_results[idx];
+            }
         }
     }
 
-    dtw_simple mydtw_simple(base, ylength, begin, end, r);
+    // ... dito ;)
     for (std::size_t j = n_good; j < n; ++j) {
-        distances[j] = std::make_pair(j, mydtw_simple.calc(i, j));
+        for (const std::size_t i_part : i) {
+            // result is squared at this point!
+            distances[j].second += mydtw_simple.calc(i_part, j);
+        }
     }
 
+    const std::size_t usable_limit = std::min(limit, n);
     std::partial_sort(
         distances.begin(),
         distances.begin() + static_cast<std::iterator_traits<decltype(distances.begin())>::difference_type>(usable_limit),
@@ -130,7 +146,7 @@ int main(int argc, char** argv) {
         }
     );
 
-    constexpr std::size_t colw0 = 10;
+    constexpr std::size_t colw0 = 20;
     constexpr std::size_t colw1 = 10;
     constexpr std::size_t colw2 = 10;
     std::cout
