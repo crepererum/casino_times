@@ -2,14 +2,14 @@
 
 #include <array>
 #include <memory>
+#include <unordered_map>
+#include <vector>
 
 #include <boost/functional/hash.hpp>
-#include <boost/interprocess/allocators/adaptive_pool.hpp>
+#include <boost/interprocess/allocators/private_adaptive_pool.hpp>
 #include <boost/interprocess/allocators/private_node_allocator.hpp>
-#include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/managed_mapped_file.hpp>
 #include <boost/locale.hpp>
-#include <boost/unordered_map.hpp>
 
 #include <half.hpp>
 
@@ -35,21 +35,21 @@ template <typename T>
 using allocator_t               = boost::interprocess::private_node_allocator<T, segment_manager_t, alloc_nodes>;
 
 template <typename T>
-using allocator_adaptive_t      = boost::interprocess::adaptive_pool<T, segment_manager_t, alloc_nodes>;
+using allocator_adaptive_t      = boost::interprocess::private_adaptive_pool<T, segment_manager_t, alloc_nodes>;
 
 using allocator_node_t          = allocator_t<node_t>;
 using allocator_superroot_t     = allocator_t<superroot_t>;
 using allocator_node_ptr_t      = allocator_adaptive_t<node_ptr_t>;
 using allocator_superroot_ptr_t = allocator_adaptive_t<superroot_ptr_t>;
 
-using node_vector_t             = boost::interprocess::vector<node_ptr_t, allocator_node_ptr_t>;
-using superroot_vector_t        = boost::interprocess::vector<superroot_ptr_t, allocator_superroot_ptr_t>;
+using node_vector_t             = std::vector<node_ptr_t, allocator_node_ptr_t>;
+using superroot_vector_t        = std::vector<superroot_ptr_t, allocator_superroot_ptr_t>;
 
 using allocator_node_vector_t   = allocator_adaptive_t<node_vector_t>;
 using allocator_superroot_vector_t = allocator_adaptive_t<superroot_vector_t>;
 
-using parents_table_t           = boost::unordered_map<node_ptr_t, node_vector_t, offset_hash<node_t>, std::equal_to<node_ptr_t>, allocator_node_vector_t>;
-using superroots_table_t        = boost::unordered_map<node_ptr_t, superroot_vector_t, offset_hash<node_t>, std::equal_to<node_ptr_t>, allocator_superroot_vector_t>;
+using parents_table_t           = std::unordered_map<node_ptr_t, node_vector_t, offset_hash<node_t>, std::equal_to<node_ptr_t>, allocator_node_vector_t>;
+using superroots_table_t        = std::unordered_map<node_ptr_t, superroot_vector_t, offset_hash<node_t>, std::equal_to<node_ptr_t>, allocator_superroot_vector_t>;
 
 using children_t                = std::array<node_ptr_t, n_children>;
 
