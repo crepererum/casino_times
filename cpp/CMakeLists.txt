@@ -7,7 +7,9 @@ set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 project (ngrams)
 
 # bunch of external projects
-set (external_flags "-fPIC -fdata-sections -ffunction-sections")
+set (external_flags "-fPIC -fdata-sections -ffunction-sections -g -fno-omit-frame-pointer -mavx2 -mfma")
+set (external_flags_cxx "${external_flags} -fsized-deallocation")
+set (external_flags_c "${external_flags}")
 
 externalproject_add (
     project_half
@@ -25,7 +27,7 @@ externalproject_add (
     PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libicu"
     URL "http://download.icu-project.org/files/icu4c/57.1/icu4c-57_1-src.tgz"
     URL_HASH SHA512=a3c701e9c81622db545bcf93f315c7b13159750f43f009d0aec59ceae3a8e1ccb751826d4b8a7387aca47f38bff2a85816b1a123b07d2bf731558c7b66e47b8a
-    CONFIGURE_COMMAND cd <SOURCE_DIR>/source && env "CFLAGS=${external_flags}" "CXXFLAGS=${external_flags}" ./runConfigureICU Linux --enable-static --disable-shared --disable-dyload
+    CONFIGURE_COMMAND cd <SOURCE_DIR>/source && env "CFLAGS=${external_flags_c}" "CXXFLAGS=${external_flags_cxx}" ./runConfigureICU Linux --enable-static --disable-shared --disable-dyload
     BUILD_COMMAND cd <SOURCE_DIR>/source && make
     INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/source/lib <INSTALL_DIR>/lib
     TEST_COMMAND ""
@@ -47,7 +49,7 @@ externalproject_add (
     PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libtcmalloc"
     URL "https://github.com/gperftools/gperftools/releases/download/gperftools-2.5/gperftools-2.5.tar.gz"
     URL_HASH SHA512=3e80c0d8816425d65673cf5cff28c6801b0c675501263f830828600f37ac01199fd775c2c51c9ccfa53fd4f9eadc09f7b2c73b31d57161e2cdfee2bd1868afa7
-    CONFIGURE_COMMAND cd <SOURCE_DIR> && env "CFLAGS=${external_flags}" "CXXFLAGS=${external_flags}" ./configure --disable-cpu-profiler --disable-heap-profiler --disable-heap-checker --enable-dynamic-sized-delete-support --enable-sized-delete --enable-static --disable-shared --prefix=<INSTALL_DIR>
+    CONFIGURE_COMMAND cd <SOURCE_DIR> && env "CFLAGS=${external_flags_c}" "CXXFLAGS=${external_flags_cxx}" ./configure --disable-cpu-profiler --disable-heap-profiler --disable-heap-checker --enable-dynamic-sized-delete-support --enable-sized-delete --enable-frame-pointers --enable-static --disable-shared --prefix=<INSTALL_DIR>
     BUILD_COMMAND cd <SOURCE_DIR> && make
     INSTALL_COMMAND cd <SOURCE_DIR> && make install
     TEST_COMMAND ""
@@ -58,7 +60,7 @@ externalproject_add (
     PREFIX "${CMAKE_CURRENT_BINARY_DIR}/wavelib"
     GIT_REPOSITORY "https://github.com/rafat/wavelib.git"
     GIT_TAG "a2c709715b5987247bf0182edc01d9791ce33ae2"
-    CMAKE_ARGS "-DCMAKE_C_FLAGS=${external_flags}" "-DCMAKE_CXX_FLAGS=${external_flags}" -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR> -DBUILD_UT=Off
+    CMAKE_ARGS "-DCMAKE_C_FLAGS=${external_flags_c}" "-DCMAKE_CXX_FLAGS=${external_flags_cxx}" -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR> -DBUILD_UT=Off
     BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR>
     INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory <BINARY_DIR>/Bin <INSTALL_DIR>/lib
     COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/header <INSTALL_DIR>/include
@@ -66,7 +68,7 @@ externalproject_add (
 )
 
 # compiler flags
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -mavx2 -mfma -ffast-math -fPIC -fdata-sections -ffunction-sections -g -fno-omit-frame-pointer -fsized-deallocation -pthread -Wall -Wextra -Wconversion -Wsign-conversion -Wpedantic -Wno-unknown-pragmas")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${external_flags_cxx} -std=c++14 -ffast-math -pthread -Wall -Wextra -Wconversion -Wsign-conversion -Wpedantic -Wno-unknown-pragmas")
 set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -fsanitize=address")
 set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
@@ -79,7 +81,7 @@ endif ()
 execute_process(COMMAND ${CMAKE_C_COMPILER} -fuse-ld=gold -Wl,--version ERROR_QUIET OUTPUT_VARIABLE LD_VERSION)
 if ("${LD_VERSION}" MATCHES "GNU gold")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=gold -Wl,--disable-new-dtags")
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=gold -Wl,--disable-new-dtags")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=gold -Wl,--disable-new-dtags")
 else ()
     message(WARNING "GNU gold linker isn't available, using the default system linker.")
 endif ()
