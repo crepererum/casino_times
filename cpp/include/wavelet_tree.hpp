@@ -8,12 +8,12 @@
 #include <boost/interprocess/allocators/private_node_allocator.hpp>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/managed_mapped_file.hpp>
-#include <boost/interprocess/offset_ptr.hpp>
 #include <boost/locale.hpp>
 #include <boost/unordered_map.hpp>
 
 #include <half.hpp>
 
+#include "short_offset_ptr.hpp"
 #include "parser.hpp"
 
 using half_float::half;
@@ -21,39 +21,13 @@ using half_float::half;
 constexpr std::size_t alloc_nodes = 1024 * 1024;
 constexpr std::size_t n_children  = 2;
 
-template <typename T>
-struct offset_hash {
-    explicit offset_hash(void* anchor_) : anchor(anchor_) {}
-
-    size_t operator()(const boost::interprocess::offset_ptr<T>& obj) const {
-        union {
-            const void* p;
-            std::int64_t i;
-        } converter_anchor;
-
-        union {
-            const void* p;
-            std::int64_t i;
-        } converter_obj;
-
-        converter_anchor.p = anchor;
-        converter_obj.p = obj.get();
-
-        std::size_t seed = 0;
-        boost::hash_combine(seed, converter_anchor.i - converter_obj.i);
-        return seed;
-    }
-
-    const void* anchor;
-};
-
 using mapped_file_ptr_t         = std::shared_ptr<boost::interprocess::managed_mapped_file>;
 
 struct node_t;
 struct superroot_t;
 
-using node_ptr_t                = boost::interprocess::offset_ptr<node_t>;
-using superroot_ptr_t           = boost::interprocess::offset_ptr<superroot_t>;
+using node_ptr_t                = short_offset_ptr<node_t>;
+using superroot_ptr_t           = short_offset_ptr<superroot_t>;
 
 using segment_manager_t         = boost::interprocess::managed_mapped_file::segment_manager;
 
@@ -125,11 +99,11 @@ namespace std {
 }
 
 template <typename T>
-boost::interprocess::offset_ptr<T> alloc_in_mapped_file(allocator_t<T>& alloc) {
-    return alloc.allocate(1);
+short_offset_ptr<T> alloc_in_mapped_file(allocator_t<T>& alloc) {
+    return alloc.allocate(1).get();
 }
 
 template <typename T>
-void dealloc_in_mapped_file(allocator_t<T>& alloc, const boost::interprocess::offset_ptr<T>& ptr) {
+void dealloc_in_mapped_file(allocator_t<T>& alloc, const short_offset_ptr<T>& ptr) {
     alloc.deallocate(ptr.get(), 1);
 }

@@ -93,7 +93,7 @@ class printer {
         }
 
         template <typename T>
-        std::ostream& print_address(std::ostream &out, boost::interprocess::offset_ptr<T> addr) {
+        std::ostream& print_address(std::ostream &out, short_offset_ptr<T> addr) {
             return print_address(out, addr.get());
         }
 

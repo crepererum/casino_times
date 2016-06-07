@@ -23,6 +23,17 @@ externalproject_add (
 )
 
 externalproject_add (
+    project_int48
+    PREFIX "${CMAKE_CURRENT_BINARY_DIR}/int48_t"
+    GIT_REPOSITORY "https://github.com/crepererum/int48_t.git"
+    GIT_TAG "e0b681d5796b6c18632800a432a3a5c75c7f1f53"
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/int48_t.hpp <INSTALL_DIR>
+    TEST_COMMAND ""
+)
+
+externalproject_add (
     project_libicu
     PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libicu"
     URL "http://download.icu-project.org/files/icu4c/57.1/icu4c-57_1-src.tgz"
@@ -99,6 +110,7 @@ include_directories (
 include_directories (
     SYSTEM
     "${CMAKE_CURRENT_BINARY_DIR}/half/include"
+    "${CMAKE_CURRENT_BINARY_DIR}/int48_t"
     "${CMAKE_CURRENT_BINARY_DIR}/libsimdpp"
     "${CMAKE_CURRENT_BINARY_DIR}/wavelib/include"
 )
