@@ -41,20 +41,45 @@
 %% | Typography |
 %% --------------
 
-% T1 font encoding
-\RequirePackage[T1]{fontenc}
-\RequirePackage[utf8]{inputenc}
+\RequirePackage{fontspec}
+\defaultfontfeatures{
+    Ligatures=TeX,
+    Mapping=tex-text
+}
+%\defaultfontfeatures{Ligatures=Rare}
+\setmainfont{LinLibertine_R}[
+    Path           = /usr/share/fonts/OTF/,
+    Extension      = .otf,
+    BoldFont       = LinLibertine_RB,
+    ItalicFont     = LinLibertine_RI,
+    BoldItalicFont = LinLibertine_RBI
+]
+\setsansfont{SourceSansPro-Regular}[
+    Path           = /usr/share/fonts/OTF/,
+    Extension      = .otf,
+    BoldFont       = SourceSansPro-Bold,
+    ItalicFont     = SourceSansPro-It,
+    BoldItalicFont = SourceSansPro-BoldIt
+]
+\setmonofont{VeraMono}[
+    Path           = /usr/share/fonts/TTF/,
+    Extension      = .ttf,
+    BoldFont       = VeraMoBd,
+    ItalicFont     = VeraMoIt,
+    BoldItalicFont = VeraMoBI,
+    Scale          = 0.78
+]
 
 % serif type: Linux Libertine
-\RequirePackage{libertine}
+%\RequirePackage{libertine}
 % Linux Libertine in math mode
-\RequirePackage[libertine]{newtxmath}
+%\RequirePackage[libertine]{newtxmath}
 
 % grotesque type: Adobe Source Sans Pro
-\RequirePackage[scaled=.92]{sourcesanspro}
+%\RequirePackage[scaled=.92]{sourcesanspro}
 
 % monospace type: Bera Mono
-\RequirePackage[scaled=.78]{beramono}
+%\RequirePackage[scaled=.78]{beramono}
 
 % semi-bold type (for subsections and paragraphs)
 \newcommand*{\sbdefault}{sb}
@@ -69,7 +94,7 @@
 \addtokomafont{paragraph}{\sbseries}
 
 % microtype for nicer typography
-\RequirePackage[protrusion=true,expansion=true]{microtype}
+\RequirePackage[activate={true,nocompatibility},final]{microtype}
 
 % commands for code and model keywords in text
 \newcommand{\code}[1]{\texttt{\hyphenchar\font45\relax #1}}
@@ -84,7 +109,7 @@
 %% --------------
 
 \RequirePackage{tikz}
-\newcommand{\diameter}{15}
+\newcommand{\xdiameter}{15}
 \newcommand{\xone}{-15}
 \newcommand{\xtwo}{145}
 \newcommand{\yone}{25}
@@ -101,10 +126,10 @@
 \draw[color=gray]
  		 (\xone mm, \yone mm)
   -- (\xtwo mm, \yone mm)
- arc (90:0:\diameter mm)
-  -- (\xtwo mm + \diameter mm , \ytwo mm)
-	-- (\xone mm + \diameter mm , \ytwo mm)
- arc (270:180:\diameter mm)
+ arc (90:0:\xdiameter mm)
+  -- (\xtwo mm + \xdiameter mm , \ytwo mm)
+	-- (\xone mm + \xdiameter mm , \ytwo mm)
+ arc (270:180:\xdiameter mm)
 	-- (\xone mm, \yone mm);
 \end{tikzpicture}
 % KIT logo german/english
@@ -213,6 +238,9 @@
 % enumerate subsubsections
 \setcounter{secnumdepth}{3}
 
+% subcaption
+\RequirePackage{subcaption}
+
 % wallpaper for title page (KIT-Frame)
 \RequirePackage{wallpaper}
 
@@ -241,6 +269,53 @@
 \RequirePackage{amssymb}
 \RequirePackage{mathtools}
 \RequirePackage{siunitx}
+\RequirePackage{unicode-math}
+\setmathfont[Scale=0.90]{Asana-Math.otf}
+
+% easier quotes
+\RequirePackage{csquotes}
+
+% graphcis
+\definecolor{kit-green}{cmyk}{0.1,0,0.6,0.2}
+\definecolor{kit-blue}{cmyk}{0.8,0.5,0,0.2}
+\definecolor{kit-green2}{cmyk}{0.6,0,1,0.2}
+\definecolor{kit-yellow}{cmyk}{0,0.05,1,0.2}
+\definecolor{kit-orange}{cmyk}{0,0.45,1,0.2}
+\definecolor{kit-brown}{cmyk}{0.35,0.5,1,0.2}
+\definecolor{kit-red}{cmyk}{0.25,1,1,0.2}
+\definecolor{kit-violet}{cmyk}{0.25,1,0,0.2}
+\definecolor{kit-cyan}{cmyk}{0.9,0.05,0,0.2}
+\RequirePackage{pgfplots}
+\pgfplotsset{
+    compat=1.13,
+    lua backend=true,
+    discard if not/.style 2 args={
+        x filter/.code={
+            \edef\tempa{\thisrow{#1}}
+            \edef\tempb{#2}
+            \ifx\tempa\tempb
+            \else
+                \def\pgfmathresult{inf}
+            \fi
+        }
+    },
+    x_year/.style={
+        x tick label style={
+            /pgf/number format/.cd,
+            fixed,
+            set thousands separator={},
+            /tikz/.cd
+        }
+    },
+    fullwidth/.style={
+        height=0.45\textwidth,
+        width=\textwidth
+    },
+    filter discard warning=false,
+    every tick label/.append style={font=\scriptsize},
+    legend style={font=\scriptsize},
+    label style={font=\scriptsize}
+}
 
 % appendix
 \RequirePackage[toc,title,header]{appendix}
