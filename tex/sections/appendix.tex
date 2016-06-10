@@ -4,41 +4,60 @@
 \label{chap:appendix}
 
 \begin{table}[h]
-\centering
-\begin{tabular}{r r r r r r}
-\toprule
-Dataset & raw & filtered & s.normalized & w.normalized & pruned\\
-\midrule
-a & \num{1440378} & \num{493706} & \num{361035} & \num{276583} & \num{52766}\\
-b & \num{1018343} & \num{377220} & \num{281903} & \num{227025} & \num{48380}\\
-c & \num{1546639} & \num{532497} & \num{380823} & \num{288078} & \num{59439}\\
-d & \num{981466} & \num{341819} & \num{249790} & \num{188481} & \num{38220}\\
-e & \num{829512} & \num{288878} & \num{213871} & \num{155833} & \num{29578}\\
-f & \num{742479} & \num{251520} & \num{182495} & \num{141276} & \num{27290}\\
-g & \num{675417} & \num{250442} & \num{187863} & \num{152828} & \num{32088}\\
-h & \num{763425} & \num{271203} & \num{199303} & \num{160263} & \num{33337}\\
-i & \num{847619} & \num{268572} & \num{191304} & \num{136416} & \num{23698}\\
-j & \num{276339} & \num{99430} & \num{70257} & \num{58083} & \num{11241}\\
-k & \num{536396} & \num{222419} & \num{172642} & \num{150450} & \num{30335}\\
-l & \num{779711} & \num{266197} & \num{194019} & \num{155416} & \num{31561}\\
-m & \num{1231265} & \num{448398} & \num{327496} & \num{261578} & \num{56082}\\
-n & \num{642961} & \num{223966} & \num{163531} & \num{128920} & \num{26837}\\
-o & \num{606102} & \num{209806} & \num{156250} & \num{118133} & \num{20383}\\
-p & \num{1464402} & \num{518315} & \num{373821} & \num{286958} & \num{57440}\\
-q & \num{108085} & \num{37278} & \num{26777} & \num{21695} & \num{4124}\\
-r & \num{886734} & \num{302916} & \num{223977} & \num{167128} & \num{32791}\\
-s & \num{1834759} & \num{653305} & \num{478905} & \num{378824} & \num{77857}\\
-t & \num{1106849} & \num{384978} & \num{275879} & \num{219654} & \num{42432}\\
-u & \num{357527} & \num{130599} & \num{96580} & \num{69671} & \num{13725}\\
-v & \num{451224} & \num{166432} & \num{122916} & \num{100387} & \num{19142}\\
-w & \num{511180} & \num{159192} & \num{117519} & \num{96570} & \num{18893}\\
-x & \num{66100} & \num{20082} & \num{12810} & \num{11384} & \num{2222}\\
-y & \num{127204} & \num{43844} & \num{31780} & \num{27932} & \num{5548}\\
-z & \num{138100} & \num{55448} & \num{43393} & \num{38363} & \num{7642}\\
-\midrule
-$\sum$ & \num{19970216} & \num{7018462} & \num{5136939} & \num{4017929} & \num{803051}\\
-\bottomrule
-\end{tabular}
-\caption{Total amount of nGrams after each clean-up step}
-\label{tab:clean_up_numbers}
+    \centering
+    \begin{tabularx}{\textwidth}{r R R R R R}
+        \toprule
+        dataset & raw & filtered & s.normalized & w.normalized & pruned\\
+        \midrule
+        a & \num{1440378} & \num{493706} & \num{361035} & \num{276583} & \num{52766}\\
+        b & \num{1018343} & \num{377220} & \num{281903} & \num{227025} & \num{48380}\\
+        c & \num{1546639} & \num{532497} & \num{380823} & \num{288078} & \num{59439}\\
+        d & \num{981466} & \num{341819} & \num{249790} & \num{188481} & \num{38220}\\
+        e & \num{829512} & \num{288878} & \num{213871} & \num{155833} & \num{29578}\\
+        f & \num{742479} & \num{251520} & \num{182495} & \num{141276} & \num{27290}\\
+        g & \num{675417} & \num{250442} & \num{187863} & \num{152828} & \num{32088}\\
+        h & \num{763425} & \num{271203} & \num{199303} & \num{160263} & \num{33337}\\
+        i & \num{847619} & \num{268572} & \num{191304} & \num{136416} & \num{23698}\\
+        j & \num{276339} & \num{99430} & \num{70257} & \num{58083} & \num{11241}\\
+        k & \num{536396} & \num{222419} & \num{172642} & \num{150450} & \num{30335}\\
+        l & \num{779711} & \num{266197} & \num{194019} & \num{155416} & \num{31561}\\
+        m & \num{1231265} & \num{448398} & \num{327496} & \num{261578} & \num{56082}\\
+        n & \num{642961} & \num{223966} & \num{163531} & \num{128920} & \num{26837}\\
+        o & \num{606102} & \num{209806} & \num{156250} & \num{118133} & \num{20383}\\
+        p & \num{1464402} & \num{518315} & \num{373821} & \num{286958} & \num{57440}\\
+        q & \num{108085} & \num{37278} & \num{26777} & \num{21695} & \num{4124}\\
+        r & \num{886734} & \num{302916} & \num{223977} & \num{167128} & \num{32791}\\
+        s & \num{1834759} & \num{653305} & \num{478905} & \num{378824} & \num{77857}\\
+        t & \num{1106849} & \num{384978} & \num{275879} & \num{219654} & \num{42432}\\
+        u & \num{357527} & \num{130599} & \num{96580} & \num{69671} & \num{13725}\\
+        v & \num{451224} & \num{166432} & \num{122916} & \num{100387} & \num{19142}\\
+        w & \num{511180} & \num{159192} & \num{117519} & \num{96570} & \num{18893}\\
+        x & \num{66100} & \num{20082} & \num{12810} & \num{11384} & \num{2222}\\
+        y & \num{127204} & \num{43844} & \num{31780} & \num{27932} & \num{5548}\\
+        z & \num{138100} & \num{55448} & \num{43393} & \num{38363} & \num{7642}\\
+        \midrule
+        $\sum$ & \num{19970216} & \num{7018462} & \num{5136939} & \num{4017929} & \num{803051}\\
+        \bottomrule
+    \end{tabularx}
+    \caption{Total amount of nGrams after each clean-up step}
+    \label{tab:clean_up_numbers}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \begin{tabularx}{\textwidth}{l X p{4cm} p{2.5cm}}
+        \toprule
+        library & usage & license & version\\
+        \midrule
+        Boost     & align (aligned memory allocation), functional (hash calculation), geometry (R-tree index), interprocess (managed mapped file), iostream (mmaped file), locale (UTF conversion), program option parser & Boost Software License -- Version 1.0       & \code{1.60.0} \\
+        half      & half-precision IEEE floating point emulation & MIT License                                 & \code{1.11.0} \\
+        int48\_t  & emulation of signed \num{48}-bit integer     & MIT License                                 & \code{GIT:e0b681d5} \\
+        ICU       & Unicode handling                             & ICU License -- ICU 1.8.1 and later          & \code{57.1} \\
+        libsimdpp & high-level interface to SSE/AVX/FMA/\dots    & Boost Software License -- Version 1.0       & \code{2.0-rc2} \\
+        tcmalloc  & fast replacement for libc malloc             & BSD 3-Clause License                        & \code{2.5} \newline (part of gperftools) \\
+        wavelib   & Discrete Wavelet Transform                   & BSD 3-Clause License (includes modifiction) & \code{GIT:a2c70971} \\
+        \bottomrule
+    \end{tabularx}
+    \caption{Used libraries during the implementation}
+    \label{tab:lib_version}
 \end{table}

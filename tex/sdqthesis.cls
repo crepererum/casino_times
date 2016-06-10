@@ -340,6 +340,10 @@
     \let\theauthor\@author
 }
 
+% better tables
+\RequirePackage{tabularx}
+\newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+
 %% automatic naming of sections with autoref
 \def\sectionautorefname{Section}
 \def\subsectionautorefname{Subsection}
