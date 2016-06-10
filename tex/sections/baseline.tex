@@ -1,6 +1,10 @@
 \chapter{Baseline}
 \label{ch:baseline}
 
+\dots
+
+
+
 \section{Data}
 \label{sec:baseline:data}
 
@@ -14,15 +18,16 @@
 We perform the following clean up steps:
 
 \begin{enumerate}
-\itemsep0em
-\item download and parsing
-\item string filtering
-\item string normalization
-\item word normalization
-\item pruning
+    \itemsep0em
+    \item download and parsing
+    \item string filtering
+    \item string normalization
+    \item word normalization
+    \item pruning
 \end{enumerate}
 
 Note that swapping the string-based steps does not lead a different output. \autoref{fig:clean_up_sums} show how much data is pruned by every step. The exact numbers can be found in \autoref{tab:clean_up_numbers}.
+
 
 \subsection{Download and Parsing}
 \label{ssec:baseline:data:download}
@@ -30,7 +35,8 @@ As a first step we download the raw data from the Google server. A complete list
 
 \url{https://storage.googleapis.com/books/ngrams/books/datasetsv2.html}
 
-The data is mangled by a high-performance C++ implementation to speed-up the upcoming steps. During the first steps, only the nGram content is required without any knowledge of the actual time series data. We exploit this fact and delay the actual parsing and storage of the time series until the data is required and focus on the handling of the string data as long as possible.
+The data collection and processing is described in \cite{Google_nGrams}. The raw text data which was downloaded from the Google servers is mangled by a high-performance C++ implementation to speed-up the upcoming steps. During the first steps, only the nGram content is required without any knowledge of the actual time series data. We exploit this fact and delay the actual parsing and storage of the time series until the data is required and focus on the handling of the string data as long as possible.
+
 
 \subsection{String filtering}
 \label{ssec:baseline:data:filter}
@@ -44,6 +50,7 @@ Since the data the nGrams are described by Unicode strings, there may exist stri
 
 Notice that the lowercase transformation may not work as expected for other languages than English since it may lead to a lose of important information.
 
+
 \subsection{Word Normalization}
 \label{ssec:baseline:data:wnorm}
 The words forming the nGrams exist in multiple variants, e.g. different terms for verbs or singular and plural form for nouns. Naturally the resulting time series are very similar and do not contain valuable information, neither for our algorithms nor for a human analyst. We solve this issue by applying the WordNet lemmatizer (\cite{wordnet}) and afterwards the snowball stemmer (\cite{porter2}) to all words. In case of same output nGrams the related time series are added again.
@@ -52,8 +59,118 @@ As for the former transformation step be aware of the language problem. Other la
 
 We decided not to run any OCR (optical character recognization) error recognization since we are not aware of any general purpose approach that does not transform rare words or names like a na\"{\i}ve spell checker would do.
 
+
 \subsection{Pruning}
 \label{ssec:baseline:data:prune}
-The original data sets contains a lot of very rare nGrams that, in our opinion, do not provide enough statistical information to be considered during the further analysis. The same applies to all nGrams for the early years that are contained in the data. We decided to only use the last \num{256} years of the time series data and that we drop all nGrams where the related match count time series is too small, or in mathematical terms where $\sum_{1753 \leq y \leq 2008} v_{0, y} < 1000$ ($v_0$ is the "match count") applies. Notice that this is the first step where the actual time series content is required. Therefore it is also the first step where we parse the time series data for all nGram strings which survived up to this point.
+The original data sets contains a lot of very rare nGrams that, in our opinion, do not provide enough statistical information to be considered during the further analysis. The same applies to all nGrams for the early years that are contained in the data. We decided to only use the last \num{256} years of the time series data and that we drop all nGrams where the related match count time series is too small, or in mathematical terms where $\sum_{1753 \leq y \leq 2008} v_{0, y} < 1000$ ($v_0$ is the \enquote{match count}) applies. Notice that this is the first step where the actual time series content is required. Therefore it is also the first step where we parse the time series data for all nGram strings which survived up to this point.
 
 The selection of the time range of \num{256} years has other advantages apart from the pure pruning. Since it is a power of \num{2} it is easier to apply many transformations (e.g. Fourier or Discrete Wavelet Transformation) to it without the need to think about and justify additional edge case handling.
+
+
+
+\section{Similarity}
+\label{sec:baseline:sim}
+We first discuss which time series we want to consider as similar. We want to explore which nGrams are used together. Because there might be a normal usage of certain words or phrases in the day to day life, interesting data might be hidden by an overall large number and therefore interesting changes in usage patterns might not be discovered when total numbers of mentiones are compared. Consider the following example: $n_1 \Rightarrow n_2$ but not vice versa and $n_2$ is already used in many books but $n_1$ is a new nGram at a certain point of time. This implication cannot be found by comparing total numbers, because $n_2$ might be way larger than $n_1$ but the implication will lead to similar changes in the overall time series. So we seek to find similar structure instead of similar usage numbers.
+
+Furthermore we limit our analysis to the \enquote{match count} because it seems to be more useful for later research than the less fine graned \enquote{unique book count}.
+
+
+\subsection{Normalization}
+\label{ssec:baseline:sim:norm}
+
+\begin{figure}
+    \centering
+    \input{figures/ngrams_ex_total.tex}
+    \caption{Total counts of example nGrams}
+    \label{fig:ngrams_ex_total}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \input{figures/ngrams_hist.tex}
+    \caption{Histogram of all time series}
+    \label{fig:ngrams_hist}
+\end{figure}
+
+In \autoref{fig:ngrams_ex_total} you can observe the following: the words \enquote{without}, \enquote{area} and \enquote{death} share the global low around 1945 while the word \enquote{war} does not. On the other hand you can see the same structure (peak and then depression) between 1961 and 1977 for \enquote{war} and \enquote{without}. Another feature that can be observed is the fact that the time series data is not limited in its value and that it seem to behave exponentially, as shown in \autoref{fig:ngrams_hist}. To be able to determine a proper similarity between different time series, this scaling should be elimited. There are two possible ways: applying a logarithmus or normalizing every point in time by using a factor shared amongst all series.
+
+\begin{figure}
+    \centering
+    \input{figures/ngrams_sums.tex}
+    \caption{Absolute sum of all nGram time series}
+    \label{fig:ngrams_sums}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \input{figures/ngrams_ex_relative.tex}
+    \caption{Relative counts of example nGrams}
+    \label{fig:ngrams_ex_relative}
+\end{figure}
+
+\autoref{fig:ngrams_sums} shows the foundation of such a factor. The problem with this approach is that time series with an overall huge impact on the sum will also influence the normalized results of small time series heavily. In other words: rather than symbolizing a straight growth, the sum itself has a structure which than will influence the normalized result. An example is shown in \autoref{fig:ngrams_ex_relative}.
+
+\begin{figure}
+    \centering
+    \input{figures/ngrams_ex_log.tex}
+    \caption{$\log$ counts of example nGrams}
+    \label{fig:ngrams_ex_log}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \input{figures/ngrams_lhist.tex}
+    \caption{Histogram of $\log(x + 1)$ of all time series}
+    \label{fig:ngrams_lhist}
+\end{figure}
+
+So we choose to apply $\log(x + 1)$ to all values for normalizing. Note the \num{1} which was added because the range of possible input values starts at \num{0}. The results are shown in \autoref{fig:ngrams_ex_log} and the coresponding histogram is shown in \autoref{fig:ngrams_lhist}.
+
+
+\subsection{Gradients}
+\label{ssec:baseline:sim:grad}
+
+\begin{figure}
+    \centering
+    \input{figures/ngrams_ex2_fitavg.tex}
+    \caption{Example nGrams, fit using AVG}
+    \label{fig:ngrams_ex2_fitavg}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \input{figures/ngrams_ex2_grad.tex}
+    \caption{Gradients of example nGrams}
+    \label{fig:ngrams_ex2_grad}
+\end{figure}
+
+As \autoref{fig:ngrams_ex2_fitavg} shows, there are cases where time series look very similar but are difficult to fit by using a linear transformation. Therefore a simple $p$-distance is not sufficient for as a distance measure. Therefore we decided to fit the gradients instead which follows the idea presented in \cite{DDTW}. An example is shown in \autoref{fig:ngrams_ex2_grad}. We use the $\Delta = 1$ gradient of $\log(x + 1)$.
+
+\begin{figure}
+    \centering
+    \input{figures/ngrams_ex2_grad_smooth.tex}
+    \caption{Gradients of example nGrams, smoothed with $\sigma = 1$}
+    \label{fig:ngrams_ex2_grad_smooth}
+\end{figure}
+
+Since calculating the distances of noisy gradients may lead to useless results, we smooth the the time series using a Gauss kernel with $\sigma = 1$ before deriving the gradient. An example is shown in \autoref{fig:ngrams_ex2_grad_smooth}. The similarity of the nGram \enquote{kiss} is clearer now. As expected, the time data does not quite fit the other example series. This is intended since the underlying data also has a slightly different structure.
+
+
+\subsection{Dynamic Time Warping}
+\label{ssec:baseline:sim:dtw}
+
+\begin{figure}
+    \centering
+    \input{figures/ngrams_ex2_extrema.tex}
+    \caption{Extrema of gradients of $\sigma = 2$ smoothed example time series}
+    \label{fig:ngrams_ex2_extrema}
+\end{figure}
+
+As \autoref{fig:ngrams_ex2_extrema} shows, while having the same structure the gradients do not align perfectly. To calculate a meaningful distance, we use DTW (Dynamic Time Warping)\footnote{We do not cite a publication here since it is a commenly known algorithm and the only online publisher of the assumed original publication wants you to pay $>$\SI{30}{\$} after $>$\num{45} years.} with an Euclidian distance and a Sakoe-Chiba Band (\cite{sakoe}) of radius $r$.
+
+\section{Index-based Speed-up}
+\label{sec:baseline:speed}
+
+One of the fundamental problems of large-scale DTW-based similarity searches is that, without further preperation, a linear scan is required. In preperation of further research and usage of $5$-grams, we want to avoid this and cut the the runtime complexity to $\mathcal{O}(\log{n})$. While doing so we still want to archive exact results, at least for our baseline. We decided to implement \cite{LB_Keogh} which is a combination of an R-tree index (\cite{rtree}) and early sorting and pruning by utilizing bound checks.
+
+A problem with this type of index is that the structure of the indexed data is different than the one tested in the publication. Our rather short data (in terms of measured points) contains more entropy and is more jittering than the time series intended by the paper. Therefore we require more dimensions to get a tree that at least filters out some candidates. Instead of the suggested \num{16} dimensions, \num{64} or more are required in our case. That results in a very memory-inefficient data structure. Remember that for every dimension, the R-tree stores two data points, a minimum and a maximum. So we need to store at least \SI{50}{\percent} of the actual data size as an index. This renders the tree nearly useless, as also found by \cite{rtree_highdim}.

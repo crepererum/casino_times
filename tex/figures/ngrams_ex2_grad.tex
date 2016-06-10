@@ -1,0 +1,15 @@
+\begin{tikzpicture}
+    \begin{axis}[
+        xlabel={year},
+        ylabel={gradient of $\log(n + 1)$},
+        x_year,
+        legend pos=north west,
+        fullwidth
+    ]
+        \addplot [mark=none,color=kit-green2] table [x=x, y=y, col sep=comma, ignore chars={"}, discard if not={label}{know}] {data/ngrams_ex2_grad.csv};
+        \addplot [mark=none,color=kit-cyan] table [x=x, y=y, col sep=comma, ignore chars={"}, discard if not={label}{kiss}] {data/ngrams_ex2_grad.csv};
+        \addplot [mark=none,color=kit-red] table [x=x, y=y, col sep=comma, ignore chars={"}, discard if not={label}{kind}] {data/ngrams_ex2_grad.csv};
+        \addplot [mark=none,color=kit-orange] table [x=x, y=y, col sep=comma, ignore chars={"}, discard if not={label}{keep}] {data/ngrams_ex2_grad.csv};
+        \legend{know,kiss,kind,keep};
+    \end{axis}
+\end{tikzpicture}

@@ -1,0 +1,15 @@
+\begin{tikzpicture}
+    \begin{axis}[
+        xlabel={year},
+        ylabel={$\log(n + 1)$},
+        x_year,
+        legend pos=north west,
+        fullwidth
+    ]
+        \addplot [mark=none,color=kit-green2] table [x=x, y=y, col sep=comma, ignore chars={"}, discard if not={label}{war}] {data/ngrams_ex_log.csv};
+        \addplot [mark=none,color=kit-cyan] table [x=x, y=y, col sep=comma, ignore chars={"}, discard if not={label}{death}] {data/ngrams_ex_log.csv};
+        \addplot [mark=none,color=kit-red] table [x=x, y=y, col sep=comma, ignore chars={"}, discard if not={label}{without}] {data/ngrams_ex_log.csv};
+        \addplot [mark=none,color=kit-orange] table [x=x, y=y, col sep=comma, ignore chars={"}, discard if not={label}{area}] {data/ngrams_ex_log.csv};
+        \legend{war,death,without,area};
+    \end{axis}
+\end{tikzpicture}

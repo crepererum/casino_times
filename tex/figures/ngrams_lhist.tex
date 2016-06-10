@@ -1,0 +1,11 @@
+\begin{tikzpicture}
+    \begin{axis}[
+        xlabel={n},
+        ylabel={count $+ 1$},
+        fullwidth,
+        ymode=log
+    ]
+        \addplot [only marks,color=kit-blue] table [x=n, y=c, col sep=comma, ignore chars={"}, y expr=\thisrowno{1}+1] {data/lhist.csv};
+        \addplot [ybar,fill,bar width=0.25mm,color=kit-blue] table [x=n, y=c, col sep=comma, ignore chars={"}, y expr=\thisrowno{1}+1] {data/lhist.csv};
+    \end{axis}
+\end{tikzpicture}

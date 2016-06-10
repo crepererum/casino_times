@@ -1,0 +1,12 @@
+\begin{tikzpicture}
+    \begin{axis}[
+        xlabel={year},
+        ylabel={n},
+        x_year,
+        legend pos=north west,
+        fullwidth
+    ]
+        \addplot [mark=none,color=kit-blue] table [x=x, y=y, col sep=comma, ignore chars={"}] {data/ngrams_sums.csv};
+        \legend{$\sum$};
+    \end{axis}
+\end{tikzpicture}
