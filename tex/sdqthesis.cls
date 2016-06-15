@@ -43,8 +43,7 @@
 
 \RequirePackage{fontspec}
 \defaultfontfeatures{
-    Ligatures=TeX,
-    Mapping=tex-text
+    Ligatures=TeX
 }
 %\defaultfontfeatures{Ligatures=Rare}
 \setmainfont{LinLibertine_R}[
@@ -109,6 +108,12 @@
 %% --------------
 
 \RequirePackage{tikz}
+\usetikzlibrary{
+    arrows,
+    calc,
+    fit,
+    positioning
+}
 \newcommand{\xdiameter}{15}
 \newcommand{\xone}{-15}
 \newcommand{\xtwo}{145}
@@ -343,6 +348,12 @@
 % better tables
 \RequirePackage{tabularx}
 \newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+
+% algorithm
+\RequirePackage[
+    ruled,% nice lines above/beyond the algorithms
+    linesnumbered% draw line numbers
+]{algorithm2e}
 
 %% automatic naming of sections with autoref
 \def\sectionautorefname{Section}

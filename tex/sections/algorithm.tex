@@ -8,19 +8,142 @@
 \section{Discrete Wavelet Transform}
 \label{sec:algorithm:wavelet}
 
-\dots
+\begin{figure}
+    \centering
+    \input{figures/wavelet_tree_example.tex}
+    \caption{Wavelet Tree Construction}
+    \label{fig:wavelet_tree_example}
+\end{figure}
+
+First of all, we need to find a time series representation that enables us to compare different series on different time scales and different granularities. While the granularity requirement is met by a Fourier Transform, it is not sufficient for different time ranges. The reason for it is that the entire series is disassembled into frequencies that span the hole range. That makes it difficult to compare sub-ranges. So we chose a different transformation -- the Discrete Wavelet Transform under usage of the Haar Wavelet (\cite{Haar}). A special property of this kind of transform is that it deconstructs a time series into a tree-like structure as shown in \autoref{fig:wavelet_tree_example}. Note that we only support time series which length is a power of two. A generalization might be archived by the application of \cite{haar_tree_notwo}.
+
+Now we want to discuss what data is actually transformed. It turns out that using the unsmoothed, but logarithmic data works the best. The reason for this are the following: the $\log(x + 1)$ transformation avoids the handling of too large values and as shown before results in a better value distribution. Now smoothing would certainly simply later compression attempts of the wavelet data, but it already prunes information. That alone is not a huge deal, but it gets problematic when we modify the wavelet data. Alterning the coefficients of the wavelet tree, e.g. by rounding, data conversion, tree pruning (see \autoref{sec:algorithm:pruning}) or tree merging (see \autoref{sec:algorithm:merge}); results in a unsmooth time series after restoring them from the wavelet data. So to use them afterwards a smoothing step is required. A pre-transform smoothing now would results in three steps of information loss while only smoothing after the information recovery makes parameters easier to tune and information loss easier to calculate.
 
 
 
 \section{Tree Pruning}
 \label{sec:algorithm:pruning}
 
-\dots
+\begin{algorithm}
+    \KwData{Node $n$}
+    \KwData{Error threshold $t$}
+    \KwResult{Pruned Node $n$, resulting error increase}
+
+    \Begin {
+        \tcc{Check if children are pruned}
+        $p_l$ $\leftarrow$ $\neg n.\textrm{child\_l} \lor n.\textrm{child\_l}.\textrm{pruned}$\;
+        $p_r$ $\leftarrow$ $\neg n.\textrm{child\_r} \lor n.\textrm{child\_r}.\textrm{pruned}$\;
+        $p_c$ $\leftarrow$ $p_l \land p_r$\;
+        \BlankLine
+        \tcc{Calculate maximum error increase}
+        $i$ $\leftarrow$ $2^{d - l + 1}$\;
+        $e$ $\leftarrow$ $|n.\textrm{x}| \cdot \sqrt{i}$\;
+        \BlankLine
+        \tcc{Prune if requirements are met}
+        \eIf{$e < t \land p_c$}{
+            $n.\textrm{pruned}$ $\leftarrow$ $1$\;
+            $n.\textrm{x}$ $\leftarrow$ $0$\;
+            \Return{e}\;
+        }{
+            \Return{0}\;
+        }
+    }
+
+    \caption{pruneNode}
+    \label{algo:pruneNode}
+\end{algorithm}
+
+\begin{algorithm}
+    \KwData{Tree $T$}
+    \KwData{Error threshold $t$}
+    \KwResult{Pruned Tree $T$}
+
+    \SetKwFunction{GetLayer}{getLayer}
+    \SetKwFunction{PruneNode}{pruneNode}
+    \SetKwFunction{Shuffle}{shuffle}
+    \SetKwFunction{Sort}{sort}
+
+    \Begin {
+        \For{l=d \emph{\KwTo} 1}{
+            $N$ $\leftarrow$ $\GetLayer{T, l}$\;
+            $\Shuffle{N}$\;
+            $\Sort{N}$\tcp*[r]{optional}
+            \For{n $\in$ N}{
+                $t$ $\leftarrow$ $t - \PruneNode{n}$\;
+            }
+        }
+    }
+
+    \caption{pruneTree}
+    \label{algo:pruneTree}
+\end{algorithm}
+
+The first attempt to reduce the amount of data is an obvious but simple approach: pruning of sub-trees that do not hold important data. This does not entirly reflect the information loss approach we will use for the final algorithm, but it is a good milestone to grasp the idea. A tree node is pruned if the following conditions are met:
+
+\begin{enumerate}
+    \item both children are pruned
+    \item setting its coefficient to $0$ would not increase the error above a certain threshold
+\end{enumerate}
+
+So pruning just equals the zeroing of the coefficient, but it allows us to remove the node entirely and save storage space since it does not contain any additional information than both pruned children and the coefficient that does not have an influence anymore. The question is in which order nodes should be tried to be pruned since this algorithm is greedy method and will stop immidiatly after the threshold is reached. We propose to shuffle the nodes first to avoid a bias to the begin or end of the time series and then to sort the shuffled nodes starting the smallest coefficient. This makes it more likely to prune more nodes instead of just some with huge coefficients. Also the results are more stable as you can see while comparing \autoref{fig:ngrams_ex2_compression_unsorted} and \autoref{fig:ngrams_ex2_compression_sorted}. The algorithm is shown in \autoref{algo:pruneTree}.
+
+\begin{figure}
+    \centering
+    \input{figures/ngrams_ex2_compression_unsorted.tex}
+    \caption{Compression of example nGrams, without sorting/prioritizing}
+    \label{fig:ngrams_ex2_compression_unsorted}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \input{figures/ngrams_ex2_compression_sorted.tex}
+    \caption{Compression of example nGrams, with sorting/prioritizing}
+    \label{fig:ngrams_ex2_compression_sorted}
+\end{figure}
 
 
 
 \section{Tree Merging}
 \label{sec:algorithm:merge}
+
+An important thing to point out about tree pruning is that it does not exploit the fact that there are many time series which might have the same structure. The compression is purely executed on a single series. Tree merging uses a similar idea to tree pruning but with an important difference: instead of setting the coefficient to zero it will be set to a similar entry which is already present in the database (to which we come in a moment). Therefore, the subtree is not pruned but merged with another one. This can simply be done by alterning the child pointer of a tree node. The error is calculated based on the difference of the time series resulting from the new tree and the original time series. A discussion of the error metric can be found in \autoref{sec:algorithm:error}. Keep in mind to only merge nodes into others when their children are identical.
+
+The construction of the database of known trees\footnote{To be precise: since the trees share common subtrees, they are not real trees anymore. We will continue to referr to them as trees since it is a simple and easy to understand term.} is solved as followed: the time series are added to the database in random order. One whole input tree of an entire time series is (partly) merged into the database, then the next one and so on. For the tree merging itself we changed from a strict buttom-up approach to a queue-based approach since that results in higher compression rates. The problem with the buttom-up approach is the following: it might be that there exist very similar subtrees which are cheap to merge but a strict level-ordered merging would result in prioritizing nodes next to the leaves of the tree. That is contridictary to our goal of merging as many subtrees as possible.
+
+
+
+\section{Error Metric}
+\label{sec:algorithm:error}
+
+\dots
+
+
+\subsection{Summerized linear distance}
+\label{ssec:algorithm:error:linear}
+
+\begin{equation}
+    e_1(t, t') = \frac{1}{m} \sum_{i=1}^m |t_i - t'_i|
+\end{equation}
+
+\dots
+
+
+\subsection{Summerized quadratic distance}
+\label{ssec:algorithm:error:quadratic}
+
+\begin{equation}
+    e_2(t, t') = \frac{1}{m} \sum_{i=1}^m (t_i - t'_i)^2
+\end{equation}
+
+\dots
+
+
+\subsection{Delta Range}
+\label{ssec:algorithm:error:range}
+
+\begin{equation}
+    e_3(t, t') = \max_{i=1}^m |t_i - t'_i| - \min_{i=1}^m |t_i - t'_i|
+\end{equation}
 
 \dots
 
