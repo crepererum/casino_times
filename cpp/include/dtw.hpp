@@ -45,8 +45,63 @@ class dtw_generic {
             _store_tmp(_length),
             _t(t) {}
 
+        /*
+         *
+         *
+         *                                  warping
+         *                                  window (= 2*r+1)
+         *               series i         .<------->.
+         *              ---------->      .         .
+         *                              .         .
+         *             ######################    .
+         *             #              .     #   .
+         *             #             .*     #  .
+         *             #            . *     # .
+         *             #           .  *     #.
+         *             #          .   *     #
+         *             #         .    *    .#
+         *             #        .     *   . #
+         *             #       .      *  .  #   ^
+         *             #      .       * .   #   "
+         *           ^ #     .        *.    #   "
+         *           | #    .         .     #   " inner |
+         *         s | #   .         .*     #   " loop  |********
+         *         e | #  .         . *     #   "               *
+         *         r | # .         .  *     #   "               *
+         *         i | #.         .   *     #   "               V
+         *         e | #         .    *     #   "      A                      B
+         *         s | #        .     *     #          A------+               B
+         *           | #       .      *     #          A------+=>[find best]->B
+         *         j | #      .       *     #          A------+               B
+         *           | #     .        *     #          A                      B
+         *             ######################          A                      B
+         *                   *        *                A                      B
+         *               P   *   P    *  P             A                      B
+         *               H   *   H    *  H             A                      B
+         *               A   *   A    *  A             A                      B
+         *               S   *   S    *  S             A                      B
+         *               E   *   E    *  E             ^                      ^
+         *                   *        *                |                      |
+         *               1   *   2    *  3             +-------store_*--------+
+         *
+         *              ===================>
+         *                  outer loop(s)                INFO: [find best] has
+         *                                                     only 3 inputs
+         *                                                     because you can
+         *                                                     only:
+         *    HINT: "series j" can be more than                 - insert
+         *          one series in case of                       - match
+         *          vectorization. In that case                 - delete
+         *          we obviously return more than
+         *          one final distance.
+         *
+         */
+
         dist_t calc(std::size_t i, indices_t j0) {
             base_t local_base_i = _t.get_base(_source, _blocksize, _begin, i);
+
+            // load to temporary storage first to ensure memory locality
+            // during the warping procedure
             load_to_tmp(j0);
 
             std::fill(_store_a.begin(), _store_a.end(), _t.infinity());
@@ -54,6 +109,7 @@ class dtw_generic {
 
             // remember: r <= length/2
 
+            // PHASE 1
             for (std::size_t idx_i = 0; idx_i < _r; ++idx_i) {
                 std::size_t idx_j_min = 0;
                 std::size_t idx_j_max = idx_i + _r;
@@ -61,6 +117,7 @@ class dtw_generic {
                 inner_loop(local_base_i, idx_i, idx_j_min, idx_j_max, _r - idx_i);
             }
 
+            // PHASE 2
             for (std::size_t idx_i = _r; idx_i < _length_minus_r; ++idx_i) {
                 std::size_t idx_j_min = idx_i - _r;
                 std::size_t idx_j_max = idx_i + _r;
@@ -68,6 +125,7 @@ class dtw_generic {
                 inner_loop(local_base_i, idx_i, idx_j_min, idx_j_max, 0);
             }
 
+            // PHASE 3
             for (std::size_t idx_i = _length_minus_r; idx_i < _length; ++idx_i) {
                 std::size_t idx_j_min = idx_i - _r;
                 std::size_t idx_j_max = _length_minus;
@@ -101,6 +159,9 @@ class dtw_generic {
         store_element_t     _store_tmp;
         T                   _t;
 
+        /*
+         * WARNING: this function uses INCLUSIVE bounds!
+         */
         void inner_loop(base_t local_base_i, std::size_t idx_i, std::size_t idx_j_min, std::size_t idx_j_max, std::size_t store_delta) {
             std::size_t store_pos = store_delta;
 
@@ -115,6 +176,7 @@ class dtw_generic {
             );
 
             for (std::size_t idx_j = idx_j_min; idx_j <= idx_j_max; ++idx_j) {
+                // find best
                 element_t a = _t.convert_single(local_base_i, idx_i);
                 element_t b = _t.load_element(&_store_tmp[idx_j]);
                 dist_t cost = _t.dist(a, b);
