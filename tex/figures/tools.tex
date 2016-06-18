@@ -1,0 +1,107 @@
+\begin{tikzpicture}[
+        arrow/.style={
+            ->,
+            >=stealth
+        },
+        header node/.style = {
+            minimum height= 1em,
+            text depth    = +0pt,
+            fill          = white,
+            draw
+        },
+        header/.style = {%
+            inner ysep = +1.5em,
+            append after command = {
+                \pgfextra{\let\TikZlastnode\tikzlastnode}
+                node [header node] (header-\TikZlastnode) at (\TikZlastnode.north) {#1}
+                node [fit = (\TikZlastnode)(header-\TikZlastnode)] (h-\TikZlastnode) {}
+            }
+        },
+        node/.style={
+            draw,
+            font=\scriptsize,
+            align=center
+        },
+        tool/.style={
+            node,
+            rectangle,
+            fill=white,
+            minimum width=2.0cm,
+            minimum height=0.75cm
+        },
+        data/.style={
+            node,
+            circle,
+            fill=white,
+            minimum width=1.5cm,
+            minimum height=1.5cm
+        },
+        group/.style={
+            draw,
+            dashed,
+            rounded corners,
+            inner sep=0.5cm
+        }
+    ]
+
+
+    \node (scan)       [tool]                        {scan};
+    \node (filter)     [tool, below = of scan]       {filter};
+    \node (normalize)  [tool, below = of filter]     {normalize};
+    \node (stem)       [tool, below = of normalize]  {stem};
+    \node (estems)     [tool, below = of stem]       {extract\_stems};
+    \node (create)     [tool, below = of estems]     {create};
+    \node (store)      [tool, below = of create]     {store};
+    \node (psupport)   [tool, below = of store]      {prune\_support};
+
+    \begin{scope}[on background layer]
+        \node[fit = (scan)(filter)(normalize)(stem)(estems)(create)(store)(psupport), header = Proprocessing, group] (preprocess) {};
+    \end{scope}
+
+    \node (input)       [data, left = of preprocess]   {Google\\data};
+    \node (umatrix)     [data, right = of preprocess]  {data\\matrix\\(UInt)};
+    \node (fmatrix)     [data, right = of umatrix]     {data\\matrix\\(Float)};
+
+    \node (transform)   [tool, above = of fmatrix]     {transform};
+
+    \node (qdtwsimple)  [tool, below = of fmatrix]     {query\_dtw\_simple};
+    \node (ijulia)      [tool, left = of qdtwsimple]   {iJulia};
+    \node (idtw)        [tool, right = of qdtwsimple]  {index\_dtw};
+
+    \node (report)      [data, below = of ijulia]      {reports,\\plots};
+    \node (idxdtw)      [data, below = of idtw]        {DTW\\index};
+
+    \node (qdtwindexed) [tool, below = of idxdtw]      {query\_dtw\_indexed};
+
+    \node (neighbors)   [data, below = of qdtwindexed] {nearest\\neighbors};
+
+    \path (scan.south)        edge[arrow]                  (filter.north);
+    \path (filter.south)      edge[arrow]                  (normalize.north);
+    \path (normalize.south)   edge[arrow]                  (stem.north);
+    \path (stem.south)        edge[arrow]                  (estems.north);
+    \path (estems.south)      edge[arrow]                  (create.north);
+    \path (create.south)      edge[arrow]                  (store.north);
+    \path (store.south)       edge[arrow]                  (psupport.north);
+
+    \path (input.east)        edge[arrow]                  (preprocess.west);
+    \path (preprocess.east)   edge[arrow]                  (umatrix.west);
+
+    \path (transform.east)    edge[arrow, bend left = 45]  (fmatrix.east);
+    \path (umatrix.north)     edge[arrow, bend left = 45]  (transform.west);
+    \path (fmatrix.west)      edge[arrow, bend left = 45]  (transform.west);
+
+    \path (umatrix.south)     edge[arrow]                  (ijulia.north);
+
+    \path (fmatrix.south)     edge[arrow]                  (qdtwsimple.north);
+    \path (fmatrix.south)     edge[arrow,out=345,in=140]   (qdtwindexed.north);
+    \path (fmatrix.south)     edge[arrow]                  (idtw.north);
+    \path (fmatrix.south)     edge[arrow]                  (ijulia.north);
+
+    \path (ijulia.south)      edge[arrow]                  (report.north);
+
+    \path (idtw.south)        edge[arrow]                  (idxdtw.north);
+    \path (idxdtw.south)      edge[arrow]                  (qdtwindexed.north);
+
+    \path (qdtwsimple.south)  edge[arrow, bend right = 45] (neighbors.north);
+    \path (qdtwindexed.south) edge[arrow]                  (neighbors.north);
+\end{tikzpicture}
