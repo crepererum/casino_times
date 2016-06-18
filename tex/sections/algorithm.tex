@@ -115,37 +115,75 @@ The construction of the database of known trees\footnote{To be precise: since th
 \section{Error Metric}
 \label{sec:algorithm:error}
 
-\dots
+The choice of the error metric, while being easy in many cases, opposes some questions in our case:
+
+\begin{itemize}
+    \item How fast can a possible implementation be, not only in terms of complexity but also in terms of constant factors due to vectorization and cache layout?
+    \item How good can it justify the quality of the decompressed data recovered from wavelet tree?
+    \item How well does the decompressed data it work with the later smoothing, gradient calculation and DTW?
+\end{itemize}
+
+We decided to try three different metrics during the process which are described here.
 
 
 \subsection{Summerized linear distance}
 \label{ssec:algorithm:error:linear}
 
-\begin{equation}
-    e_1(t, t') = \frac{1}{m} \sum_{i=1}^m |t_i - t'_i|
+The first metric, a linear absolute distance, is one which naturally occurs when looking for something easy to implement:
+
+\begin{equation}\label{eq:e1}
+    e_1\left(t, t'\right) = \frac{1}{m} \sum_{i=1}^m \left|t_i - t'_i\right|
 \end{equation}
 
-\dots
+The upper bounds can directly be calculated during the tree merging process since the influence regarding location and amplitute of certain tree nodes are know apriory. So the upper limit is simply the sum of the re-adjusted differences of the original node and the merging partner:
+
+\begin{equation}\label{eq:e1_up}
+    \bar{e}_1\left(t, t'\right) = \frac{1}{m} \sum_{m \in \mathrm{merges}(t, t')} 2^\frac{d - m_l}{2} \left|m_x - m_y\right|
+\end{equation}
+
+Here $m_l$ stands for the level of the merged node and $m_x$ and $m_y$ for the coefficient of the original node and the merge partner. Notice that all merges are included in the sum. So even when a node gets merged after both children got merged, they children are included as well.
+
+While the implementation is rather fast because guessing of the upper limit does not require any knowledge of the actual time series difference, it is not well suited for all applications. A compression using this metric can lead to many jumps within the decompressed time series. Also the metric tends to sacrifice huge local errors for small improvements of the overall compression rate.
 
 
 \subsection{Summerized quadratic distance}
 \label{ssec:algorithm:error:quadratic}
 
-\begin{equation}
-    e_2(t, t') = \frac{1}{m} \sum_{i=1}^m (t_i - t'_i)^2
+A way to put higher panilties on to huge local errors is a quadratic error function:
+
+\begin{equation}\label{eq:e2}
+    e_2\left(t, t'\right) = \frac{1}{m} \sum_{i=1}^m \left(t_i - t'_i\right)^2
 \end{equation}
 
-\dots
+A drawback of this function is that the calculation requires the actual distance of the original time series and the compressed one:
+
+\begin{equation}\label{eq:e2_up}
+    \bar{e}_2\left(t, t'\right) = \frac{1}{m} \sum_{i=1}^m \bar{\delta}_i(t, t')^2
+\end{equation}
+
+Here $\bar{\delta}_i(t, t')$ is the upper limit of the distance between $t$ and $t'$ at the point in time $i$. This one can be guessed using a similar method like \autoref{eq:e1_up}.
+
+\begin{equation}\label{eq:delta_up}
+    \bar{\delta}_i\left(t, t'\right) = \sum_{m \in \mathrm{merges}(t, t')} \mathbb{1}_{m \in i} \cdot 2^{-\frac{d - m_l}{2}} \left|m_x - m_y\right|
+\end{equation}
+
+where $\mathbb{1}_{m \in i}$ describes the fact that the merge $m$ does affect the point in time $i$. Notice the minus in the exponent. Since that upper limit strictly increases with at least the amount of the real delta during each merge, the error metric will reach the user-provided limit faster than expected. So we use a hybrid approach during the merging procedure: do cheap guessing until we reach the error limit and then calculate the real error and use this as a base for the following sum-up operations. The number of recalculations increases when slowly approaching the error limit but it is still way faster than calculating the real error on every merge.
 
 
 \subsection{Delta Range}
 \label{ssec:algorithm:error:range}
 
-\begin{equation}
-    e_3(t, t') = \max_{i=1}^m |t_i - t'_i| - \min_{i=1}^m |t_i - t'_i|
+Our last metric is an application specific one which is based on the following observation: Shifting the entire time series up or down (in terms of the $y$-Axis) does not affect the gradient. Therefore this should be allowed during the compression procedure. So we use the distance between the maximum of the delta and the minimum of the delta as an error function. Keep in mind that the delta itself is signed.
+
+\begin{equation}\label{eq:e3}
+    e_3\left(t, t'\right) = \max_{i=1}^m \left|t_i - t'_i\right| - \min_{i=1}^m \left|t_i - t'_i\right|
 \end{equation}
 
-\dots
+This metric has the same drawback as the one presented in \autoref{ssec:algorithm:error:quadratic} but can guessed using a similar strategy:
+
+\begin{equation}\label{eq:e3_up}
+    \bar{e}_3\left(t, t'\right) = \max_{i=1}^m \left|\bar{\delta}_i(t, t')\right| - \min_{i=1}^m \left|\bar{\delta}_i(t, t')\right|
+\end{equation}
 
 
 
