@@ -110,9 +110,11 @@
 \RequirePackage{tikz}
 \usetikzlibrary{
     arrows,
+    backgrounds,
     calc,
     fit,
-    positioning
+    positioning,
+    shapes
 }
 \newcommand{\xdiameter}{15}
 \newcommand{\xone}{-15}
