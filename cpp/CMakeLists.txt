@@ -26,7 +26,7 @@ externalproject_add (
     project_int48
     PREFIX "${CMAKE_CURRENT_BINARY_DIR}/int48_t"
     GIT_REPOSITORY "https://github.com/crepererum/int48_t.git"
-    GIT_TAG "e0b681d5796b6c18632800a432a3a5c75c7f1f53"
+    GIT_TAG "ccfd6891ef285b1f6af1cf71bde84b29ad65f8d3"
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/int48_t.hpp <INSTALL_DIR>
