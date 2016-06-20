@@ -1,6 +1,7 @@
 .ipynb_checkpoints
 build
-data
+/data
+/data2
 stemwords
 *.o
 *.a

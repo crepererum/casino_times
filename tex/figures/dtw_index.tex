@@ -1,0 +1,19 @@
+\begin{tikzpicture}
+    \begin{axis}[
+        xlabel={index resolution},
+        ylabel={n},
+        xmode=log,
+        xtick={2,4,8,16,32,64,128,256},
+        xticklabels={2,4,8,16,32,64,128,256},
+        legend pos=south west,
+        fullwidth
+    ]
+        \addplot [mark=*,color=kit-green2] table [x=resolution, y=fetched, col sep=comma, ignore chars={"}, discard if not={ngram}{drug}] {data/dtw_index.csv};
+        \addplot [mark=*,color=kit-cyan] table [x=resolution, y=fetched, col sep=comma, ignore chars={"}, discard if not={ngram}{know}] {data/dtw_index.csv};
+        \addplot [mark=*,color=kit-red] table [x=resolution, y=fetched, col sep=comma, ignore chars={"}, discard if not={ngram}{war}] {data/dtw_index.csv};
+        \addplot [mark=x,color=kit-green2] table [x=resolution, y=dtw, col sep=comma, ignore chars={"}, discard if not={ngram}{drug}] {data/dtw_index.csv};
+        \addplot [mark=x,color=kit-cyan] table [x=resolution, y=dtw, col sep=comma, ignore chars={"}, discard if not={ngram}{know}] {data/dtw_index.csv};
+        \addplot [mark=x,color=kit-red] table [x=resolution, y=dtw, col sep=comma, ignore chars={"}, discard if not={ngram}{war}] {data/dtw_index.csv};
+        \legend{drug (fetched),know (fetched),war (fetched),drug (DTW),know (DTW),war (DTW)};
+    \end{axis}
+\end{tikzpicture}
