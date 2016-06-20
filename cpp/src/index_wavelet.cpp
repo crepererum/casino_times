@@ -90,7 +90,60 @@ class range_bucket_t {
         }
 };
 
-struct index_t {
+struct index_tmp_t {
+    std::vector<range_bucket_t> lowest_level;
+    std::vector<std::unordered_map<children_t, range_bucket_t>> higher_levels;
+    std::vector<std::size_t> node_counts;
+
+    index_tmp_t(std::size_t depth)
+        : lowest_level(std::size_t{1} << (depth - 1)),
+        higher_levels(depth - 1),
+        node_counts(depth, 0) {}
+
+    range_bucket_t& find_bucket(std::size_t l, std::size_t idx, node_ptr_t current_node) {
+        if (l >= higher_levels.size()) {
+            return lowest_level[idx];
+        } else {
+            return higher_levels[l][current_node->children];
+        }
+    }
+
+    void delete_all_ptrs(mapped_file_ptr_t& f) {
+        allocator_superroot_t alloc(f->get_segment_manager());
+
+        std::size_t find_count;
+        superroot_vector_t* superroots;
+        std::tie(superroots, find_count) = f->find<superroot_vector_t>("superroots");
+        if (find_count != 1) {
+            return;
+        }
+
+        for (auto& sr : *superroots) {
+            if (sr != nullptr) {
+                dealloc_in_mapped_file(alloc, sr);
+            }
+        }
+        for (auto& bucket : lowest_level) {
+            bucket.delete_all_ptrs(f);
+        }
+        for (auto& map : higher_levels) {
+            for (auto& kv : map) {
+                kv.second.delete_all_ptrs(f);
+            }
+        }
+    }
+
+    std::size_t total_node_count() const {
+        return std::accumulate(
+            node_counts.begin(),
+            node_counts.end(),
+            static_cast<std::size_t>(0),
+            std::plus<std::size_t>()
+        );
+    }
+};
+
+struct index_stored_t {
     superroot_vector_t* superroots;
     parents_table_t*    parents_table;
     superroots_table_t* superroots_table;
@@ -98,16 +151,9 @@ struct index_t {
     allocator_node_ptr_t      alloc_node_ptr;
     allocator_superroot_ptr_t alloc_superroot_ptr;
 
-    std::vector<range_bucket_t> lowest_level;
-    std::vector<std::unordered_map<children_t, range_bucket_t>> higher_levels;
-    std::vector<std::size_t> node_counts;
-
-    index_t(std::shared_ptr<boost::interprocess::managed_mapped_file> findex, std::size_t depth, std::size_t n)
+    index_stored_t(std::shared_ptr<boost::interprocess::managed_mapped_file> findex, std::size_t n)
         : alloc_node_ptr(findex->get_segment_manager()),
-        alloc_superroot_ptr(findex->get_segment_manager()),
-        lowest_level(std::size_t{1} << (depth - 1)),
-        higher_levels(depth - 1),
-        node_counts(depth, 0) {
+        alloc_superroot_ptr(findex->get_segment_manager()) {
 
         void* anchor  = findex->construct<std::uint8_t>("hash_anchor")();
 
@@ -130,40 +176,6 @@ struct index_t {
             offset_hash<node_t>{anchor},
             std::equal_to<node_ptr_t>{},
             alloc_superroot_vector
-        );
-    }
-
-    range_bucket_t& find_bucket(std::size_t l, std::size_t idx, node_ptr_t current_node) {
-        if (l >= higher_levels.size()) {
-            return lowest_level[idx];
-        } else {
-            return higher_levels[l][current_node->children];
-        }
-    }
-
-    void delete_all_ptrs(mapped_file_ptr_t& f) {
-        allocator_superroot_t alloc(f->get_segment_manager());
-        for (auto& sr : *superroots) {
-            if (sr != nullptr) {
-                dealloc_in_mapped_file(alloc, sr);
-            }
-        }
-        for (auto& bucket : lowest_level) {
-            bucket.delete_all_ptrs(f);
-        }
-        for (auto& map : higher_levels) {
-            for (auto& kv : map) {
-                kv.second.delete_all_ptrs(f);
-            }
-        }
-    }
-
-    std::size_t total_node_count() const {
-        return std::accumulate(
-            node_counts.begin(),
-            node_counts.end(),
-            static_cast<std::size_t>(0),
-            std::plus<std::size_t>()
         );
     }
 
@@ -309,12 +321,13 @@ class error_calculator {
 
 class engine {
     public:
-        engine(std::size_t ylength, std::size_t depth, inexact_t max_error, const calc_t* base, index_t* index, const mapped_file_ptr_t& mapped_file)
+        engine(std::size_t ylength, std::size_t depth, inexact_t max_error, const calc_t* base, index_tmp_t* index_tmp, index_stored_t* index_stored, const mapped_file_ptr_t& mapped_file)
             : _ylength(ylength),
             _depth(depth),
             _max_error(max_error),
             _base(base),
-            _index(index),
+            _index_tmp(index_tmp),
+            _index_stored(index_stored),
             _mapped_file(mapped_file),
             _alloc_superroot(_mapped_file->get_segment_manager()),
             _alloc_node(_mapped_file->get_segment_manager()),
@@ -329,8 +342,8 @@ class engine {
             _error_calc->recalc(i);  // correct error one last time
 
             // move superroot to mapped file
-            (*_index->superroots)[i] = alloc_in_mapped_file(_alloc_superroot);
-            *((*_index->superroots)[i]) = *(_transformer->superroot);
+            (*_index_stored->superroots)[i] = alloc_in_mapped_file(_alloc_superroot);
+            *((*_index_stored->superroots)[i]) = *(_transformer->superroot);
 
             return _transformer->superroot;
         }
@@ -365,7 +378,8 @@ class engine {
         const std::size_t                 _depth;
         inexact_t                         _max_error;
         const calc_t*                     _base;
-        index_t*                          _index;
+        index_tmp_t*                      _index_tmp;
+        index_stored_t*                   _index_stored;
         std::mt19937                      _rng;
         mapped_file_ptr_t                 _mapped_file;
         allocator_superroot_t             _alloc_superroot;
@@ -423,7 +437,7 @@ class engine {
             node_ptr_t current_node = _transformer->levels[l][idx];
 
             if (current_node != nullptr) {
-                auto& bucket = _index->find_bucket(l, idx, current_node);
+                auto& bucket = _index_tmp->find_bucket(l, idx, current_node);
                 bucket.get_nearest(current_node, std::numeric_limits<inexact_t>::infinity(), 1, _neighbors);
                 if (!_neighbors.empty()) {
                     inexact_t error = _error_calc->guess_error(l, idx, _neighbors[0].second);
@@ -453,32 +467,32 @@ class engine {
 
                         // register a new parent for the child nodes
                         if (l == 0) {
-                            _index->register_superroot(node_stored, (*(_index->superroots))[i]);
+                            _index_stored->register_superroot(node_stored, (*(_index_stored->superroots))[i]);
                         }
                         for (const auto& c : node_stored->children) {
                             if (c) {
-                                _index->register_parent(c, node_stored);
+                                _index_stored->register_parent(c, node_stored);
                             }
                         }
 
                         // add node to value lookup system
-                        auto& bucket = _index->find_bucket(l, idx, node_stored);
+                        auto& bucket = _index_tmp->find_bucket(l, idx, node_stored);
                         bucket.insert(node_stored);
-                        ++_index->node_counts[l];
+                        ++_index_tmp->node_counts[l];
                     }
                 }
             }
         }
 };
 
-double calc_compression_rate(const index_t* index, year_t ylength, std::size_t n) {
+double calc_compression_rate(const index_tmp_t* index, year_t ylength, std::size_t n) {
     std::size_t size_normal = sizeof(calc_t) * static_cast<std::size_t>(ylength) * n;
     std::size_t size_compression = sizeof(node_t) * index->total_node_count() + sizeof(superroot_t) * n;
 
     return static_cast<double>(size_compression) / static_cast<double>(size_normal);
 }
 
-void print_process(const index_t* index, year_t ylength, std::size_t n, std::size_t i) {
+void print_process(const index_tmp_t* index, year_t ylength, std::size_t n, std::size_t i) {
     std::cout << "  process=" << i << "/" << n
         << " #nodes=" << index->total_node_count()
         << " %nodes=" << (static_cast<double>(index->total_node_count()) / static_cast<double>((ylength - 1) * i))
@@ -486,7 +500,7 @@ void print_process(const index_t* index, year_t ylength, std::size_t n, std::siz
         << std::endl;
 }
 
-void print_stats(const index_t* index, std::size_t n) {
+void print_stats(const index_tmp_t* index, std::size_t n) {
     std::size_t sum_is = 0;
     std::size_t sum_should = 0;
 
@@ -506,7 +520,7 @@ void print_stats(const index_t* index, std::size_t n) {
     std::cout << "  level=X #nodes=" << sum_is << " %nodes=" << sum_relative << std::endl;
 }
 
-void trace_up(const std::vector<node_ptr_t>& nodes, const index_t* index, std::unordered_set<superroot_ptr_t>& srs) {
+void trace_up(const std::vector<node_ptr_t>& nodes, const index_stored_t* index, std::unordered_set<superroot_ptr_t>& srs) {
     std::vector<node_ptr_t> next;
 
     for (const auto& n : nodes) {
@@ -530,7 +544,7 @@ void trace_up(const std::vector<node_ptr_t>& nodes, const index_t* index, std::u
     }
 }
 
-void trace_down(const std::vector<node_ptr_t>& nodes, const index_t* index) {
+void trace_down(const std::vector<node_ptr_t>& nodes, const index_stored_t* index) {
     std::unordered_set<superroot_ptr_t> srs_set;
     std::vector<node_ptr_t> next;
 
@@ -620,8 +634,9 @@ int main(int argc, char** argv) {
 
     std::cout << "build and merge trees" << std::endl;
     std::size_t depth = power_of_2(ylength);
-    index_t index(findex, depth, n);
-    engine eng(ylength, depth, max_error, base, &index, findex);
+    index_tmp_t index_tmp(depth);
+    index_stored_t index_stored(findex, n);
+    engine eng(ylength, depth, max_error, base, &index_tmp, &index_stored, findex);
     std::mt19937 rng;
     std::vector<std::pair<std::size_t, std::size_t>> indices;
     constexpr std::size_t blocksize = 16;
@@ -635,7 +650,7 @@ int main(int argc, char** argv) {
     std::size_t counter = 0;
     for (std::size_t b = 0; b < indices.size(); ++b) {
         if (b % 50 == 0) {
-            print_process(&index, ylength, n, counter);
+            print_process(&index_tmp, ylength, n, counter);
         }
 
         const auto& block = indices[b];
@@ -649,11 +664,11 @@ int main(int argc, char** argv) {
 
         counter += (end - begin);
     }
-    print_process(&index, ylength, n, n);
+    print_process(&index_tmp, ylength, n, n);
     std::cout << "done" << std::endl;
 
     std::cout << "trace one path:" << std::endl;
-    trace_down({(*index.superroots)[indices[indices.size() - 1].first]->root}, &index);  // XXX: find a better example trace
+    trace_down({(*index_stored.superroots)[indices[indices.size() - 1].first]->root}, &index_stored);  // XXX: find a better example trace
 
     // free memory for sanity checking
     // DONT! only for debugging!
@@ -661,5 +676,5 @@ int main(int argc, char** argv) {
 
     std::cout << "Free memory: " << (findex->get_free_memory() >> 10) << "k of " << (findex->get_size() >> 10) << "k" << std::endl;
 
-    print_stats(&index, n);
+    print_stats(&index_tmp, n);
 }
