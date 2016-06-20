@@ -8,7 +8,7 @@ project (ngrams)
 
 # bunch of external projects
 set (external_flags "-fPIC -fdata-sections -ffunction-sections -g -fno-omit-frame-pointer -mavx2 -mfma")
-set (external_flags_cxx "${external_flags} -fsized-deallocation")
+set (external_flags_cxx "${external_flags} -fsized-deallocation -ftemplate-depth=1024")
 set (external_flags_c "${external_flags}")
 
 externalproject_add (
