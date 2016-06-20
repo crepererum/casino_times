@@ -187,37 +187,69 @@ This metric has the same drawback as the one presented in \autoref{ssec:algorith
 
 
 
+\section{Tree as Index}
+\label{sec:algorithm:asindex}
+
+\dots
+
+
+
+\section{Optimizations}
+\label{sec:algorithm:opt}
+
+\dots
+
+
+
 \section{Failed Improvements}
 \label{sec:algorithm:fail}
 
-\dots
-
-
-\subsection{DTW}
-\label{ssec:algorithm:fail:dtw}
-
-\dots
-
-
-\subsection{FLANN}
-\label{ssec:algorithm:fail:flann}
-
-\dots
-
-
-\subsection{Pruning}
-\label{ssec:algorithm:fail:pruning}
-
-\dots
-
-
-\subsection{Random Boosting}
-\label{ssec:algorithm:fail:random}
-
-\dots
+A main problem of our algorithm is its greedy nature. It merges nodes always with its nearest neighbor and therefore might make decissions that result in the fact that nodes in levels near the root might not be merged because their children do not match. We tried different approaches to solve this problem but did not succeed.
 
 
 \subsection{Subtree Index}
 \label{ssec:algorithm:fail:stindex}
 
-\dots
+To increase the chance that the greedy algorithm chooses merges that belong to the same subtree we tried the following method:
+
+\begin{enumerate}
+    \item select multiple nearest neighbors as candidates for a merge
+    \item do this for a node which belongs to the same \num{3}-subtree (or larger ones) as well
+    \item check which pairs of merges belong to the same subtree and priorize them
+\end{enumerate}
+
+This requires that we are quickly able to figure out which nodes have which parents, so we introduced a subtree and superroot index to do so. Also we need to query multiple neighbors instead of just one. Alltogether that renders the entire approach inpractical and we abandond it. Also the the compression results only improved slighly and sometimes even got worse.
+
+
+\subsection{FLANN}
+\label{ssec:algorithm:fail:flann}
+
+The main goal of our algorithm is to find the best matching subtree in terms of distance. To help the greedy algorithm to archive that task we tried to use FLANN (\cite{FLANN}) to merge subtrees of size \num{3} instead of single nodes. To do so we need to ensure that the coefficients stored in the tree nodes are premultiplied like the elements in \autoref{eq:e1_up}. It turns out that the huge amount of indices required renders this method impossible to implement since it is not as memory and time efficient as plain sorted arrays. The result is that the calculation never finishes. Surprisingly the partial compression results are not even better which might be due to the fact that merging entire subtrees tends to be less aggressive compared to handling single nodes.
+
+
+\subsection{Random Boosting}
+\label{ssec:algorithm:fail:random}
+
+This improvement is similar to the one presented in \autoref{ssec:algorithm:fail:stindex}. We try to find better merges by observing more neighbors. This time we tried to gather a fixed amount of neighbors and select a random one with decreasing propability bound to the rank. Then we execute a complete subtree merge. This process is repeated multiple times and the best merge is kept. We also add a merge to the set where only the nearest neighbor is used to ensure that the greedy decission never is worse due to the random elements, at least as a local outcome for that specific time series. We ended up with a heavily increased calculation time and less than \SI{5}{\percent} improvements of the compression rate.
+
+
+\subsection{DTW}
+\label{ssec:algorithm:fail:dtw}
+
+One of the main limitations of the current neighborhood search is that the we are only looking for nodes which correspond to the same time span. This contridicts the later usage of the data through Dynamic Time Warping. So we tried to decouble the tree structure and subtree merging from the actual time dimensions. We limited the the search for the child nodes to a time-monotonic warping and reused the implementation of the existing DTW. For the non-leaf-nodes we did not apply any constraint since the same children policy already forces merges with the correct level and correct warping. The results of this technique were not convincing since the additional degree of freedom during the merging makes it even more unlikely to hit neighbors which belong to the same subtree. So the compression rates got worse and we dropped this approach.
+
+
+\subsection{Pruning}
+\label{ssec:algorithm:fail:pruning}
+
+A possible reason for suboptimal decissions during the local node merging might be that coefficients can be quite noisy and therefore expose to many possible merges which do not really differ within their value. Because only the nearest neighbor is selected for a merge, this may result in unsane results. We tried to solve this problem by introducing additional information pruning in three variants:
+
+\begin{enumerate}
+    \item before merging
+    \item during merging
+    \item after merging
+\end{enumerate}
+
+The pruning zeroes low significant parts of the floating point coefficients, bit by bit, so with increasing error. So the ratio of the information loss stays approxamitly constant no matter which size the coefficient has. The idea behind this is to engage the algorithm to ignore noise within the coefficient and to have less decissions to make. On the other hand this pruning also increases the error without resulting in any compression at all and is only useful for entries that will be added to the index afterwards. Sadly the increase of the error rate overweights the desired affect of helping the greedy algorithm and therefore this approach does not have a positive effect, in all three variants.
+
+Keep in mind that this type of pruning does not decrease the memory requirements of the tree nodes since there is no fixed cutoff but rather a individual decission how much information should be kept. So to than decrease the node size by storing a shorter representation of the coefficient you would also need to store how much information got pruned which takes so much space that it eliminates its purpose. For technical reason it is also quite difficult to store nodes with sizes not fitting into hole bytes.
