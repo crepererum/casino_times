@@ -155,15 +155,15 @@ struct index_stored_t {
         : alloc_node_ptr(findex->get_segment_manager()),
         alloc_superroot_ptr(findex->get_segment_manager()) {
 
-        void* anchor  = findex->construct<std::uint8_t>("hash_anchor")();
+        void* anchor  = findex->find_or_construct<std::uint8_t>("hash_anchor")();
 
-        superroots    = findex->construct<superroot_vector_t>("superroots")(
+        superroots    = findex->find_or_construct<superroot_vector_t>("superroots")(
             n,
             alloc_superroot_ptr
         );
 
         allocator_node_vector_t alloc_node_vector(findex->get_segment_manager());
-        parents_table = findex->construct<parents_table_t>("parents_table")(
+        parents_table = findex->find_or_construct<parents_table_t>("parents_table")(
             0,
             offset_hash<node_t>{anchor},
             std::equal_to<node_ptr_t>{},
@@ -171,7 +171,7 @@ struct index_stored_t {
         );
 
         allocator_superroot_vector_t alloc_superroot_vector(findex->get_segment_manager());
-        superroots_table = findex->construct<superroots_table_t>("superroots_table")(
+        superroots_table = findex->find_or_construct<superroots_table_t>("superroots_table")(
             0,
             offset_hash<node_t>{anchor},
             std::equal_to<node_ptr_t>{},
