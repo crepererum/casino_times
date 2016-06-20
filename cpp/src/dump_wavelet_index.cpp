@@ -40,19 +40,11 @@ int main(int argc, char** argv) {
     std::size_t n = ngmap.size();
 
     std::cout << "open index file..." << std::endl;
-    std::size_t find_count;
-    superroot_vector_t* superroots;
     auto findex = std::make_shared<boost::interprocess::managed_mapped_file>(
         boost::interprocess::open_only,
         fname_index.c_str()
     );
-    auto segment_manager = findex->get_segment_manager();
-    allocator_superroot_ptr_t allocator_superroot(segment_manager);
-    std::tie(superroots, find_count) = findex->find<superroot_vector_t>("superroots");
-    if (superroots == nullptr) {
-        std::cerr << "cannot find index data!" << std::endl;
-        return 1;
-    }
+    index_stored_t index(findex, idxmap.size());
     std::cout << "done" << std::endl;
 
     std::cout << "open output file..." << std::endl;
@@ -69,7 +61,7 @@ int main(int argc, char** argv) {
     transformer trans(ylength, depth);
     for (std::size_t i = 0; i < n; ++i) {
         std::size_t offset = i * ylength;
-        trans.superroot = (*superroots)[i];
+        trans.superroot = (*index.superroots)[i];
         trans.tree_to_data(base + offset);
     }
     std::cout << "done" << std::endl;

@@ -187,24 +187,16 @@ int main(int argc, char** argv) {
     std::cout << "done" << std::endl;
 
     std::cout << "open index file..." << std::endl;
-    std::size_t find_count;
-    superroot_vector_t* superroots;
     auto findex = std::make_shared<boost::interprocess::managed_mapped_file>(
         boost::interprocess::open_only,
         fname_index.c_str()
     );
-    auto segment_manager = findex->get_segment_manager();
-    allocator_superroot_ptr_t allocator_superroot(segment_manager);
-    std::tie(superroots, find_count) = findex->find<superroot_vector_t>("superroots");
-    if (superroots == nullptr) {
-        std::cerr << "cannot find index data!" << std::endl;
-        return 1;
-    }
+    index_stored_t index(findex, idxmap->size());
     std::cout << "done" << std::endl;
 
     std::cout << "emit dot file..." << std::endl;
     std::ofstream out(fname_dot);
-    printer pr(superroots, idxmap);
+    printer pr(index.superroots, idxmap);
     pr.print_begin(out);
     for (std::size_t i : indices) {
         pr.print_tree(out, i);
