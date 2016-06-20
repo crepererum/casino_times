@@ -277,7 +277,7 @@
 \RequirePackage{mathtools}
 \RequirePackage{siunitx}
 \RequirePackage{unicode-math}
-\setmathfont[Scale=0.90]{Asana-Math.otf}
+\setmathfont[Scale=0.98]{xits-math.otf}
 
 % easier quotes
 \RequirePackage{csquotes}
