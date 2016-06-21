@@ -1,0 +1,161 @@
+\begin{tikzpicture}[
+        cell/.style={
+            draw,
+            rectangle,
+            minimum width=0.4cm,
+            minimum height=0.4cm,
+            black!30
+        },
+        cellnormal/.style={
+            cell
+        },
+        cellwindow/.style={
+            cell,
+            fill=black!10
+        },
+        cellpinned/.style={
+            cell,
+            fill=black!20
+        },
+        cella/.style={
+            cell,
+            kit-green2
+        },
+        cellb/.style={
+            cell,
+            kit-red
+        },
+        cellax/.style={
+            cella,
+            fill=kit-green2
+        },
+        cellbx/.style={
+            cellb,
+            fill=kit-red
+        },
+        windowborder/.style={
+            dashed
+        },
+        phaseborder/.style={
+            dotted
+        },
+        mydim/.style={
+            ->,
+            >=stealth',
+            double,
+            thick
+        },
+        myrange/.style={
+            <->,
+            >=stealth
+        },
+        mytext/.style={
+            sloped,
+            anchor=center,
+            align=center
+        },
+        mytrans/.style={
+            <-,
+            >=*
+        }
+    ]
+
+    \begin{scope}[local bounding box=grid]
+        \foreach \x in {0,...,19} {
+            \foreach[evaluate={\delta=int(\x-\y)};] \y in {0,...,19} {
+                \ifthenelse{\delta<5 \AND \delta>-5}{\def\celltype{cellwindow}}{\def\celltype{cellnormal}}
+                \node[\celltype] (\x;\y) at (0.4cm*\x,0.4cm*\y) {};
+            }
+        }
+        \foreach \y in {3,...,11} {
+            \node[cella] (a7;\y) at (0.4cm*7,0.4cm*\y) {};
+        }
+        \foreach \y in {4,...,12} {
+            \node[cellb] (b8;\y) at (0.4cm*8,0.4cm*\y) {};
+        }
+        \node[cellax] (ax7;4) at (0.4cm*7,0.4cm*4) {};
+        \node[cellax] (ax7;5) at (0.4cm*7,0.4cm*5) {};
+        \node[cellax] (ax7;6) at (0.4cm*7,0.4cm*6) {};
+        \node[cellbx] (bx8;6) at (0.4cm*8,0.4cm*6) {};
+        \node[cellpinned] at (0.4cm*0,0.4cm*0) {};
+        \node[cellpinned] at (0.4cm*19,0.4cm*19) {};
+    \end{scope}
+
+    \node (agn) at (grid.north) {};
+    \node (ags) at (grid.south) {};
+    \node (age) at (grid.east) {};
+    \node (agw) at (grid.west) {};
+
+    \node (agne) at (grid.north east) {};
+    \node (agnw) at (grid.north west) {};
+    \node (agse) at (grid.south east) {};
+    \node (agsw) at (grid.south west) {};
+
+    \node (aw1) at (0;4.north west) {};
+    \node (aw2) at (15;19.north west) {};
+    \node (aw3) at (4;0.south east) {};
+    \node (aw4) at (19;15.south east) {};
+
+    \node (aw2a) at ($(agne.center)!-1!(aw4.center)$) {};
+    \node (aw4a) at ($(agne.center)!-1!(aw2.center)$) {};
+    \node (aw2x) at ($(aw2.center)!0.5!(aw2a.center)$) {};
+    \node (aw4x) at ($(aw4.center)!0.5!(aw4a.center)$) {};
+    \node (agnex) at (aw2x.center-|aw4x.center) {};
+    \node (aw4y) at ($(agnex.center)!-1!(aw2x.center)$) {};
+
+    \path (aw1.center) edge[windowborder] (aw2x.center);
+    \path (aw3.center) edge[windowborder] (aw4y.center);
+
+    \draw[myrange] (aw2x.center) -- node[mytext,above] {warping window\\($=2r + 1$)} (aw4y.center);
+
+    \node (ap0t) at (agsw.center) {};
+    \node (ap3t) at (agse.center) {};
+    \node (ap1t) at (aw3.center) {};
+    \node (ap2t) at (aw2.center) {};
+
+    \node (ap0b) [below = 1.5cm of ap0t.center] {};
+    \node (ap1b) at (ap0b.center-|ap1t.center) {};
+    \node (ap2b) at (ap0b.center-|ap2t.center) {};
+    \node (ap3b) at (ap0b.center-|ap3t.center) {};
+
+    \path (ap0t.center) edge[phaseborder] (ap0b.center);
+    \path (ap1t.center) edge[phaseborder] (ap1b.center);
+    \path (ap2t.center) edge[phaseborder] (ap2b.center);
+    \path (ap3t.center) edge[phaseborder] (ap3b.center);
+
+    \draw[myrange] (ap0b.center) -- node[mytext,below] {phase 1} (ap1b.center);
+    \draw[myrange] (ap1b.center) -- node[mytext,below] {phase 2} (ap2b.center);
+    \draw[myrange] (ap2b.center) -- node[mytext,below] {phase 3} (ap3b.center);
+
+    \node (asi) [above = 0.3cm of agn.center] {};
+    \node (asib) [left = 1cm of asi.center] {};
+    \node (asie) [right = 1cm of asi.center] {};
+
+    \node (asj) [left = 0.3cm of agw.center] {};
+    \node (asjb) [below = 1cm of asj.center] {};
+    \node (asje) [above = 1cm of asj.center] {};
+
+    \node (asl1) [below = 0.3cm of ags.center] {};
+    \node (asl1b) [left = 1cm of asl1.center] {};
+    \node (asl1e) [right = 1cm of asl1.center] {};
+
+    \node (asl2) [right = 0.3cm of age.center] {};
+    \node (asl2b) [below = 1cm of asl2.center] {};
+    \node (asl2e) [above = 1cm of asl2.center] {};
+
+    \draw[mydim] (asib.center) -- node[mytext,above] {series i} (asie.center);
+    \draw[mydim] (asjb.center) -- node[mytext,above] {series j} (asje.center);
+    \draw[mydim] (asl1b.center) -- node[mytext,below] {outer loop} (asl1e.center);
+    \draw[mydim] (asl2b.center) -- node[mytext,below] {inner loop} (asl2e.center);
+
+    \node [left = 0.05cm of ax7;4] {delete};
+    \node [left = 0.05cm of ax7;5] {match};
+    \node [left = 0.05cm of ax7;6] {insert};
+
+    \draw[mytrans] (ax7;4.center) -- (bx8;6.center);
+    \draw[mytrans] (ax7;5.center) -- (bx8;6.center);
+    \draw[mytrans] (ax7;6.center) -- (bx8;6.center);
+
+    \node [above = 1.2cm of a7;11, rotate = 90, anchor = center, kit-green2] {buffer a};
+    \node [above = 1.2cm of b8;12, rotate = 90, anchor = center, kit-red] {buffer b};
+\end{tikzpicture}
