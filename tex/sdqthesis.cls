@@ -278,6 +278,7 @@
 \RequirePackage{siunitx}
 \RequirePackage{unicode-math}
 \setmathfont[Scale=0.98]{xits-math.otf}
+\newtheorem{definition}{Definition}
 
 % easier quotes
 \RequirePackage{csquotes}
