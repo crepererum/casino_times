@@ -17,12 +17,18 @@
             cell,
             fill=black!20
         },
-        cella/.style={
+        cellbordered/.style={
             cell,
+            minimum width=0.4cm-\pgflinewidth,
+            minimum height=0.4cm-\pgflinewidth,
+            semithick
+        },
+        cella/.style={
+            cellbordered,
             kit-green2
         },
         cellb/.style={
-            cell,
+            cellbordered,
             kit-red
         },
         cellax/.style={
@@ -37,7 +43,8 @@
             dashed
         },
         phaseborder/.style={
-            dotted
+            dotted,
+            semithick
         },
         mydim/.style={
             ->,
@@ -56,7 +63,8 @@
         },
         mytrans/.style={
             <-,
-            >=*
+            >=*,
+            shorten <=-2pt
         }
     ]
 
@@ -109,7 +117,7 @@
     \draw[myrange] (aw2x.center) -- node[mytext,above] {warping window\\($=2r + 1$)} (aw4y.center);
 
     \node (ap0t) at (agsw.center) {};
-    \node (ap3t) at (agse.center) {};
+    \node (ap3t) at (agne.center) {};
     \node (ap1t) at (aw3.center) {};
     \node (ap2t) at (aw2.center) {};
 
