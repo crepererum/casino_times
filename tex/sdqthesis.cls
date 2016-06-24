@@ -324,6 +324,7 @@
     legend style={font=\scriptsize},
     label style={font=\scriptsize}
 }
+\RequirePackage[outline]{contour}
 
 % appendix
 \RequirePackage[toc,title,header]{appendix}

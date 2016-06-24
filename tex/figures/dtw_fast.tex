@@ -33,11 +33,15 @@
         },
         cellax/.style={
             cella,
-            fill=kit-green2
+            fill=kit-green2!20
         },
         cellbx/.style={
             cellb,
-            fill=kit-red
+            fill=kit-red!20
+        },
+        cellby/.style={
+            cellb,
+            fill=kit-red!60
         },
         windowborder/.style={
             dashed
@@ -81,10 +85,10 @@
         \foreach \y in {4,...,12} {
             \node[cellb] (b8;\y) at (0.4cm*8,0.4cm*\y) {};
         }
-        \node[cellax] (ax7;4) at (0.4cm*7,0.4cm*4) {};
         \node[cellax] (ax7;5) at (0.4cm*7,0.4cm*5) {};
         \node[cellax] (ax7;6) at (0.4cm*7,0.4cm*6) {};
-        \node[cellbx] (bx8;6) at (0.4cm*8,0.4cm*6) {};
+        \node[cellbx] (bx8;5) at (0.4cm*8,0.4cm*5) {};
+        \node[cellby] (by8;6) at (0.4cm*8,0.4cm*6) {};
         \node[cellpinned] at (0.4cm*0,0.4cm*0) {};
         \node[cellpinned] at (0.4cm*19,0.4cm*19) {};
     \end{scope}
@@ -156,14 +160,14 @@
     \draw[mydim] (asl1b.center) -- node[mytext,below] {outer loop} (asl1e.center);
     \draw[mydim] (asl2b.center) -- node[mytext,below] {inner loop} (asl2e.center);
 
-    \node [left = 0.05cm of ax7;4] {delete};
-    \node [left = 0.05cm of ax7;5] {match};
-    \node [left = 0.05cm of ax7;6] {insert};
+    \node [left = 0.05cm of ax7;5] {\contour{white}{match}};
+    \node [left = 0.05cm of ax7;6] {\contour{white}{insert}};
+    \node [right = 0.05cm of bx8;5] {\contour{white}{delete}};
 
-    \draw[mytrans] (ax7;4.center) -- (bx8;6.center);
-    \draw[mytrans] (ax7;5.center) -- (bx8;6.center);
-    \draw[mytrans] (ax7;6.center) -- (bx8;6.center);
+    \draw[mytrans] (ax7;5.center) -- (by8;6.center);
+    \draw[mytrans] (ax7;6.center) -- (by8;6.center);
+    \draw[mytrans] (bx8;5.center) -- (by8;6.center);
 
-    \node [above = 1.2cm of a7;11, rotate = 90, anchor = center, kit-green2] {buffer a};
-    \node [above = 1.2cm of b8;12, rotate = 90, anchor = center, kit-red] {buffer b};
+    \node [above = 1.2cm of a7;11, rotate = 90, anchor = center, kit-green2] {\contour{white}{buffer a}};
+    \node [above = 1.2cm of b8;12, rotate = 90, anchor = center, kit-red] {\contour{white}{buffer b}};
 \end{tikzpicture}

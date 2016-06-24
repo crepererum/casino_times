@@ -144,7 +144,7 @@ So we choose to apply $\log(x + 1)$ to all values for normalizing. Note the \num
     \label{fig:ngrams_ex2_grad}
 \end{figure}
 
-As \autoref{fig:ngrams_ex2_fitavg} shows, there are cases where time series look very similar but are difficult to fit by using a linear transformation. Therefore a simple $p$-distance is not sufficient for as a distance measure. Therefore we decided to fit the gradients instead which follows the idea presented in \cite{DDTW}. An example is shown in \autoref{fig:ngrams_ex2_grad}. We use the $\Delta = 1$ gradient of $\log(x + 1)$.
+As \autoref{fig:ngrams_ex2_fitavg} shows, there are cases where time series look very similar but are difficult to fit by using a linear transformation. Therefore a simple $p$-distance is not sufficient for as a distance measure. Therefore we decided to fit the gradients instead. An example is shown in \autoref{fig:ngrams_ex2_grad}. We use the $\Delta = 1$ gradient of $\log(x + 1)$.
 
 \begin{figure}
     \centering
@@ -166,7 +166,7 @@ Since calculating the distances of noisy gradients may lead to useless results, 
     \label{fig:ngrams_ex2_extrema}
 \end{figure}
 
-As \autoref{fig:ngrams_ex2_extrema} shows, while having the same structure the gradients do not align perfectly. To calculate a meaningful distance, we use DTW (Dynamic Time Warping)\footnote{We do not cite a publication here since it is a commenly known algorithm and the only online publisher of the assumed original publication wants you to pay $>$\SI{30}{\$} after $>$\num{45} years.} with an Euclidian distance and a Sakoe-Chiba Band (\cite{sakoe}) of radius $r$.
+As \autoref{fig:ngrams_ex2_extrema} shows, while having the same structure the gradients do not align perfectly. To calculate a meaningful distance, we use DTW (Dynamic Time Warping)\footnote{We do not cite a publication here since it is a commenly known algorithm and the only online publisher of the assumed original publication wants you to pay $>$\SI{30}{\$} after $>$\num{45} years.} with an Euclidian distance and a Sakoe-Chiba Band (\cite{sakoe}) of radius $r$. The usage of gradients as an input of Dynamic Time Warping follows the idea presented in \cite{DDTW}.
 
 \section{Index-based Speed-up}
 \label{sec:baseline:speed}
