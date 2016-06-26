@@ -275,7 +275,7 @@
 \RequirePackage{amsthm}
 \RequirePackage{amssymb}
 \RequirePackage{mathtools}
-\RequirePackage{siunitx}
+\RequirePackage[binary-units=true]{siunitx}
 \RequirePackage{unicode-math}
 \setmathfont[Scale=0.98]{xits-math.otf}
 \newtheorem{definition}{Definition}

@@ -243,7 +243,11 @@ This metric has the same drawback as the one presented in \autoref{ssec:algorith
 \section{Optimizations}
 \label{sec:algorithm:opt}
 
-\dots
+There are two technical details which help to improve the compression ratio even further. The first one is the reduction of precision used to the coefficients. Instead of using full \SI{64}{\bit} floating point numbers we use \SI{16}{\bit} floats, also referred as \enquote{halfs} as definied by \cite{ieee_float}. This increases the the error due to conversion and leads to a lower amount of merges, but increases the overall compression rate in terms of memory size. The smaller size of the memory representation compensates the higher error. Using \SI{16}{\bit} numbers turned out to be better than \SI{32}{\bit}. There might be the possibility to use even less memory by using bit packing and changing the representation to a non-IEEE-compliant data type.
+
+The second improvement is made by changing the representation of the child pointers within the tree nodes. Because we store all trees within a single memory-mapped region and this region may appear at different offsets during different program executions, we use offset pointers instead of real pointers. These offset pointers store the offset from the pointer itself to its target. Because the target is always located within the same mapped region, the offset stays constant no matter which global position the region has. Originally we stored \SI{64}{\bit} signed integer values as offsets. We reduced this to \SI{48}{\bit} values which is enough to store \SI[parse-numbers = false]{2^{48 - 1}}{\byte} $=$ \SI{128}{\tera\byte}.
+
+A possible improvement closely related to reducing the size of the offset pointers is the removal of the null pointers stored in all leaf nodes. We did not implement this simply because it makes the code more complicated and also because there are not enough leaf nodes left after compression to justify this change.
 
 
 
