@@ -316,7 +316,7 @@
         }
     },
     fullwidth/.style={
-        height=0.45\textwidth,
+        height=0.30\textwidth,
         width=\textwidth
     },
     filter discard warning=false,

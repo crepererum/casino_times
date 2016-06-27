@@ -8,10 +8,10 @@
         legend pos=north west,
         fullwidth
     ]
-        \addplot [mark=|,only marks,color=kit-green2] table [x=x, y=y, y expr=\thisrowno{1}+0.12, col sep=comma, ignore chars={"}, discard if not={label}{know}] {data/ngrams_ex2_extrema.csv};
-        \addplot [mark=|,only marks,color=kit-cyan] table [x=x, y=y, y expr=\thisrowno{1}+0.04, col sep=comma, ignore chars={"}, discard if not={label}{kiss}] {data/ngrams_ex2_extrema.csv};
-        \addplot [mark=|,only marks,color=kit-red] table [x=x, y=y, y expr=\thisrowno{1}-0.04, col sep=comma, ignore chars={"}, discard if not={label}{kind}] {data/ngrams_ex2_extrema.csv};
-        \addplot [mark=|,only marks,color=kit-orange] table [x=x, y=y, y expr=\thisrowno{1}-0.12, col sep=comma, ignore chars={"}, discard if not={label}{keep}] {data/ngrams_ex2_extrema.csv};
+        \addplot [mark=|,only marks,color=kit-green2] table [x=x, y=y, y expr=\thisrowno{1}+0.21, col sep=comma, ignore chars={"}, discard if not={label}{know}] {data/ngrams_ex2_extrema.csv};
+        \addplot [mark=|,only marks,color=kit-cyan] table [x=x, y=y, y expr=\thisrowno{1}+0.07, col sep=comma, ignore chars={"}, discard if not={label}{kiss}] {data/ngrams_ex2_extrema.csv};
+        \addplot [mark=|,only marks,color=kit-red] table [x=x, y=y, y expr=\thisrowno{1}-0.07, col sep=comma, ignore chars={"}, discard if not={label}{kind}] {data/ngrams_ex2_extrema.csv};
+        \addplot [mark=|,only marks,color=kit-orange] table [x=x, y=y, y expr=\thisrowno{1}-0.21, col sep=comma, ignore chars={"}, discard if not={label}{keep}] {data/ngrams_ex2_extrema.csv};
         \legend{know,kiss,kind,keep};
     \end{axis}
 \end{tikzpicture}

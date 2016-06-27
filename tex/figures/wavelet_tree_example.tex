@@ -20,7 +20,7 @@
             minimum height=0.75cm,
             circle
         },
-        xabove/.style args={of #1}{above=0.5cm of #1.north}
+        xabove/.style args={of #1}{above=1.0cm of #1.center}
     ]
 
     \begin{axis}[
@@ -70,24 +70,24 @@
 
     \node (n12345678) [tnode,xabove=of f12345678] {$-0.5 \cdot \sqrt{8}$}; % =1
 
-    \node (root) [rnode,above=1cm of n12345678] {$1 \cdot \sqrt{8}$};
+    \node (root) [rnode,above=0.5cm of n12345678] {$1 \cdot \sqrt{8}$};
 
-    \draw[arrow,dashed] (n12.south) -- (a1);
-    \draw[arrow,dashed] (n12.south) -- (a2);
-    \draw[arrow,dashed] (n34.south) -- (a3);
-    \draw[arrow,dashed] (n34.south) -- (a4);
-    \draw[arrow,dashed] (n56.south) -- (a5);
-    \draw[arrow,dashed] (n56.south) -- (a6);
-    \draw[arrow,dashed] (n78.south) -- (a7);
-    \draw[arrow,dashed] (n78.south) -- (a8);
+    \draw[arrow,dashed] (n12.south) |- (a1);
+    \draw[arrow,dashed] (n12.south) |- (a2);
+    \draw[arrow,dashed] (n34.south) |- (a3);
+    \draw[arrow,dashed] (n34.south) |- (a4);
+    \draw[arrow,dashed] (n56.south) |- (a5);
+    \draw[arrow,dashed] (n56.south) |- (a6);
+    \draw[arrow,dashed] (n78.south) |- (a7);
+    \draw[arrow,dashed] (n78.south) |- (a8);
 
-    \draw[arrow] (n1234.south) -- (n12.north);
-    \draw[arrow] (n1234.south) -- (n34.north);
-    \draw[arrow] (n5678.south) -- (n56.north);
-    \draw[arrow] (n5678.south) -- (n78.north);
+    \draw[arrow] (n1234.south) |- (n12.east);
+    \draw[arrow] (n1234.south) |- (n34.west);
+    \draw[arrow] (n5678.south) |- (n56.east);
+    \draw[arrow] (n5678.south) |- (n78.west);
 
-    \draw[arrow] (n12345678.south) -- (n1234.north);
-    \draw[arrow] (n12345678.south) -- (n5678.north);
+    \draw[arrow] (n12345678.south) |- (n1234.east);
+    \draw[arrow] (n12345678.south) |- (n5678.west);
 
     \draw[arrow] (root.south) -- (n12345678.north);
 \end{tikzpicture}
