@@ -128,4 +128,28 @@
 
     \path (qdtwsimple.south)  edge[arrow, bend right = 45] (neighbors.north);
     \path (qdtwindexed.south) edge[arrow]                  (neighbors.north);
+
+    \node[fit = (input)(preprocess)(iwavelet)(neighbors)] (all) {};
+
+    \begin{customlegend}[
+            legend cell align=left,
+            legend entries={
+                \Cpp{},
+                Julia,
+                Python,
+                Shell,
+                Data
+            },
+            legend style={
+                anchor=north east,
+                at=(all.north east),
+                font=\scriptsize
+            }
+        ]
+        \addlegendimage{area legend, cpp}
+        \addlegendimage{area legend, julia}
+        \addlegendimage{area legend, python}
+        \addlegendimage{area legend, shell}
+        \addlegendimage{area legend, data}
+    \end{customlegend}
 \end{tikzpicture}
