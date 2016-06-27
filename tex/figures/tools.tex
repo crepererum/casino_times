@@ -29,12 +29,29 @@
             minimum width=2.0cm,
             minimum height=0.75cm
         },
+        cpp/.style={
+            tool,
+            fill=kit-cyan!10
+        },
+        julia/.style={
+            tool,
+            fill=kit-red!10
+        },
+        python/.style={
+            tool,
+            fill=kit-green2!10
+        },
+        shell/.style={
+            tool,
+            fill=kit-orange!10
+        },
         data/.style={
             node,
             circle,
             fill=white,
             minimum width=1.5cm,
-            minimum height=1.5cm
+            minimum height=1.5cm,
+            fill=black!10
         },
         group/.style={
             draw,
@@ -44,36 +61,40 @@
         }
     ]
 
+    \newcommand{\shortdist}{0.5cm}
 
-    \node (scan)       [tool]                        {scan};
-    \node (filter)     [tool, below = of scan]       {filter};
-    \node (normalize)  [tool, below = of filter]     {normalize};
-    \node (stem)       [tool, below = of normalize]  {stem};
-    \node (estems)     [tool, below = of stem]       {extract\_stems};
-    \node (create)     [tool, below = of estems]     {create};
-    \node (store)      [tool, below = of create]     {store};
-    \node (psupport)   [tool, below = of store]      {prune\_support};
+
+    \node (scan)       [cpp]                                     {scan};
+    \node (filter)     [shell, below = \shortdist of scan]       {filter};
+    \node (normalize)  [cpp, below = \shortdist of filter]       {normalize};
+    \node (stem)       [python, below = \shortdist of normalize] {stem};
+    \node (estems)     [shell, below = \shortdist of stem]       {extract\_stems};
+    \node (create)     [cpp, below = \shortdist of estems]       {create};
+    \node (store)      [cpp, below = \shortdist of create]       {store};
+    \node (psupport)   [julia, below = \shortdist of store]      {prune\_support};
 
     \begin{scope}[on background layer]
         \node[fit = (scan)(filter)(normalize)(stem)(estems)(create)(store)(psupport), header = Proprocessing, group] (preprocess) {};
     \end{scope}
 
-    \node (input)       [data, left = of preprocess]   {Google\\data};
-    \node (umatrix)     [data, right = of preprocess]  {data\\matrix\\(UInt)};
-    \node (fmatrix)     [data, right = of umatrix]     {data\\matrix\\(Float)};
+    \node (input)       [data, left = of preprocess.120]       {Google\\data};
+    \node (umatrix)     [data, right = of preprocess.60]       {data\\matrix\\(UInt)};
+    \node (fmatrix)     [data, right = of umatrix]             {data\\matrix\\(Float)};
 
-    \node (transform)   [tool, above = of fmatrix]     {transform};
+    \node (transform)   [julia, above = of fmatrix]            {transform};
 
-    \node (qdtwsimple)  [tool, below = of fmatrix]     {query\_dtw\_simple};
-    \node (ijulia)      [tool, left = of qdtwsimple]   {iJulia};
-    \node (idtw)        [tool, right = of qdtwsimple]  {index\_dtw};
+    \node (qdtwsimple)  [cpp, below = of fmatrix]              {query\_dtw\_simple};
+    \node (ijulia)      [julia, left = of qdtwsimple]          {iJulia};
+    \node (idtw)        [cpp, right = of qdtwsimple]           {index\_dtw};
+    \node (iwavelet)    [cpp, right = of idtw]                 {index\_wavelet};
 
-    \node (report)      [data, below = of ijulia]      {reports,\\plots};
-    \node (idxdtw)      [data, below = of idtw]        {DTW\\index};
+    \node (report)      [data, below = of ijulia]              {reports,\\plots};
+    \node (idxdtw)      [data, below = \shortdist of idtw]     {DTW\\index};
+    \node (idxwavelet)  [data, below = \shortdist of iwavelet] {wavelet\\index};
 
-    \node (qdtwindexed) [tool, below = of idxdtw]      {query\_dtw\_indexed};
+    \node (qdtwindexed) [cpp, below = \shortdist of idxdtw]    {query\_dtw\_indexed};
 
-    \node (neighbors)   [data, below = of qdtwindexed] {nearest\\neighbors};
+    \node (neighbors)   [data, below = of qdtwindexed]         {nearest\\neighbors};
 
     \path (scan.south)        edge[arrow]                  (filter.north);
     \path (filter.south)      edge[arrow]                  (normalize.north);
@@ -83,8 +104,8 @@
     \path (create.south)      edge[arrow]                  (store.north);
     \path (store.south)       edge[arrow]                  (psupport.north);
 
-    \path (input.east)        edge[arrow]                  (preprocess.west);
-    \path (preprocess.east)   edge[arrow]                  (umatrix.west);
+    \path (input.east)        edge[arrow]                  (preprocess.120);
+    \path (preprocess.60)     edge[arrow]                  (umatrix.west);
 
     \path (transform.east)    edge[arrow, bend left = 45]  (fmatrix.east);
     \path (umatrix.north)     edge[arrow, bend left = 45]  (transform.west);
@@ -95,12 +116,15 @@
     \path (fmatrix.south)     edge[arrow]                  (qdtwsimple.north);
     \path (fmatrix.south)     edge[arrow,out=345,in=140]   (qdtwindexed.north);
     \path (fmatrix.south)     edge[arrow]                  (idtw.north);
+    \path (fmatrix.south)     edge[arrow]                  (iwavelet.north);
     \path (fmatrix.south)     edge[arrow]                  (ijulia.north);
 
     \path (ijulia.south)      edge[arrow]                  (report.north);
 
     \path (idtw.south)        edge[arrow]                  (idxdtw.north);
     \path (idxdtw.south)      edge[arrow]                  (qdtwindexed.north);
+
+    \path (iwavelet.south)    edge[arrow]                  (idxwavelet.north);
 
     \path (qdtwsimple.south)  edge[arrow, bend right = 45] (neighbors.north);
     \path (qdtwindexed.south) edge[arrow]                  (neighbors.north);

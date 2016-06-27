@@ -1,12 +1,30 @@
 \chapter{Implementation}
 \label{ch:implementation}
 
-\begin{figure}
+\dots
+
+
+
+\section{A modern approach}
+\label{sec:implementation:approach}
+
+After considering multiple ways of implementing a high-performance algorithm, we decided to use \Cpp{14} as standardized in \cite{cpp14} and under partial application of the recommendations of \cite{effective_cpp} and \cite{effective_cpp2}. This gives us the ability to have fine control over memory allocations and data structures as well as the opportunity to write modern, well-structured and reusable code. In combination with a modern compiler this results in native executables which exploit a wide variety of instruction sets of current CPUs.
+
+\begin{sidewaysfigure}
     \centering
     \input{figures/tools.tex}
     \caption{Used tools}
     \label{fig:tools}
-\end{figure}
+\end{sidewaysfigure}
+
+Instead of developing the algorithms as a single monolithic block we designed them as reusable executables with single scopes similar to the system tools provided by UNIX-like systems. An overview of these tools and their interaction can be found in \autoref{fig:tools}. Parameters are usually passed via command line arguments and data is stored either in text files or in case of data matrices as C-like arrays. This enables us to use memory-mapped IO so the operating system with its global and complete view of system resources can decide about memory management. As a result we get caching between program executions and good behaviour in case of low-memory situations\footnote{This should not happen during in an optimal setup but might occur due to bugs or during testing on development machines.}. Another advantage of storing the data this way is that it can be loaded by other tools and programming languages, e.g. for visualization purposes. So we used Julia\footnote{\url{http://julialang.org/}} to run quick analyzis task and to produce plots and smaller reports\footnote{We recomment a combination of Julia, iJulia and Gadfly for that.}.
+
+Common code is shared by header files and static libraries and executables are linked statically. While this increases their size, it enables easy deployment of binaries compiled on a devloper machine which includes the compiler suite to a server which has fewer packages installed and might even be equipped with a different C library. To simplify development and reusability the compilation process is managed by CMake which also ensures that most required libraries are downloaded and compiled on-the-fly. In theory this also enables cross-compilation for different architectures like ARM64.
+
+
+
+\section{DTW}
+\label{sec:implementation:dtw}
 
 \begin{figure}
     \centering
@@ -15,4 +33,12 @@
     \label{fig:dtw_fast}
 \end{figure}
 
-\dots
+One of the most important parts of our implementation is having a solid and fast DTW baseline. The fundamental idea behind this is explained in \autoref{fig:dtw_fast}. Because Dynamic Time Warping is an optimal dynamic programming method, we only need to store the current set of alternatives instead of the entire history of possible warping paths. Furthermore our warping window is limited to a Sakoe-Chiba Band of size $2r + 1$. This leads to the possibility to use a double buffering technique -- one buffer for the old set of optimal paths and one buffer for the new set. We also do not need to store the actual warping path but only the optimal distance which reduced memory allocations and speeds up the implementation even further.
+
+As shown withing the illustration, every loop iteration, as well of the outer as for the inner loop, depend on the result of the last iteration. So it is not possible to parallize the loops. That means that the optimal warping path for a single time series pair has to be calculated linear with a single thread. Luckily we only use a single anchor time series and calculate the DTW against all other series. These calculations are indepedent and their execution path does not depend on the actual input values which gives us two possible orthogonal optization strategies. First we could load multiple time series at once and use vectorization to calculate the DTW for all of them. This requires a somewhat modern processor. In our case we exploit AVX2 and FMA instructions of current x64 processors. The second optization strategy, which is straightforward is to use multiple cores to calculate indepent DTW results. In the end we partially sort these results and emit the nearest $k$ neighbors. Because we intend to use the implementation on a server system with multiple querying users, we did not implement the multi-core approach, but our generic code would allow us to do so very easiely.
+
+Another optimization is the reduction of the precision. Originally we intended to use \SI{64}{\bit} floating point numbers durint the DTW calculation. We reduced that to \SI{32}{\bit} since our time series only have a length of \num{256} and therefore the results are precise enough for our users.
+
+During the implementation we took special care of efficient memory management. During the entire DTW calculation no dynamic memory is allocated or freed. We create all buffer once and reuse them during the execution. This reduces the interaction with data to input, buffers and output memory which increases cache efficiency and overall performance. The code uses a strategy pattern to implement the control flow driver once and providing optimized plugins for single comparisons and vectorized inputs. It is possible to use the same driver to also store warping path or other meta data from the execution. Because the strategy is using templates instead of polymorphism, there is no runtime overhead.
+
+An improvement we have tried but dumped was the early rejection of possible neighbors. Because we only use the $k$ nearest neighbors it should be possible to maintain a heap with the best $k$ candidates and stop the DTW calculation for new ones if all possible paths already exceed the distance to the farest candidate. This works in theory but shows some problems during the real world tests. To do this early stop efficiently the breaking conditions must be met by all time series which are handled in parallel by the vectorized engine. This delays the break in many cases and also introduces additional checks. Also the maintainance of the queue is slower than calculating all distances and doing a partial sort. In the end the improvement is slightly slower than the na{\"i}ve full calculation of all distances.

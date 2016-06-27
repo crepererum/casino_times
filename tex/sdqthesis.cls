@@ -353,6 +353,12 @@
 \RequirePackage{tabularx}
 \newcolumntype{R}{>{\raggedleft\arraybackslash}X}
 
+% rotation
+\RequirePackage{rotating}
+
+% some special commands
+\newcommand\Cpp[1]{C\nolinebreak[4]\hspace{-.05em}\raisebox{.4ex}{\relsize{-3}{\textbf{++}}}\num{#1}}
+
 % algorithm
 \RequirePackage[
     ruled,% nice lines above/beyond the algorithms
