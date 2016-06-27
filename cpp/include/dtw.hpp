@@ -45,6 +45,10 @@ class dtw_generic {
             _store_tmp(_length),
             _t(t) {}
 
+        dist_t calc(std::size_t i, indices_t j0) {
+            return calc(i, j0, _t.infinity());
+        }
+
         /*
          *
          *
@@ -97,7 +101,7 @@ class dtw_generic {
          *
          */
 
-        dist_t calc(std::size_t i, indices_t j0) {
+        dist_t calc(std::size_t i, indices_t j0, dist_t max) {
             base_t local_base_i = _t.get_base(_source, _blocksize, _begin, i);
 
             // load to temporary storage first to ensure memory locality
@@ -114,7 +118,10 @@ class dtw_generic {
                 std::size_t idx_j_min = 0;
                 std::size_t idx_j_max = idx_i + _r;
 
-                inner_loop(local_base_i, idx_i, idx_j_min, idx_j_max, _r - idx_i);
+                bool reached_max = inner_loop(local_base_i, idx_i, idx_j_min, idx_j_max, _r - idx_i, max);
+                if (reached_max) {
+                    return _t.infinity();
+                }
             }
 
             // PHASE 2
@@ -122,7 +129,10 @@ class dtw_generic {
                 std::size_t idx_j_min = idx_i - _r;
                 std::size_t idx_j_max = idx_i + _r;
 
-                inner_loop(local_base_i, idx_i, idx_j_min, idx_j_max, 0);
+                bool reached_max = inner_loop(local_base_i, idx_i, idx_j_min, idx_j_max, 0, max);
+                if (reached_max) {
+                    return _t.infinity();
+                }
             }
 
             // PHASE 3
@@ -130,7 +140,10 @@ class dtw_generic {
                 std::size_t idx_j_min = idx_i - _r;
                 std::size_t idx_j_max = _length_minus;
 
-                inner_loop(local_base_i, idx_i, idx_j_min, idx_j_max, 0);
+                bool reached_max = inner_loop(local_base_i, idx_i, idx_j_min, idx_j_max, 0, max);
+                if (reached_max) {
+                    return _t.infinity();
+                }
             }
 
             return _t.load_dist(&_store_a[_r]);
@@ -162,7 +175,7 @@ class dtw_generic {
         /*
          * WARNING: this function uses INCLUSIVE bounds!
          */
-        void inner_loop(base_t local_base_i, std::size_t idx_i, std::size_t idx_j_min, std::size_t idx_j_max, std::size_t store_delta) {
+        bool inner_loop(base_t local_base_i, std::size_t idx_i, std::size_t idx_j_min, std::size_t idx_j_max, std::size_t store_delta, dist_t max) {
             std::size_t store_pos = store_delta;
 
             dist_t current_value   = _t.infinity();
@@ -175,6 +188,7 @@ class dtw_generic {
                 _t.infinity()
             );
 
+            bool all_higher = true;
             for (std::size_t idx_j = idx_j_min; idx_j <= idx_j_max; ++idx_j) {
                 // find best
                 element_t a = _t.convert_single(local_base_i, idx_i);
@@ -197,6 +211,7 @@ class dtw_generic {
                     cost,
                     _t.min3(dtw_insert, dtw_delete, dtw_match)
                 );
+                all_higher &= _t.all_higher(current_value, max);
                 _t.store_dist(&_store_b[store_pos], current_value);
 
                 ++store_pos;
@@ -209,6 +224,8 @@ class dtw_generic {
             );
 
             std::swap(_store_a, _store_b);
+
+            return all_higher;
         }
 
         void load_to_tmp(indices_t j0) {
@@ -281,6 +298,10 @@ struct dtw_impl_simple {
 
     inline dist_t zero() {
         return 0.0;
+    }
+
+    inline bool all_higher(dist_t dist, dist_t max) {
+        return dist > max;
     }
 };
 
@@ -363,6 +384,30 @@ struct dtw_impl_vectorized {
 
     inline dist_t zero() {
         return simdpp::make_float(0.0);
+    }
+
+    inline bool all_higher(dist_t dist, dist_t max) {
+        // XXX: find a better way!
+        std::array<double, n> decomp_dist;
+        std::array<double, n> decomp_max;
+        simdpp::store(&decomp_dist, dist);
+        simdpp::store(&decomp_max, max);
+        return decomp_dist[ 0] > decomp_max[ 0]
+            && decomp_dist[ 1] > decomp_max[ 1]
+            && decomp_dist[ 2] > decomp_max[ 2]
+            && decomp_dist[ 3] > decomp_max[ 3]
+            && decomp_dist[ 4] > decomp_max[ 4]
+            && decomp_dist[ 5] > decomp_max[ 5]
+            && decomp_dist[ 6] > decomp_max[ 6]
+            && decomp_dist[ 7] > decomp_max[ 7]
+            && decomp_dist[ 8] > decomp_max[ 8]
+            && decomp_dist[ 9] > decomp_max[ 9]
+            && decomp_dist[10] > decomp_max[10]
+            && decomp_dist[11] > decomp_max[11]
+            && decomp_dist[12] > decomp_max[12]
+            && decomp_dist[13] > decomp_max[13]
+            && decomp_dist[14] > decomp_max[14]
+            && decomp_dist[15] > decomp_max[15];
     }
 };
 

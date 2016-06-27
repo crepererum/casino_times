@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstdint>
 
 #include <algorithm>
@@ -14,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include <boost/heap/fibonacci_heap.hpp>
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/locale.hpp>
 #include <boost/program_options.hpp>
@@ -23,6 +25,18 @@
 #include "utils.hpp"
 
 namespace po = boost::program_options;
+
+
+struct heap_entry {
+    std::size_t idx;
+    calc_t      dist;
+
+    heap_entry(std::size_t idx_, calc_t dist_) : idx(idx_), dist(dist_) {}
+
+    bool operator<(const heap_entry& obj) const {
+        return dist < obj.dist;
+    }
+};
 
 
 int main(int argc, char** argv) {
@@ -102,10 +116,8 @@ int main(int argc, char** argv) {
     }
     auto base = reinterpret_cast<const calc_t*>(input.const_data());
 
-    std::vector<std::pair<std::size_t, calc_t>> distances(n);
-    for (std::size_t j = 0; j < n; ++j) {
-        distances[j] = std::make_pair(j, 0.0);
-    }
+    const std::size_t usable_limit = std::min(limit, n);
+    boost::heap::fibonacci_heap<heap_entry> heap;
 
     const std::size_t n_over = n % static_cast<std::size_t>(dtw_vectorized_linear::n);
     const std::size_t n_good = n - n_over;
@@ -116,14 +128,25 @@ int main(int argc, char** argv) {
     // this loop order is faster than the opposite way
     for (std::size_t j = 0; j < n_good; j += dtw_vectorized_linear::n) {
         for (const std::size_t i_part : i) {
-            auto v_results = mydtw_vectorized.calc(i_part, j);
+            dtw_vectorized_linear::dist_t max;
+            if (heap.size() >= usable_limit) {
+                max = simdpp::make_float(heap.top().dist);
+            } else {
+                max = simdpp::make_float(std::numeric_limits<double>::infinity());
+            }
+            auto v_results = mydtw_vectorized.calc(i_part, j, max);
 
             std::array<double, dtw_vectorized_linear::n> d_results;
             simdpp::store(&d_results, v_results);
 
             for (std::size_t idx = 0; idx < dtw_vectorized_linear::n; ++idx) {
                 // d_results are squared at this point!
-                distances[j + idx].second += d_results[idx];
+                if (!std::isinf(d_results[idx])) {
+                    heap.push(heap_entry(j + idx, d_results[idx]));
+                    while (heap.size() > usable_limit) {
+                        heap.pop();
+                    }
+                }
             }
         }
     }
@@ -132,19 +155,15 @@ int main(int argc, char** argv) {
     for (std::size_t j = n_good; j < n; ++j) {
         for (const std::size_t i_part : i) {
             // result is squared at this point!
-            distances[j].second += mydtw_simple.calc(i_part, j);
+            heap.push(heap_entry(j, mydtw_simple.calc(i_part, j)));
+            while (heap.size() > usable_limit) {
+                heap.pop();
+            }
         }
     }
 
-    const std::size_t usable_limit = std::min(limit, n);
-    std::partial_sort(
-        distances.begin(),
-        distances.begin() + static_cast<std::iterator_traits<decltype(distances.begin())>::difference_type>(usable_limit),
-        distances.end(),
-        [](const auto& a, const auto& b){
-            return a.second < b.second;
-        }
-    );
+    std::vector<heap_entry> distances_sorted(heap.begin(), heap.end());
+    std::sort(distances_sorted.begin(), distances_sorted.end());
 
     constexpr std::size_t colw0 = 20;
     constexpr std::size_t colw1 = 10;
@@ -167,14 +186,14 @@ int main(int argc, char** argv) {
         << std::string(colw2, '-')
         << "-|"
         << std::endl;
-    for (std::size_t j = 0; j < usable_limit; ++j) {
+    for (std::size_t j = 0; j < distances_sorted.size(); ++j) {
         std::cout
             << "| "
-            << std::setw(colw0) << boost::locale::conv::utf_to_utf<char>(idxmap[distances[j].first])
+            << std::setw(colw0) << boost::locale::conv::utf_to_utf<char>(idxmap[distances_sorted[j].idx])
             << " | "
-            << std::setw(colw1) << distances[j].first
+            << std::setw(colw1) << distances_sorted[j].idx
             << " | "
-            << std::setw(colw2) << (std::sqrt(distances[j].second / static_cast<calc_t>(end - begin)))
+            << std::setw(colw2) << (std::sqrt(distances_sorted[j].dist / static_cast<calc_t>(end - begin)))
             << " |"
             << std::endl;
     }
