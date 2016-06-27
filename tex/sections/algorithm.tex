@@ -36,14 +36,14 @@ To explain how the tree decomposition works we first need to clarify some terms:
 Now the tree construction $s$ at the point in time $t$ can be described with:
 
 \begin{equation}\label{eq:tree}
-    s(t) = \sqrt{2^d} a + N_{1,1}(t)
+    s(t) = 2^\frac{d}{2} a + N_{1,1}(t)
 \end{equation}
 
 Here $N_{l, i}(t)$ describes the influence of a certain node in level $l$ and delta $i$ (since there are usually more than one nodes per level). The influence can be calculated with:
 
 \begin{equation}\label{eq:node}
     N_{l, i}(t) = \begin{cases}
-        \mathbb{1}_{t \in N_{l, i}} \sqrt{2^{d - l + 1}} x_{l, i} + N_{l + 1, 2i}(t) + N_{l + 1, 2i + 1}(t), & l \leq d \\
+        \mathbb{1}_{t \in N_{l, i}} 2^\frac{d - l + 1}{2} x_{l, i} + N_{l + 1, 2i}(t) + N_{l + 1, 2i + 1}(t), & l \leq d \\
         0, & l > d
     \end{cases}
 \end{equation}
