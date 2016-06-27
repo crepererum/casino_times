@@ -1,9 +1,10 @@
+\newcommand\mydelta{0.3cm}
 \begin{tikzpicture}[
         cell/.style={
             draw,
             rectangle,
-            minimum width=0.4cm,
-            minimum height=0.4cm,
+            minimum width=\mydelta,
+            minimum height=\mydelta,
             black!30
         },
         cellnormal/.style={
@@ -19,8 +20,8 @@
         },
         cellbordered/.style={
             cell,
-            minimum width=0.4cm-\pgflinewidth,
-            minimum height=0.4cm-\pgflinewidth,
+            minimum width=\mydelta-\pgflinewidth,
+            minimum height=\mydelta-\pgflinewidth,
             semithick
         },
         cella/.style={
@@ -63,6 +64,7 @@
         mytext/.style={
             sloped,
             anchor=center,
+            font=\scriptsize,
             align=center
         },
         mytrans/.style={
@@ -76,21 +78,21 @@
         \foreach \x in {0,...,19} {
             \foreach[evaluate={\delta=int(\x-\y)};] \y in {0,...,19} {
                 \ifthenelse{\delta<5 \AND \delta>-5}{\def\celltype{cellwindow}}{\def\celltype{cellnormal}}
-                \node[\celltype] (\x;\y) at (0.4cm*\x,0.4cm*\y) {};
+                \node[\celltype] (\x;\y) at (\mydelta*\x,\mydelta*\y) {};
             }
         }
         \foreach \y in {3,...,11} {
-            \node[cella] (a7;\y) at (0.4cm*7,0.4cm*\y) {};
+            \node[cella] (a7;\y) at (\mydelta*7,\mydelta*\y) {};
         }
         \foreach \y in {4,...,12} {
-            \node[cellb] (b8;\y) at (0.4cm*8,0.4cm*\y) {};
+            \node[cellb] (b8;\y) at (\mydelta*8,\mydelta*\y) {};
         }
-        \node[cellax] (ax7;5) at (0.4cm*7,0.4cm*5) {};
-        \node[cellax] (ax7;6) at (0.4cm*7,0.4cm*6) {};
-        \node[cellbx] (bx8;5) at (0.4cm*8,0.4cm*5) {};
-        \node[cellby] (by8;6) at (0.4cm*8,0.4cm*6) {};
-        \node[cellpinned] at (0.4cm*0,0.4cm*0) {};
-        \node[cellpinned] at (0.4cm*19,0.4cm*19) {};
+        \node[cellax] (ax7;5) at (\mydelta*7,\mydelta*5) {};
+        \node[cellax] (ax7;6) at (\mydelta*7,\mydelta*6) {};
+        \node[cellbx] (bx8;5) at (\mydelta*8,\mydelta*5) {};
+        \node[cellby] (by8;6) at (\mydelta*8,\mydelta*6) {};
+        \node[cellpinned] at (\mydelta*0,\mydelta*0) {};
+        \node[cellpinned] at (\mydelta*19,\mydelta*19) {};
     \end{scope}
 
     \node (agn) at (grid.north) {};
@@ -125,7 +127,7 @@
     \node (ap1t) at (aw3.center) {};
     \node (ap2t) at (aw2.center) {};
 
-    \node (ap0b) [below = 1.5cm of ap0t.center] {};
+    \node (ap0b) [below = 3*\mydelta of ap0t.center] {};
     \node (ap1b) at (ap0b.center-|ap1t.center) {};
     \node (ap2b) at (ap0b.center-|ap2t.center) {};
     \node (ap3b) at (ap0b.center-|ap3t.center) {};
@@ -139,35 +141,35 @@
     \draw[myrange] (ap1b.center) -- node[mytext,below] {phase 2} (ap2b.center);
     \draw[myrange] (ap2b.center) -- node[mytext,below] {phase 3} (ap3b.center);
 
-    \node (asi) [above = 0.3cm of agn.center] {};
-    \node (asib) [left = 1cm of asi.center] {};
-    \node (asie) [right = 1cm of asi.center] {};
+    \node (asi) [above = 0.5*\mydelta of agn.center] {};
+    \node (asib) [left = 2.5*\mydelta of asi.center] {};
+    \node (asie) [right = 2.5*\mydelta of asi.center] {};
 
-    \node (asj) [left = 0.3cm of agw.center] {};
-    \node (asjb) [below = 1cm of asj.center] {};
-    \node (asje) [above = 1cm of asj.center] {};
+    \node (asj) [left = 0.5*\mydelta of agw.center] {};
+    \node (asjb) [below = 2.5*\mydelta of asj.center] {};
+    \node (asje) [above = 2.5*\mydelta of asj.center] {};
 
-    \node (asl1) [below = 0.3cm of ags.center] {};
-    \node (asl1b) [left = 1cm of asl1.center] {};
-    \node (asl1e) [right = 1cm of asl1.center] {};
+    \node (asl1) [below = 0.5*\mydelta of ags.center] {};
+    \node (asl1b) [left = 2.5*\mydelta of asl1.center] {};
+    \node (asl1e) [right = 2.5*\mydelta of asl1.center] {};
 
-    \node (asl2) [right = 0.3cm of age.center] {};
-    \node (asl2b) [below = 1cm of asl2.center] {};
-    \node (asl2e) [above = 1cm of asl2.center] {};
+    \node (asl2) [right = 0.5*\mydelta of age.center] {};
+    \node (asl2b) [below = 2.5*\mydelta of asl2.center] {};
+    \node (asl2e) [above = 2.5*\mydelta of asl2.center] {};
 
     \draw[mydim] (asib.center) -- node[mytext,above] {series i} (asie.center);
     \draw[mydim] (asjb.center) -- node[mytext,above] {series j} (asje.center);
     \draw[mydim] (asl1b.center) -- node[mytext,below] {outer loop} (asl1e.center);
     \draw[mydim] (asl2b.center) -- node[mytext,below] {inner loop} (asl2e.center);
 
-    \node [left = 0.05cm of ax7;5] {\contour{white}{match}};
-    \node [left = 0.05cm of ax7;6] {\contour{white}{insert}};
-    \node [right = 0.05cm of bx8;5] {\contour{white}{delete}};
+    \node [mytext, left = 0cm of ax7;5] {\contour{white}{match}};
+    \node [mytext, left = 0cm of ax7;6] {\contour{white}{insert}};
+    \node [mytext, right = 0cm of bx8;5] {\contour{white}{delete}};
 
     \draw[mytrans] (ax7;5.center) -- (by8;6.center);
     \draw[mytrans] (ax7;6.center) -- (by8;6.center);
     \draw[mytrans] (bx8;5.center) -- (by8;6.center);
 
-    \node [above = 1.2cm of a7;11, rotate = 90, anchor = center, kit-green2] {\contour{white}{buffer a}};
-    \node [above = 1.2cm of b8;12, rotate = 90, anchor = center, kit-red] {\contour{white}{buffer b}};
+    \node [mytext, above = 3*\mydelta of a7;11, rotate = 90, anchor = center, kit-green2] {\contour{white}{buffer a}};
+    \node [mytext, above = 3*\mydelta of b8;12, rotate = 90, anchor = center, kit-red] {\contour{white}{buffer b}};
 \end{tikzpicture}
