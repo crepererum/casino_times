@@ -7,7 +7,7 @@
     \centering
     \begin{tabularx}{\textwidth}{r R R R R R}
         \toprule
-        dataset & raw & filtered & s.normalized & w.normalized & pruned\\
+        letter & raw & filtered & s.normalized & w.normalized & pruned\\
         \midrule
         a & \num{1440378} & \num{493706} & \num{361035} & \num{276583} & \num{52766}\\
         b & \num{1018343} & \num{377220} & \num{281903} & \num{227025} & \num{48380}\\
@@ -39,8 +39,48 @@
         $\sum$ & \num{19970216} & \num{7018462} & \num{5136939} & \num{4017929} & \num{803051}\\
         \bottomrule
     \end{tabularx}
-    \caption{Total amount of nGrams after each clean-up step}
-    \label{tab:clean_up_numbers}
+    \caption{Total amount of \num{1}-grams after each clean-up step}
+    \label{tab:clean_up_numbers_1}
+\end{table}
+
+\begin{table}[ht]
+    \centering
+    \begin{tabularx}{\textwidth}{r R R R R R}
+        \toprule
+        letter & raw & filtered & s.normalized & w.normalized & pruned\\
+        \midrule
+        a & \num{36328811} & \num{7163539} & \num{5618464} & \num{3437351} & \num{569502}\\
+        b & \num{22289608} & \num{4306283} & \num{3474074} & \num{2107814} & \num{313798}\\
+        c & \num{35498239} & \num{6958880} & \num{5631223} & \num{3050993} & \num{480126}\\
+        d & \num{21801951} & \num{4257630} & \num{3514067} & \num{1962782} & \num{289009}\\
+        e & \num{19115156} & \num{3788663} & \num{3128430} & \num{1731101} & \num{271638}\\
+        f & \num{20294666} & \num{4030176} & \num{3219551} & \num{1860448} & \num{306162}\\
+        g & \num{12302512} & \num{2327082} & \num{1905063} & \num{1132058} & \num{162562}\\
+        h & \num{16144346} & \num{3121167} & \num{2521984} & \num{1522944} & \num{230591}\\
+        i & \num{20944241} & \num{4188717} & \num{3300899} & \num{1815712} & \num{308527}\\
+        j & \num{4871485} & \num{852751} & \num{720116} & \num{508313} & \num{65061}\\
+        k & \num{4447999} & \num{679656} & \num{578279} & \num{399545} & \num{41193}\\
+        l & \num{16610230} & \num{3139429} & \num{2529904} & \num{1513381} & \num{233107}\\
+        m & \num{24450309} & \num{4616893} & \num{3738647} & \num{2244811} & \num{335992}\\
+        n & \num{12149710} & \num{2229459} & \num{1769874} & \num{1130139} & \num{164102}\\
+        o & \num{17346280} & \num{3474432} & \num{2687935} & \num{1646478} & \num{300960}\\
+        p & \num{30278927} & \num{5813503} & \num{4758716} & \num{2564546} & \num{399868}\\
+        q & \num{1870891} & \num{352107} & \num{294104} & \num{189536} & \num{23331}\\
+        r & \num{19648081} & \num{3882421} & \num{3222234} & \num{1676035} & \num{265316}\\
+        s & \num{42556368} & \num{8478842} & \num{6824045} & \num{3846241} & \num{619708}\\
+        t & \num{31880903} & \num{6379694} & \num{4728150} & \num{2929660} & \num{525358}\\
+        u & \num{7989152} & \num{1617535} & \num{1370469} & \num{862065} & \num{108033}\\
+        v & \num{7333265} & \num{1289810} & \num{1056425} & \num{673484} & \num{90250}\\
+        w & \num{15825201} & \num{3223549} & \num{2494916} & \num{1514552} & \num{264322}\\
+        x & \num{572086} & \num{67994} & \num{43602} & \num{36484} & \num{3755}\\
+        y & \num{2727242} & \num{517629} & \num{382733} & \num{248245} & \num{41013}\\
+        z & \num{943511} & \num{126500} & \num{106298} & \num{85216} & \num{7178}\\
+        \midrule
+        $\sum$ & \num{446221170} & \num{86884341} & \num{69620202} & \num{40689934} & \num{6420462}\\
+        \bottomrule
+    \end{tabularx}
+    \caption{Total amount of \num{2}-grams after each clean-up step}
+    \label{tab:clean_up_numbers_2}
 \end{table}
 
 \begin{table}[ht]

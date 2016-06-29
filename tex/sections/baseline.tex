@@ -26,7 +26,7 @@ We perform the following clean up steps:
     \item pruning
 \end{enumerate}
 
-Note that swapping the string-based steps does not lead a different output. \autoref{fig:clean_up_sums} show how much data is pruned by every step. The exact numbers can be found in \autoref{tab:clean_up_numbers}.
+Note that swapping the string-based steps does not lead a different output. \autoref{fig:clean_up_sums} show how much data is pruned by every step. The exact numbers can be found in \autoref{tab:clean_up_numbers_1} and \autoref{tab:clean_up_numbers_2}.
 
 
 \subsection{Download and Parsing}
@@ -153,7 +153,14 @@ As \autoref{fig:ngrams_ex2_fitavg} shows, there are cases where time series look
     \label{fig:ngrams_ex2_grad_smooth}
 \end{figure}
 
-Since calculating the distances of noisy gradients may lead to useless results, we smooth the the time series using a Gauss kernel with $\sigma = 1$ before deriving the gradient. An example is shown in \autoref{fig:ngrams_ex2_grad_smooth}. The similarity of the nGram \enquote{kiss} is clearer now. As expected, the time data does not quite fit the other example series. This is intended since the underlying data also has a slightly different structure.
+\begin{figure}
+    \centering
+    \input{figures/smoothing_frequencies.tex}
+    \caption{Frequency distribution (mean + standard deviation) for different smoothing levels}
+    \label{fig:smoothing_frequencies}
+\end{figure}
+
+Since calculating the distances of noisy gradients may lead to useless results, we smooth the the time series using a Gauss kernel with $\sigma = 1$ before deriving the gradient. An example is shown in \autoref{fig:ngrams_ex2_grad_smooth}. Frequency distributions for different smoothing levels are shown in \autoref{fig:smoothing_frequencies}. The non-smoothed data shows quite high amplitutes in higher frequencies ranges which is uncommon for most time series data sets. The choosen smoothing of $\sigma = 1$ reduces noise while $\sigma = 2$ leads to a heavy loss of information. The overall pattern of fast switching gradients will also lead to some other problems, e.g. in \autoref{sec:baseline:speed}. The similarity of the nGram \enquote{kiss} is clearer now. As expected, the time data does not quite fit the other example series. This is intended since the underlying data also has a slightly different structure.
 
 
 \subsection{Dynamic Time Warping}

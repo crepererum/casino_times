@@ -1,0 +1,17 @@
+\begin{tikzpicture}
+    \begin{axis}[
+        xlabel={frequency},
+        ylabel={amplitude},
+        legend pos=north east,
+        fullwidth
+    ]
+        \errorband{data/smoothing_frequencies.csv}{x}{s0_mean}{s0_std}{kit-green2}{0.1}
+        \addlegendentry{$\sigma = 0$};
+
+        \errorband{data/smoothing_frequencies.csv}{x}{s1_mean}{s1_std}{kit-cyan}{0.1}
+        \addlegendentry{$\sigma = 1$};
+
+        \errorband{data/smoothing_frequencies.csv}{x}{s2_mean}{s2_std}{kit-red}{0.1}
+        \addlegendentry{$\sigma = 2$};
+    \end{axis}
+\end{tikzpicture}

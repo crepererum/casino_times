@@ -294,6 +294,7 @@
 \definecolor{kit-violet}{cmyk}{0.25,1,0,0.2}
 \definecolor{kit-cyan}{cmyk}{0.9,0.05,0,0.2}
 \RequirePackage{pgfplots}
+\usepgfplotslibrary{fillbetween}
 \pgfplotsset{
     compat=1.13,
     lua backend=true,
@@ -324,6 +325,8 @@
     legend style={font=\scriptsize},
     label style={font=\scriptsize}
 }
+
+
 %%--------------------------------
 % Code from Christian Feuersänger
 % http://tex.stackexchange.com/questions/54794/using-a-pgfplots-style-legend-in-a-plain-old-tikzpicture#54834
@@ -345,6 +348,33 @@
 % axis environment):
 \def\addlegendimage{\csname pgfplots@addlegendimage\endcsname}
 %%--------------------------------
+
+
+%%--------------------------------
+% http://tex.stackexchange.com/a/180324/25791
+% Takes six arguments: data table name, x column, y column, error column,
+% color and error bar opacity.
+% ---
+% Creates invisible plots for the upper and lower boundaries of the error,
+% and names them. Then uses fill between to fill between the named upper and
+% lower error boundaries. All these plots are forgotten so that they are not
+% included in the legend. Finally, plots the y column above the error band.
+\newcommand{\errorband}[6]{
+  \addplot [name path=pluserror,draw=none,no markers,forget plot]
+    table [x={#2},y expr=\thisrow{#3}+\thisrow{#4}, col sep=comma, ignore chars={"}] {#1};
+
+  \addplot [name path=minuserror,draw=none,no markers,forget plot]
+    table [x={#2},y expr=\thisrow{#3}-\thisrow{#4}, col sep=comma, ignore chars={"}] {#1};
+
+  \addplot [forget plot,fill=#5,opacity=#6]
+    fill between[on layer={},of=pluserror and minuserror];
+
+  \addplot [#5,thick,no markers]
+    table [x={#2},y={#3}, col sep=comma, ignore chars={"}] {#1};
+}
+%%--------------------------------
+
+
 \RequirePackage[outline]{contour}
 
 % appendix
