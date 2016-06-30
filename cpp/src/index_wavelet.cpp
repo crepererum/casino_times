@@ -262,6 +262,10 @@ class engine {
             _error_calc(std::make_shared<error_calculator>(_ylength, _depth, _base, _transformer)) {}
 
         superroot_ptr_t run(std::size_t i) {
+            // pre-allocate superroot in mapped file to pointers in index right
+            // WARNING: the parent<->child index will be wrong during the merging procedure!
+            (*_index_stored->superroots)[i] = alloc_in_mapped_file(_alloc_superroot);
+
             _transformer->data_to_tree(_base + (i * _ylength));
             _error_calc->recalc(i);  // correct error because of floating point errors
             run_mergeloop(i);
@@ -269,7 +273,6 @@ class engine {
             _error_calc->recalc(i);  // correct error one last time
 
             // move superroot to mapped file
-            (*_index_stored->superroots)[i] = alloc_in_mapped_file(_alloc_superroot);
             *((*_index_stored->superroots)[i]) = *(_transformer->superroot);
 
             return _transformer->superroot;
