@@ -3,9 +3,10 @@
         xlabel={n},
         ylabel={count $+ 1$},
         fullwidth,
+        ybar,
+        bar width=0.22cm, % hack because dim is too large
         ymode=log
     ]
-        \addplot [only marks,color=kit-blue] table [x=n, y=c, col sep=comma, ignore chars={"}, y expr=\thisrowno{1}+1] {data/hist.csv};
-        \addplot [ybar,fill,bar width=0.25mm,color=kit-blue] table [x=n, y=c, col sep=comma, ignore chars={"}, y expr=\thisrowno{1}+1] {data/hist.csv};
+        \addplot [fill=kit-blue,draw=none] table [x=n, y=c, col sep=comma, ignore chars={"}, y expr=\thisrowno{1}+1] {data/hist.csv};
     \end{axis}
 \end{tikzpicture}

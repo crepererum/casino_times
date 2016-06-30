@@ -1,0 +1,20 @@
+\begin{tikzpicture}
+    \begin{axis}[
+        xlabel={rank},
+        ylabel={distance (normalized)},
+        fullwidth
+    ]
+        \addplot [mark=none,color=kit-green2] table [x=n, y=d, col sep=comma, ignore chars={"}, discard if not={ngram}{drug}] {data/dists_sorted.csv};
+        \addlegendentry{drug};
+
+        \addplot [mark=none,color=kit-cyan] table [x=n, y=d, col sep=comma, ignore chars={"}, discard if not={ngram}{know}] {data/dists_sorted.csv};
+        \addlegendentry{know};
+
+        \addplot [mark=none,color=kit-red] table [x=n, y=d, col sep=comma, ignore chars={"}, discard if not={ngram}{war}] {data/dists_sorted.csv};
+        \addlegendentry{war};
+
+        \addplot [mark=x,color=kit-green2] coordinates {(16,0.0632296354112135)};
+        \addplot [mark=x,color=kit-cyan] coordinates {(10,0.1994456116321715)};
+        \addplot [mark=x,color=kit-red] coordinates {(9,0.1890627965205028)};
+    \end{axis}
+\end{tikzpicture}

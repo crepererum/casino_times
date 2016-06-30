@@ -16,11 +16,11 @@
         ymin=0,
         fullwidth
     ]
-        \addplot [color=kit-violet,fill=kit-violet] table [x=letter, y=n, col sep=comma, ignore chars={"}, discard if not={class}{useful}] {data/clean_up.csv};
-        \addplot [color=kit-orange,fill=kit-orange] table [x=letter, y=n, col sep=comma, ignore chars={"}, discard if not={class}{pruned}] {data/clean_up.csv};
-        \addplot [color=kit-red,fill=kit-red] table [x=letter, y=n, col sep=comma, ignore chars={"}, discard if not={class}{wnorm}] {data/clean_up.csv};
-        \addplot [color=kit-cyan,fill=kit-cyan] table [x=letter, y=n, col sep=comma, ignore chars={"}, discard if not={class}{snorm}] {data/clean_up.csv};
-        \addplot [color=kit-green2,fill=kit-green2] table [x=letter, y=n, col sep=comma, ignore chars={"}, discard if not={class}{filtered}] {data/clean_up.csv};
+        \addplot [fill=kit-violet,draw=none] table [x=letter, y=n, col sep=comma, ignore chars={"}, discard if not={class}{useful}] {data/clean_up.csv};
+        \addplot [fill=kit-orange,draw=none] table [x=letter, y=n, col sep=comma, ignore chars={"}, discard if not={class}{pruned}] {data/clean_up.csv};
+        \addplot [fill=kit-red,draw=none] table [x=letter, y=n, col sep=comma, ignore chars={"}, discard if not={class}{wnorm}] {data/clean_up.csv};
+        \addplot [fill=kit-cyan,draw=none] table [x=letter, y=n, col sep=comma, ignore chars={"}, discard if not={class}{snorm}] {data/clean_up.csv};
+        \addplot [fill=kit-green2,draw=none] table [x=letter, y=n, col sep=comma, ignore chars={"}, discard if not={class}{filtered}] {data/clean_up.csv};
 
         \legend{useful,pruned,w.norm loss, s.norm loss, filtered};
     \end{axis}

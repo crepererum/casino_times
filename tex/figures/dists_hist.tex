@@ -1,0 +1,17 @@
+\begin{tikzpicture}
+    \begin{axis}[
+        xlabel={distance},
+        ylabel={count $+ 1$},
+        fullwidth,
+        ybar=0pt,
+        bar width=0.1/3,
+        area legend,
+        legend pos=north east,
+        ymode=log
+    ]
+        \addplot [fill=kit-green2,draw=none] table [x=x, y=y, col sep=comma, ignore chars={"}, y expr=\thisrowno{1}+1, discard if not={ngram}{drug}] {data/dists_hist.csv};
+        \addplot [fill=kit-cyan,draw=none] table [x=x, y=y, col sep=comma, ignore chars={"}, y expr=\thisrowno{1}+1, discard if not={ngram}{know}] {data/dists_hist.csv};
+        \addplot [fill=kit-red,draw=none] table [x=x, y=y, col sep=comma, ignore chars={"}, y expr=\thisrowno{1}+1, discard if not={ngram}{war}] {data/dists_hist.csv};
+        \legend{drug,know,war};
+    \end{axis}
+\end{tikzpicture}

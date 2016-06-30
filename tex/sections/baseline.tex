@@ -92,7 +92,7 @@ Furthermore we limit our analysis to the \enquote{match count} because it seems 
     \label{fig:ngrams_hist}
 \end{figure}
 
-In \autoref{fig:ngrams_ex_total} you can observe the following: the words \enquote{without}, \enquote{area} and \enquote{death} share the global low around 1945 while the word \enquote{war} does not. On the other hand you can see the same structure (peak and then depression) between 1961 and 1977 for \enquote{war} and \enquote{without}. Another feature that can be observed is the fact that the time series data is not limited in its value and that it seem to behave exponentially, as shown in \autoref{fig:ngrams_hist}. To be able to determine a proper similarity between different time series, this scaling should be elimited. There are two possible ways: applying a logarithmus or normalizing every point in time by using a factor shared amongst all series.
+In \autoref{fig:ngrams_ex_total} you can observe the following: the words \enquote{without}, \enquote{area} and \enquote{death} share the global low around 1945 while the word \enquote{war} does not. On the other hand you can see the same structure (peak and then depression) between 1961 and 1977 for \enquote{war} and \enquote{without}. Another feature that can be observed is the fact that the time series data is not limited in its value and that they behave exponentially, as shown in \autoref{fig:ngrams_hist}. Exponential growth is also common amongst this area and our natural environments (\cite{exp_growth1,exp_growth2}). To be able to determine a proper similarity between different time series, this scaling should be elimited. There are two possible ways: applying a logarithmus or normalizing every point in time by using a factor shared amongst all series.
 
 \begin{figure}
     \centering
@@ -160,7 +160,7 @@ As \autoref{fig:ngrams_ex2_fitavg} shows, there are cases where time series look
     \label{fig:smoothing_frequencies}
 \end{figure}
 
-Since calculating the distances of noisy gradients may lead to useless results, we smooth the the time series using a Gauss kernel with $\sigma = 1$ before deriving the gradient. An example is shown in \autoref{fig:ngrams_ex2_grad_smooth}. Frequency distributions for different smoothing levels are shown in \autoref{fig:smoothing_frequencies}. The non-smoothed data shows quite high amplitutes in higher frequencies ranges which is uncommon for most time series data sets. The choosen smoothing of $\sigma = 1$ reduces noise while $\sigma = 2$ leads to a heavy loss of information. The overall pattern of fast switching gradients will also lead to some other problems, e.g. in \autoref{sec:baseline:speed}. The similarity of the nGram \enquote{kiss} is clearer now. As expected, the time data does not quite fit the other example series. This is intended since the underlying data also has a slightly different structure.
+Since calculating the distances of noisy gradients may lead to useless results, we smooth the the time series using a Gauss kernel with $\sigma = 1$ before deriving the gradient. An example is shown in \autoref{fig:ngrams_ex2_grad_smooth}. The reason we can use a Gauss kernel, which takes past and future values into account, for a time series here is the fact that the data we are transforming is known beforehand. This is different to most other scenarious where smoothing techniques like EWMA (exponentially weighted moving average) are required. Frequency distributions for different smoothing levels are shown in \autoref{fig:smoothing_frequencies}. The non-smoothed data shows quite high amplitutes in higher frequencies ranges which is uncommon for most time series data sets. The choosen smoothing of $\sigma = 1$ reduces noise while $\sigma = 2$ leads to a heavy loss of information. The overall pattern of fast switching gradients will also lead to some other problems, e.g. in \autoref{sec:baseline:speed}. The similarity of the nGram \enquote{kiss} is clearer now. As expected, the time data does not quite fit the other example series. This is intended since the underlying data also has a slightly different structure.
 
 
 \subsection{Dynamic Time Warping}
@@ -175,6 +175,48 @@ Since calculating the distances of noisy gradients may lead to useless results, 
 
 As \autoref{fig:ngrams_ex2_extrema} shows, while having the same structure the gradients do not align perfectly. To calculate a meaningful distance, we use DTW (Dynamic Time Warping)\footnote{We do not cite a publication here since it is a commenly known algorithm and the only online publisher of the assumed original publication wants you to pay $>$\SI{30}{\$} after $>$\num{45} years.} with an Euclidian distance and a Sakoe-Chiba Band (\cite{sakoe}) of radius $r$. The usage of gradients as an input of Dynamic Time Warping follows the idea presented in \cite{DDTW}.
 
+
+\subsection{Ranking}
+\label{ssec:baseline:sim:rank}
+
+It seems obvious to use the DTW distances to rank nearest neighbors. There are two major problems with that approach.
+
+\begin{figure}
+    \centering
+    \input{figures/dists_hist.tex}
+    \caption{Histogram of distances to example $1$-grams}
+    \label{fig:dists_hist}
+\end{figure}
+
+First the distribution of the distances differs heavily from anchor to anchor as shown in \autoref{fig:dists_hist}.
+
+\begin{figure}
+    \centering
+    \input{figures/dists_sorted.tex}
+    \caption{Distance of the first \num{100} neighbors of example $1$-grams, without first element which is the anchor itself}
+    \label{fig:dists_sorted}
+\end{figure}
+
+Second it is not clear how many nearest neighbors should be taken into account, escpecially when designing user-facing applications. To solve this problem we sort all neighbors by their distance and only take rank $1$ to $\frac{n}{2}$ into account. This ignores the anchor itself with its distance of \num{0} and also prunes the second half of the sorted list because there are usualy many outliers at the end of the spectrum. Then we normalize the distances:
+
+\begin{equation}\label{eq:dists_norm}
+    d_{n,i} = \frac{d_i - d_1}{d_1}
+\end{equation}
+
+Here $d_i$ is the distance of the neighbor with rank $i$, starting at \num{0} with the anchor itself. The result is shown in \autoref{fig:dists_sorted}. Now we search for the index which clearly cuts a group of nearest neighbors from the rest of data. To do so we do the following:
+
+\begin{equation}\label{eq:dists_cut}
+    i_\text{cut} = 1 + \argmax_{i=1}^\frac{n}{2} \left( \Delta_1 \left( \frac{\Delta_1(d_n)}{d_n} \right) \right)_i
+\end{equation}
+
+Here $\Delta_1$ calculates the gradient with distance \num{1}.
+
+That approach might seem to be slightly artificial and indeed its more a phenomenological metric instead of a mathematically proven approach. The main reason for this is that we want to keep the index as small as possible to enable users to understand the content of the list. If you try to use the set of nearest neighbors as an input for another algorithm you may want to choose another method.
+
+We also want to point out that this method is very instable. Small changes in the input data, e.g. by noise introduces by compression, will quickly lead to different results.
+
+
+
 \section{Index-based Speed-up}
 \label{sec:baseline:speed}
 
@@ -188,3 +230,9 @@ One of the fundamental problems of large-scale DTW-based similarity searches is 
 \end{figure}
 
 A problem with this type of index is that the structure of the indexed data is different than the one tested in the publication. Our rather short data (in terms of measured points) contains more entropy and is more jittering than the time series intended by the paper. Therefore we require more dimensions to get a tree that at least filters out some candidates as shown in \autoref{fig:dtw_index}. We need at least \num{16} dimensions to get any affect from the \code{LB\_PAA} and we do not even see any real filtering effect from the tree stucture itself\footnote{the amount of received time series is more than \SI{95}{\percent}}. So the tree structure only provides a sorting of the time series. That results in a very memory-inefficient data structure. Remember that for every dimension, the R-tree stores two data points, a minimum and a maximum. So we need to store at least \SI{12.5}{\percent} of the actual data size as an index to get a any effect and still have a linear complexity. The high dimensionality renders the tree performance and memory management nearly useless, as also found by \cite{rtree_highdim}. Because all of this is a general problem of R-tree-based algorithms, we did not implement the improvements suggested by \cite{LB_Improved}.
+
+
+
+\section{Alternatives}
+\label{sec:baseline:alt}
+We want to point out that the baseline we have selected is not the only possible one. Other teams may come up with other setups depending on their defintion of \enquote{similarity}. Our choices depend on the application we want to use the algorithms for and understandment of the humans operating these applications. But even with the exact same requirements it may still make sense to choose another baseline. It is important to keep in mind that the choices made during this process may lead to different results and that this might affect research outcomes of people using the similarity results to explore the data and to justify the results of their analysis.

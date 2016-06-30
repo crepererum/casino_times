@@ -279,6 +279,8 @@
 \RequirePackage{unicode-math}
 \setmathfont[Scale=0.98]{xits-math.otf}
 \newtheorem{definition}{Definition}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
 
 % easier quotes
 \RequirePackage{csquotes}
