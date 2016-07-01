@@ -596,7 +596,6 @@ int main(int argc, char** argv) {
     // DONT! only for debugging!
     //eng.delete_all_ptrs(findex);
 
-    index_stored.clean_up();
     findex->get_segment_manager()->shrink_to_fit_indexes();
     std::cout << "Free memory: " << (findex->get_free_memory() >> 10) << "k of " << (findex->get_size() >> 10) << "k" << std::endl;
 
