@@ -1,0 +1,18 @@
+\begin{tikzpicture}
+    \begin{axis}[
+        xlabel={compression error threshold},
+        legend columns=-1,
+        legend style={
+            /tikz/every even column/.append style={column sep=0.2cm},
+            at={(0.5,1.1)},
+            anchor=south
+        },
+        xmode=log,
+        fullwidth
+    ]
+        \addplot [mark=+,color=kit-green2] table [x=maxerror, y=sdiff, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
+        \addplot [mark=o,color=kit-yellow] table [x=maxerror, y=enew, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
+        \addplot [mark=asterisk,color=kit-red] table [x=maxerror, y=levelx, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
+        \legend{Levenshtein distance,new entries,\% nodes};
+    \end{axis}
+\end{tikzpicture}

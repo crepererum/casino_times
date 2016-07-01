@@ -1,4 +1,50 @@
 \chapter{Evaluation}
-\label{ch:Evaluation}
+\label{ch:evaluation}
 
 \dots
+
+
+
+\section{Compression Distortion}
+\label{sec:evaluation:distortion}
+
+Because our compression method leads to information loss, we need to figure out how that loss affects the data in terms of different use cases. We have build multiple methods to compare the compressed data with the uncompressed one and will describe them in the following subsections.
+
+
+\subsection{User-facing data}
+\label{ssec:evaluation:distortion:user}
+
+\begin{figure}
+    \centering
+    \input{figures/compression.tex}
+    \caption{Compression distortion, user facing data, anchor is \enquote{drug}}
+    \label{fig:compression}
+\end{figure}
+
+First we want to figure out how compression affects the data which is perceived by the user. We use the output as described in \autoref{ssec:baseline:sim:rank} and plug in the optional compression before the smoothing as it was discussed in \autoref{sec:algorithm:wavelet}. We choose a single cutoff point for both, the uncompressed and compressed, results since the choice is very unstable under small compression artifacts. We than calculate the following two metrices:
+
+\begin{enumerate}
+    \item We treat the sorted list of nearest neighbors as strings and calculate the Levenshtein distance (\cite{levenshtein}) of them.
+    \item We measure the amount of new entries produced by compressed version compared to the uncompressed reference as a relative measure.
+\end{enumerate}
+
+As shown in \autoref{fig:compression} the set of nearest neighbors and the ranking of these neighbors is very unstable as soon as we introduce some noise to the data. This makes our algorithm rather bad when the output data is directly presented to the user. This situation might be improve when combining the distance to multiple anchors to one final score which might be required for handling groups of words or entire concepts as a search query.
+
+
+\subsection{All distances}
+\label{ssec:evaluation:distortion:dist}
+
+\begin{figure}
+    \centering
+    \input{figures/compression2.tex}
+    \caption{Compression distortion, all distances, anchor is \enquote{drug}}
+    \label{fig:compression2}
+\end{figure}
+
+To measure how the compression affects the actual distance, we calculate a the distance to a fixed anchor and calculate the normalized distance of the original result and the ones produced by the compressed data:
+
+\begin{equation}
+    \delta_i(a, b) = \frac{b_i - a_i}{a_i}
+\end{equation}
+
+Then we measure different quantiles of this distance as plotted in \autoref{fig:compression2}. We also annoted the markers for \SI{-10}{\percent} and \SI{10}{\percent} to show when, in our oppinion, the distortion gets unecceptable for different amounts of time series. It turns out that even with some outliers, the overall result is more stable than the user-facing data. Therefore we conclude that for some applications higher compression rates and the corresponding artifacts can be acceptable.

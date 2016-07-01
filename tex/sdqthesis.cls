@@ -21,7 +21,7 @@
 \ProvidesClass{sdqthesis}[2014/10/21 v1.0 Student thesis class]
 \DeclareOption{ngerman}{\PassOptionsToPackage{\CurrentOption}{babel}}
 % German is also needed in English thesis for the abstract
-\DeclareOption{english}{\PassOptionsToPackage{main=\CurrentOption,ngerman}{babel}}
+\DeclareOption{english}{\PassOptionsToPackage{main=\CurrentOption,ngerman,russian}{babel}}
 \ProcessOptions\relax
 
 %% ---------------------------------------------------------------
@@ -320,6 +320,10 @@
     },
     fullwidth/.style={
         height=0.30\textwidth,
+        width=\textwidth
+    },
+    fullwidth large/.style={
+        height=0.50\textwidth,
         width=\textwidth
     },
     filter discard warning=false,

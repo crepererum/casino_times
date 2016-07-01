@@ -254,14 +254,23 @@ A possible improvement closely related to reducing the size of the offset pointe
 \section{Weaknesses}
 \label{sec:algorithm:weak}
 
-\dots
+\begin{figure}
+    \centering
+    \input{figures/weakness.tex}
+    \caption{Compression per layer}
+    \label{fig:weakness}
+\end{figure}
+
+The main problem with our approach is its greedy nature. As shown in \autoref{fig:weakness}, the merges usually do not reach very high levels. This is caused by the decreasing propability of merging with a node that belongs to the same large subtree. They further the merge process continues, the more likely it gets that somewhere in between there was a better node from a different subtree as a nearest neighbor. On we other hand we can not check all possible merges in all layers because the runtime complexity would grow exponentially with the number of indexed time series. So we to limit the algorithm to a subset of decisions.
+
+While the following section explain some of the fixes we have tried, we came to the conclusion that it might require a totally different strategy to find larger merges.
 
 
 
 \section{Failed Improvements}
 \label{sec:algorithm:fail}
 
-A main problem of our algorithm is its greedy nature. It merges nodes always with its nearest neighbor and therefore might make decissions that result in the fact that nodes in levels near the root might not be merged because their children do not match. We tried different approaches to solve this problem but did not succeed.
+We tried different approaches to solve to increase the likelyhood to merge with larger subtrees but did not succeed. This section explain the methods, the idea behind them and the results.
 
 
 \subsection{Subtree Index}
