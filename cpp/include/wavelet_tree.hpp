@@ -6,8 +6,7 @@
 #include <vector>
 
 #include <boost/functional/hash.hpp>
-#include <boost/interprocess/allocators/private_adaptive_pool.hpp>
-#include <boost/interprocess/allocators/private_node_allocator.hpp>
+#include <boost/interprocess/allocators/allocator.hpp>
 #include <boost/interprocess/managed_mapped_file.hpp>
 #include <boost/locale.hpp>
 
@@ -32,10 +31,10 @@ using superroot_ptr_t           = short_offset_ptr<superroot_t>;
 using segment_manager_t         = boost::interprocess::managed_mapped_file::segment_manager;
 
 template <typename T>
-using allocator_t               = boost::interprocess::private_node_allocator<T, segment_manager_t, alloc_nodes>;
+using allocator_t               = boost::interprocess::allocator<T, segment_manager_t>;
 
 template <typename T>
-using allocator_adaptive_t      = boost::interprocess::private_adaptive_pool<T, segment_manager_t, alloc_nodes>;
+using allocator_adaptive_t      = boost::interprocess::allocator<T, segment_manager_t>;
 
 using allocator_node_t          = allocator_t<node_t>;
 using allocator_superroot_t     = allocator_t<superroot_t>;
@@ -113,12 +112,16 @@ struct index_stored_t {
     parents_table_t*    parents_table;
     superroots_table_t* superroots_table;
 
-    allocator_node_ptr_t      alloc_node_ptr;
-    allocator_superroot_ptr_t alloc_superroot_ptr;
+    allocator_node_ptr_t         alloc_node_ptr;
+    allocator_superroot_ptr_t    alloc_superroot_ptr;
+    allocator_node_vector_t      alloc_node_vector;
+    allocator_superroot_vector_t alloc_superroot_vector;
 
     index_stored_t(std::shared_ptr<boost::interprocess::managed_mapped_file> findex, std::size_t n)
         : alloc_node_ptr(findex->get_segment_manager()),
-        alloc_superroot_ptr(findex->get_segment_manager()) {
+        alloc_superroot_ptr(findex->get_segment_manager()),
+        alloc_node_vector(findex->get_segment_manager()),
+        alloc_superroot_vector(findex->get_segment_manager()) {
 
         void* anchor  = findex->find_or_construct<std::uint8_t>("hash_anchor")();
 
@@ -127,7 +130,6 @@ struct index_stored_t {
             alloc_superroot_ptr
         );
 
-        allocator_node_vector_t alloc_node_vector(findex->get_segment_manager());
         parents_table = findex->find_or_construct<parents_table_t>("parents_table")(
             0,
             offset_hash<node_t>{anchor},
@@ -135,7 +137,6 @@ struct index_stored_t {
             alloc_node_vector
         );
 
-        allocator_superroot_vector_t alloc_superroot_vector(findex->get_segment_manager());
         superroots_table = findex->find_or_construct<superroots_table_t>("superroots_table")(
             0,
             offset_hash<node_t>{anchor},
@@ -178,5 +179,11 @@ struct index_stored_t {
         } else {
             return nullptr;
         }
+    }
+
+    void delete_all_ptrs(const std::shared_ptr<boost::interprocess::managed_mapped_file>& findex) {
+        findex->destroy_ptr(superroots);
+        findex->destroy_ptr(parents_table);
+        findex->destroy_ptr(superroots_table);
     }
 };

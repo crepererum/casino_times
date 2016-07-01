@@ -72,8 +72,7 @@ class range_bucket_t {
             }
         }
 
-        void delete_all_ptrs(mapped_file_ptr_t& f) {
-            allocator_node_t alloc(f->get_segment_manager());
+        void delete_all_ptrs(allocator_node_t& alloc) {
             for (auto& entry : _slot) {
                 dealloc_in_mapped_file(alloc, entry.second);
             }
@@ -105,31 +104,6 @@ struct index_tmp_t {
             return lowest_level[idx];
         } else {
             return higher_levels[l][current_node->children];
-        }
-    }
-
-    void delete_all_ptrs(mapped_file_ptr_t& f) {
-        allocator_superroot_t alloc(f->get_segment_manager());
-
-        std::size_t find_count;
-        superroot_vector_t* superroots;
-        std::tie(superroots, find_count) = f->find<superroot_vector_t>("superroots");
-        if (find_count != 1) {
-            return;
-        }
-
-        for (auto& sr : *superroots) {
-            if (sr != nullptr) {
-                dealloc_in_mapped_file(alloc, sr);
-            }
-        }
-        for (auto& bucket : lowest_level) {
-            bucket.delete_all_ptrs(f);
-        }
-        for (auto& map : higher_levels) {
-            for (auto& kv : map) {
-                kv.second.delete_all_ptrs(f);
-            }
         }
     }
 
@@ -278,6 +252,24 @@ class engine {
             return _transformer->superroot;
         }
 
+        void delete_all_ptrs(const std::shared_ptr<boost::interprocess::managed_mapped_file>& findex) {
+            for (auto& sr : (*_index_stored->superroots)) {
+                if (sr != nullptr) {
+                    dealloc_in_mapped_file(_alloc_superroot, sr);
+                }
+            }
+            for (auto& bucket : _index_tmp->lowest_level) {
+                bucket.delete_all_ptrs(_alloc_node);
+            }
+            for (auto& map : _index_tmp->higher_levels) {
+                for (auto& kv : map) {
+                    kv.second.delete_all_ptrs(_alloc_node);
+                }
+            }
+
+            _index_stored->delete_all_ptrs(findex);
+        }
+
     private:
         struct queue_entry_t {
             inexact_t   score;
@@ -320,7 +312,7 @@ class engine {
         range_bucket_t::neighbors_t       _neighbors;
 
         void run_mergeloop(std::size_t i) {
-            assert(queue.empty());
+            assert(_queue.empty());
 
             // fill queue with entries from lowest level
             std::vector<std::size_t> indices(_transformer->levels[_depth - 1].size());
@@ -602,8 +594,10 @@ int main(int argc, char** argv) {
 
     // free memory for sanity checking
     // DONT! only for debugging!
-    //index.delete_all_ptrs(findex);
+    //eng.delete_all_ptrs(findex);
 
+    index_stored.clean_up();
+    findex->get_segment_manager()->shrink_to_fit_indexes();
     std::cout << "Free memory: " << (findex->get_free_memory() >> 10) << "k of " << (findex->get_size() >> 10) << "k" << std::endl;
 
     print_stats(&index_tmp, n);
