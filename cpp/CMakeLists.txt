@@ -100,7 +100,7 @@ endif ()
 # we want static executables
 set (CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 set (BUILD_SHARED_LIBRARIES OFF)
-set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -Wl,--gc-sections -Wl,--no-export-dynamic")  # no idea why the dynamic export stuff is required
+set (CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -static -Wl,--gc-sections -Wl,--no-export-dynamic")  # no idea why the dynamic export stuff is required
 
 # includes
 include_directories (
