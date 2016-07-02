@@ -45,26 +45,26 @@ class range_bucket_t {
             inexact_t dist_down = std::numeric_limits<inexact_t>::infinity();
             auto prev_begin     = std::prev(begin); // let's also hope that std::prev(begin) works
             if (it_up != end) {
-                dist_up = std::abs(it_up->first - entry.first);
+                dist_up = std::abs(it_up->pos - entry.pos);
             }
             if (it_down != prev_begin) {
-                dist_down = std::abs(it_down->first - entry.first);
+                dist_down = std::abs(it_down->pos - entry.pos);
             }
             while ((neighbors.size() < max_size)
                     && (((it_up != end) && (dist_up <= max_dist)) || ((it_down != prev_begin) && (dist_down <= max_dist)))) {
                 if (dist_up < dist_down) {
-                    neighbors.push_back(std::make_pair(it_up->second, dist_up));
+                    neighbors.push_back(std::make_pair(it_up->node, dist_up));
                     ++it_up;
                     if (it_up != end) {
-                        dist_up = std::abs(it_up->first - entry.first);
+                        dist_up = std::abs(it_up->pos - entry.pos);
                     } else {
                         dist_up = std::numeric_limits<inexact_t>::infinity();
                     }
                 } else {
-                    neighbors.push_back(std::make_pair(it_down->second, dist_down));
+                    neighbors.push_back(std::make_pair(it_down->node, dist_down));
                     --it_down;
                     if (it_down != prev_begin) {
-                        dist_down = std::abs(it_down->first - entry.first);
+                        dist_down = std::abs(it_down->pos - entry.pos);
                     } else {
                         dist_down = std::numeric_limits<inexact_t>::infinity();
                     }
@@ -74,17 +74,20 @@ class range_bucket_t {
 
         void delete_all_ptrs(allocator_node_t& alloc) {
             for (auto& entry : _slot) {
-                dealloc_in_mapped_file(alloc, entry.second);
+                dealloc_in_mapped_file(alloc, entry.node);
             }
         }
 
     private:
-        using slot_entry_t = std::pair<inexact_t, node_ptr_t>;
+        struct __attribute__((packed)) slot_entry_t {
+            inexact_t  pos;
+            node_ptr_t node;
+        };
         std::vector<slot_entry_t> _slot;
 
         decltype(_slot)::const_iterator find_lower(const slot_entry_t& entry) const {
             return std::lower_bound(_slot.cbegin(), _slot.cend(), entry, [](const slot_entry_t& a, const slot_entry_t& b){
-                return a.first < b.first;
+                return a.pos < b.pos;
             });
         }
 };
