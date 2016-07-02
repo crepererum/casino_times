@@ -2,13 +2,13 @@
 
 #include <array>
 #include <memory>
-#include <unordered_map>
-#include <vector>
 
 #include <boost/functional/hash.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
+#include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/managed_mapped_file.hpp>
 #include <boost/locale.hpp>
+#include <boost/unordered_map.hpp>
 
 #include <half.hpp>
 
@@ -40,15 +40,6 @@ using allocator_node_t          = allocator_t<node_t>;
 using allocator_superroot_t     = allocator_t<superroot_t>;
 using allocator_node_ptr_t      = allocator_adaptive_t<node_ptr_t>;
 using allocator_superroot_ptr_t = allocator_adaptive_t<superroot_ptr_t>;
-
-using node_vector_t             = std::vector<node_ptr_t, allocator_node_ptr_t>;
-using superroot_vector_t        = std::vector<superroot_ptr_t, allocator_superroot_ptr_t>;
-
-using allocator_node_vector_t   = allocator_adaptive_t<node_vector_t>;
-using allocator_superroot_vector_t = allocator_adaptive_t<superroot_vector_t>;
-
-using parents_table_t           = std::unordered_map<node_ptr_t, node_vector_t, offset_hash<node_t>, std::equal_to<node_ptr_t>, allocator_node_vector_t>;
-using superroots_table_t        = std::unordered_map<node_ptr_t, superroot_vector_t, offset_hash<node_t>, std::equal_to<node_ptr_t>, allocator_superroot_vector_t>;
 
 using children_t                = std::array<node_ptr_t, n_children>;
 
@@ -97,6 +88,15 @@ namespace std {
     };
 }
 
+using node_vector_t             = boost::interprocess::vector<node_ptr_t, allocator_node_ptr_t>;
+using superroot_vector_t        = boost::interprocess::vector<superroot_ptr_t, allocator_superroot_ptr_t>;
+
+using allocator_parents_table_t    = allocator_adaptive_t<std::pair<node_ptr_t, node_vector_t>>;
+using allocator_superroots_table_t = allocator_adaptive_t<std::pair<node_ptr_t, superroot_vector_t>>;
+
+using parents_table_t           = boost::unordered_map<node_ptr_t, node_vector_t, offset_hash<node_t>, std::equal_to<node_ptr_t>, allocator_parents_table_t>;
+using superroots_table_t        = boost::unordered_map<node_ptr_t, superroot_vector_t, offset_hash<node_t>, std::equal_to<node_ptr_t>, allocator_superroots_table_t>;
+
 template <typename T>
 short_offset_ptr<T> alloc_in_mapped_file(allocator_t<T>& alloc) {
     return alloc.allocate(1).get();
@@ -114,14 +114,14 @@ struct index_stored_t {
 
     allocator_node_ptr_t         alloc_node_ptr;
     allocator_superroot_ptr_t    alloc_superroot_ptr;
-    allocator_node_vector_t      alloc_node_vector;
-    allocator_superroot_vector_t alloc_superroot_vector;
+    allocator_parents_table_t    alloc_parents_table;
+    allocator_superroots_table_t alloc_superroots_table;
 
     index_stored_t(std::shared_ptr<boost::interprocess::managed_mapped_file> findex, std::size_t n)
         : alloc_node_ptr(findex->get_segment_manager()),
         alloc_superroot_ptr(findex->get_segment_manager()),
-        alloc_node_vector(findex->get_segment_manager()),
-        alloc_superroot_vector(findex->get_segment_manager()) {
+        alloc_parents_table(findex->get_segment_manager()),
+        alloc_superroots_table(findex->get_segment_manager()) {
 
         short_offset_ptr<std::uint8_t> anchor{findex->find_or_construct<std::uint8_t>("hash_anchor")()};
 
@@ -134,14 +134,14 @@ struct index_stored_t {
             0,
             offset_hash<node_t>{anchor},
             std::equal_to<node_ptr_t>{},
-            alloc_node_vector
+            alloc_parents_table
         );
 
         superroots_table = findex->find_or_construct<superroots_table_t>("superroots_table")(
             0,
             offset_hash<node_t>{anchor},
             std::equal_to<node_ptr_t>{},
-            alloc_superroot_vector
+            alloc_superroots_table
         );
     }
 
