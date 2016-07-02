@@ -176,11 +176,11 @@ namespace std {
 
 template <typename T>
 struct offset_hash {
-    explicit offset_hash(void* anchor_) : anchor(anchor_) {}
+    explicit offset_hash(const short_offset_ptr<std::uint8_t> anchor_) : anchor(anchor_) {}
 
     size_t operator()(const short_offset_ptr<T>& obj) const {
         union {
-            const void* p;
+            const std::uint8_t* p;
             std::int64_t i;
         } converter_anchor;
 
@@ -189,7 +189,7 @@ struct offset_hash {
             std::int64_t i;
         } converter_obj;
 
-        converter_anchor.p = anchor;
+        converter_anchor.p = anchor.get();
         converter_obj.p = obj.get();
 
         std::size_t seed = 0;
@@ -197,5 +197,5 @@ struct offset_hash {
         return seed;
     }
 
-    const void* anchor;
+    const short_offset_ptr<std::uint8_t> anchor;
 };

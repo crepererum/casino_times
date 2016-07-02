@@ -123,7 +123,7 @@ struct index_stored_t {
         alloc_node_vector(findex->get_segment_manager()),
         alloc_superroot_vector(findex->get_segment_manager()) {
 
-        void* anchor  = findex->find_or_construct<std::uint8_t>("hash_anchor")();
+        short_offset_ptr<std::uint8_t> anchor{findex->find_or_construct<std::uint8_t>("hash_anchor")()};
 
         superroots    = findex->find_or_construct<superroot_vector_t>("superroots")(
             n,
