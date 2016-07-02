@@ -223,19 +223,19 @@ struct dtw_impl_simple {
     static constexpr std::size_t n         = 1;
     static constexpr std::size_t alignment = n * 8;
 
-    using element_t  = calc_t;
-    using dist_t     = calc_t;
+    using element_t  = float;
+    using dist_t     = float;
     using indices_t  = std::size_t;
     using source_t   = const calc_t*;
     using base_t     = const calc_t*;
     using bases_t    = const calc_t*;
 
     inline element_t convert_single(base_t base, std::size_t idx) {
-        return base[idx];
+        return static_cast<element_t>(base[idx]);
     }
 
     inline element_t convert_multiple(bases_t bases, std::size_t idx) {
-        return static_cast<calc_t>(bases[idx]);
+        return static_cast<element_t>(bases[idx]);
     }
 
     inline base_t get_base(source_t source, std::size_t blocksize, std::size_t begin, std::size_t i) {
@@ -263,7 +263,7 @@ struct dtw_impl_simple {
     }
 
     inline dist_t dist(element_t a, element_t b) {
-        calc_t d = a - b;
+        dist_t d = a - b;
         return d * d;
     }
 
@@ -291,10 +291,10 @@ struct dtw_impl_vectorized {
     // other architectures or when multi-threading is implemented.
     static constexpr std::size_t n         = 16;
     static constexpr std::size_t alignment = n * 8;
-    static_assert(n >= SIMDPP_FAST_FLOAT64_SIZE, "dtw_impl_vectorized is not optimal!");
+    static_assert(n >= SIMDPP_FAST_FLOAT32_SIZE, "dtw_impl_vectorized is not optimal!");
 
-    using element_t  = simdpp::float64<n>;
-    using dist_t     = simdpp::float64<n>;
+    using element_t  = simdpp::float32<n>;
+    using dist_t     = simdpp::float32<n>;
     using source_t   = const calc_t*;
     using base_t     = const calc_t*;
     using bases_t    = std::array<const calc_t*, n>;

@@ -102,6 +102,6 @@ int main(int argc, char** argv) {
 
     dtw_simple mydtw_simple(base_in, ylength, begin, end, r);
     for (std::size_t j = 0; j < n; ++j) {
-        base_out[j] = (std::sqrt(mydtw_simple.calc(i, j) / static_cast<calc_t>(end - begin)));
+        base_out[j] = (std::sqrt(static_cast<calc_t>(mydtw_simple.calc(i, j)) / static_cast<calc_t>(end - begin)));
     }
 }

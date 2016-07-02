@@ -225,7 +225,7 @@ class temp_t {
         dtw_vectorized_shuffled                             _mydtw_vectorized;
         std::array<std::size_t, dtw_vectorized_shuffled::n> _vindices;
         dtw_vectorized_shuffled::dist_t                     _dist;
-        std::array<calc_t, dtw_vectorized_shuffled::n>      _vresults;
+        std::array<float, dtw_vectorized_shuffled::n>       _vresults;
         std::size_t                                         _i;
         std::vector<std::size_t>                            _buffer;
         queue_helper_t                                      _queue;

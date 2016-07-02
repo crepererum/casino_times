@@ -102,7 +102,7 @@ int main(int argc, char** argv) {
     }
     auto base = reinterpret_cast<const calc_t*>(input.const_data());
 
-    std::vector<std::pair<std::size_t, calc_t>> distances(n);
+    std::vector<std::pair<std::size_t, float>> distances(n);
     for (std::size_t j = 0; j < n; ++j) {
         distances[j] = std::make_pair(j, 0.0);
     }
@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
         for (const std::size_t i_part : i) {
             auto v_results = mydtw_vectorized.calc(i_part, j);
 
-            std::array<double, dtw_vectorized_linear::n> d_results;
+            std::array<float, dtw_vectorized_linear::n> d_results;
             simdpp::store(&d_results, v_results);
 
             for (std::size_t idx = 0; idx < dtw_vectorized_linear::n; ++idx) {
@@ -174,7 +174,7 @@ int main(int argc, char** argv) {
             << " | "
             << std::setw(colw1) << distances[j].first
             << " | "
-            << std::setw(colw2) << (std::sqrt(distances[j].second / static_cast<calc_t>(end - begin)))
+            << std::setw(colw2) << (std::sqrt(distances[j].second / static_cast<float>(end - begin)))
             << " |"
             << std::endl;
     }
