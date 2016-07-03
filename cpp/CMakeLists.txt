@@ -266,3 +266,13 @@ target_link_libraries (
     utils
     ${ngrams_libs}
 )
+
+# executable: traceback
+add_executable (traceback "src/traceback.cpp")
+add_dependencies (traceback ${ngrams_dep})
+target_link_libraries (
+    traceback
+    parser
+    utils
+    ${ngrams_libs}
+)

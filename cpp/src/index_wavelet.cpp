@@ -445,68 +445,6 @@ void print_stats(const index_tmp_t* index, std::size_t n) {
     std::cout << "  level=X #nodes=" << sum_is << " %nodes=" << sum_relative << std::endl;
 }
 
-void trace_up(const std::vector<node_ptr_t>& nodes, const index_stored_t* index, std::unordered_set<superroot_ptr_t>& srs) {
-    std::vector<node_ptr_t> next;
-
-    for (const auto& n : nodes) {
-        auto parents = index->find_parents(n);
-        if (parents) {
-            for (const auto& p : *parents) {
-                next.push_back(p);
-            }
-        }
-
-        auto superroots = index->find_superroots(n);
-        if (superroots) {
-            for (const auto& s : *superroots) {
-                srs.insert(s);
-            }
-        }
-    }
-
-    if (!next.empty()) {
-        trace_up(next, index, srs);
-    }
-}
-
-void trace_down(const std::vector<node_ptr_t>& nodes, const index_stored_t* index) {
-    std::unordered_set<superroot_ptr_t> srs_set;
-    std::vector<node_ptr_t> next;
-
-    std::cout << "  #nodes=" << nodes.size() << " :" << std::flush;
-
-    for (const auto& n : nodes) {
-        std::unordered_set<superroot_ptr_t> srs_subset;
-        trace_up({n}, index, srs_subset);
-        for (const auto& s : srs_subset) {
-            srs_set.insert(s);
-        }
-
-        if (srs_subset.size() == 1) {
-            std::cout << " .";
-        } else {
-            std::cout << " " << (srs_subset.size() - 1);
-        }
-        std::cout << std::flush;
-
-        for (const auto& c : n->children) {
-            if (c != nullptr) {
-                next.push_back(c);
-            }
-        }
-    }
-
-    if (srs_set.size() == 1) {
-        std::cout << " = ." << std::endl;
-
-    } else {
-        std::cout << " = " << (srs_set.size() - 1) << std::endl;
-    }
-
-    if (!next.empty()) {
-        trace_down(next, index);
-    }
-}
 
 namespace po = boost::program_options;
 
@@ -591,9 +529,6 @@ int main(int argc, char** argv) {
     }
     print_process(&index_tmp, ylength, n, n);
     std::cout << "done" << std::endl;
-
-    std::cout << "trace one path:" << std::endl;
-    trace_down({(*index_stored.superroots)[indices[indices.size() - 1].first]->root}, &index_stored);  // XXX: find a better example trace
 
     // free memory for sanity checking
     // DONT! only for debugging!
