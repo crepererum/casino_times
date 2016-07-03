@@ -1,0 +1,29 @@
+\begin{tikzpicture}
+    \pgfplotsset{set layers}
+
+    \begin{axis}[
+        ylabel={delta},
+        axis y line*=right,
+        axis x line=none,
+        ymode=log,
+        fullwidth
+    ]
+        \addplot [mark=none,color=kit-green2,dotted] table [x=n, y=delta, col sep=comma, ignore chars={"}] {data/compression_time_1.csv};
+        \addplot [mark=none,color=kit-cyan,dotted] table [x=n, y=delta, col sep=comma, ignore chars={"}] {data/compression_time_2.csv};
+        \addplot [mark=none,color=kit-red,dotted] table [x=n, y=delta, col sep=comma, ignore chars={"}] {data/compression_time_5.csv};
+    \end{axis}
+
+    \begin{axis}[
+        xlabel={n},
+        ylabel={compression rate},
+        legend pos=north east,
+        axis y line*=left,
+        ymode=log,
+        fullwidth
+    ]
+        \addplot [mark=none,color=kit-green2] table [x=n, y=pnodes, col sep=comma, ignore chars={"}] {data/compression_time_1.csv};
+        \addplot [mark=none,color=kit-cyan] table [x=n, y=pnodes, col sep=comma, ignore chars={"}] {data/compression_time_2.csv};
+        \addplot [mark=none,color=kit-red] table [x=n, y=pnodes, col sep=comma, ignore chars={"}] {data/compression_time_5.csv};
+        \legend{1,2,5};
+    \end{axis}
+\end{tikzpicture}
