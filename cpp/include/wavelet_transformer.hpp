@@ -26,12 +26,13 @@ class transformer {
             }
         }
 
-        superroot_ptr_t data_to_tree(const calc_t* data) {
+        superroot_ptr_t data_to_tree(const calc_t* data, std::size_t i) {
             _mywt.run_dwt(data);
 
             superroot = &_superroot_cache;
             superroot->approx = static_cast<inexact_t>(_mywt.output()[0]);
             superroot->error  = 0;
+            superroot->i      = i;
 
             for (std::size_t l = 0; l < _depth; ++l) {
                 std::size_t outdelta  = 1 << l;

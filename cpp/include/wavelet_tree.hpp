@@ -50,6 +50,7 @@ struct superroot_t {
     node_ptr_t root;
     approx_t   approx;
     inexact_t  error;
+    std::size_t i;
 };
 
 struct __attribute__((packed)) node_t {

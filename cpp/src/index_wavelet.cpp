@@ -243,7 +243,7 @@ class engine {
             // WARNING: the parent<->child index will be wrong during the merging procedure!
             (*_index_stored->superroots)[i] = alloc_in_mapped_file(_alloc_superroot);
 
-            _transformer->data_to_tree(_base + (i * _ylength));
+            _transformer->data_to_tree(_base + (i * _ylength), i);
             _error_calc->recalc(i);  // correct error because of floating point errors
             run_mergeloop(i);
             drain(i);
