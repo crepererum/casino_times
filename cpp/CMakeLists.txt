@@ -247,6 +247,16 @@ target_link_libraries (
     ${ngrams_libs}
 )
 
+# executable: query_dtw_wavelet
+add_executable (query_dtw_wavelet "src/query_dtw_wavelet.cpp")
+add_dependencies (query_dtw_wavelet ${ngrams_dep})
+target_link_libraries (
+    query_dtw_wavelet
+    parser
+    utils
+    ${ngrams_libs}
+)
+
 # executable: scan
 add_executable (scan "src/scan.cpp")
 add_dependencies (scan ${ngrams_dep})
