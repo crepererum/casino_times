@@ -68,25 +68,31 @@ Now we want to discuss what data is actually transformed. It turns out that usin
 \label{sec:algorithm:pruning}
 
 \begin{algorithm}
-    \KwData{Node $n$}
-    \KwData{Error threshold $t$}
-    \KwResult{Pruned Node $n$, resulting error increase}
+    \KwData{Node $N$}
+    \KwData{Error threshold $\epsilon$}
+    \KwResult{Pruned Node $N$, resulting error increase}
+
+    \SetKwFunction{GetCoefficient}{getCoefficient}
+    \SetKwFunction{GetChild}{getChild}
+    \SetKwFunction{IsPruned}{isPruned}
+    \SetKwFunction{SetCoefficient}{setCoefficient}
+    \SetKwFunction{SetPruned}{setPruned}
 
     \Begin {
         \tcc{Check if children are pruned}
-        $p_l$ $\leftarrow$ $\neg n.\textrm{child\_l} \lor n.\textrm{child\_l}.\textrm{pruned}$\;
-        $p_r$ $\leftarrow$ $\neg n.\textrm{child\_r} \lor n.\textrm{child\_r}.\textrm{pruned}$\;
-        $p_c$ $\leftarrow$ $p_l \land p_r$\;
+        $p_l \leftarrow \IsPruned{\GetChild{$N$, $0$}}$\;
+        $p_r \leftarrow \IsPruned{\GetChild{$N$, $1$}}$\;
+        $p_c \leftarrow p_l \land p_r$\;
 
         \BlankLine
         \tcc{Calculate maximum error increase}
-        $i$ $\leftarrow$ $2^{d - l + 1}$\;
-        $e$ $\leftarrow$ $|n.\textrm{x}| \cdot \sqrt{i}$\;
+        $i \leftarrow 2^{d - l + 1}$\;
+        $e \leftarrow |\GetCoefficient{N}| \cdot \sqrt{i}$\;
         \BlankLine
         \tcc{Prune if requirements are met}
-        \eIf{$e < t \land p_c$}{
-            $n.\textrm{pruned}$ $\leftarrow$ $1$\;
-            $n.\textrm{x}$ $\leftarrow$ $0$\;
+        \eIf{$e < \epsilon \land p_c$}{
+            $\SetPruned{N}$\;
+            $\SetCoefficient{N, 0}$\;
             \Return{e}\;
         }{
             \Return{0}\;
@@ -99,7 +105,7 @@ Now we want to discuss what data is actually transformed. It turns out that usin
 
 \begin{algorithm}
     \KwData{Tree $T$}
-    \KwData{Error threshold $t$}
+    \KwData{Error threshold $\epsilon$}
     \KwResult{Pruned Tree $T$}
 
     \SetKwFunction{GetLayer}{getLayer}
@@ -108,12 +114,13 @@ Now we want to discuss what data is actually transformed. It turns out that usin
     \SetKwFunction{Sort}{sort}
 
     \Begin {
-        \For{l=d \emph{\KwTo} 1}{
-            $N$ $\leftarrow$ $\GetLayer{T, l}$\;
+        \For{$l=d$ \emph{\KwTo} $1$}{
+            $N \leftarrow \GetLayer{T, l}$\;
             $\Shuffle{N}$\;
             $\Sort{N}$\tcp*[r]{optional}
             \For{n $\in$ N}{
-                $t$ $\leftarrow$ $t - \PruneNode{n}$\;
+                $\epsilon \leftarrow \epsilon - \PruneNode{n}$\;
+                \tcp{optional break if $\epsilon \leq 0$}
             }
         }
     }
@@ -242,6 +249,73 @@ This metric has the same drawback as the one presented in \autoref{ssec:algorith
 
 \section{Optimizations}
 \label{sec:algorithm:opt}
+
+\begin{algorithm}
+    \KwData{Node $N$}
+    \KwData{Error threshold $\epsilon$}
+
+    \SetKwFunction{FindNearestNeighbor}{findNearestNeighbor}
+    \SetKwFunction{GetChild}{getChild}
+    \SetKwFunction{GetIndex}{getIndex}
+    \SetKwFunction{IsMerged}{isMerged}
+    \SetKwFunction{NewMergeTask}{newMergeTask}
+
+    \Begin {
+        $m_l \leftarrow \IsMerged{\GetChild{$N$, $0$}}$\;
+        $m_r \leftarrow \IsMerged{\GetChild{$N$, $1$}}$\;
+        \If{$m_l \land m_r$}{
+            $i \leftarrow \GetIndex{\GetChild{$N$, $0$}, \GetChild{$N$, $1$}}$\;
+            $C \leftarrow \FindNearestNeighbor{i, N}$\;
+            \If{$C$}{
+                \Return{\NewMergeTask{$N$, $C$}};
+            }
+        }
+        \Return{0}\;
+    }
+
+    \caption{createMergeTask}
+    \label{algo:createMergeTask}
+\end{algorithm}
+
+\begin{algorithm}
+    \KwData{Tree $T$}
+    \KwData{Error threshold $\epsilon$}
+
+    \SetKwFunction{CreateMergeTask}{createMergeTask}
+    \SetKwFunction{Execute}{execute}
+    \SetKwFunction{GetLeafes}{getLeafes}
+    \SetKwFunction{GetParentOfNode}{getParentOfNode}
+    \SetKwFunction{IsInErrorRange}{isInErrorRange}
+    \SetKwFunction{IsEmpty}{isEmpty}
+    \SetKwFunction{Push}{push}
+    \SetKwFunction{RecalcError}{recalcError}
+    \SetKwFunction{RemoveTop}{removeTop}
+    \SetKwFunction{Shuffle}{shuffle}
+    \SetKwFunction{Update}{update}
+
+    \Begin {
+        $q \leftarrow \varnothing$\;
+        \For{$l \in \Shuffle{\GetLeafes{$T$}}$}{
+            $\Push{q, \CreateMergeTask{$l$}}$\;
+        }
+        \BlankLine
+        $E \leftarrow \RecalcError{T}$\;
+        \While{$\neg \IsEmpty{$q$}$}{
+            $t \leftarrow \RemoveTop{q}$\;
+            \If{$\IsInErrorRange{$E$, $\epsilon$, $t$}$}{
+                $\Update{E, t}$\;
+                $\Execute{t}$\;
+                $s \leftarrow \CreateMergeTask{\GetParentOfNode{$t$}}$\;
+                \If{$s$} {
+                    $\Push{q, s}$\;
+                }
+            }
+        }
+    }
+
+    \caption{addTreeToIndex}
+    \label{algo:addTreeToIndex}
+\end{algorithm}
 
 There are two technical details which help to improve the compression ratio even further. The first one is the reduction of precision used to the coefficients. Instead of using full \SI{64}{\bit} floating point numbers we use \SI{16}{\bit} floats, also referred as \enquote{halfs} as definied by \cite{ieee_float}. This increases the the error due to conversion and leads to a lower amount of merges, but increases the overall compression rate in terms of memory size. The smaller size of the memory representation compensates the higher error. Using \SI{16}{\bit} numbers turned out to be better than \SI{32}{\bit}. There might be the possibility to use even less memory by using bit packing and changing the representation to a non-IEEE-compliant data type.
 

@@ -417,10 +417,12 @@
 \newcommand\Cpp[1]{C\nolinebreak[4]\hspace{-.05em}\raisebox{.4ex}{\relsize{-3}{\textbf{++}}}\num{#1}}
 
 % algorithm
+\RequirePackage{tocbibind}
 \RequirePackage[
     ruled,% nice lines above/beyond the algorithms
     linesnumbered% draw line numbers
 ]{algorithm2e}
+\newcommand{\listofalgorithmes}{\tocfile{\listalgorithmcfname}{loa}}
 
 %% automatic naming of sections with autoref
 \def\sectionautorefname{Section}
