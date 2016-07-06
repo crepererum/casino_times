@@ -5,6 +5,7 @@
 #include <locale>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/program_options.hpp>
@@ -33,6 +34,18 @@ constexpr std::uint32_t gen_mask(std::size_t i) {
         mask |= (static_cast<std::uint32_t>(1) << j);
     }
     return mask;
+}
+
+template <typename T>
+std::vector<T> gradient(std::vector<T>& v) {
+    std::size_t n = v.size();
+    std::vector<T> u(n);
+    u[0] = v[1] - v[0];
+    u[n - 1] = v[n - 1] - v[n - 2];
+    for (std::size_t i = 1; i < n - 1; ++i) {
+        u[i] = (v[i + 1] - v[i - 1]) / T(2);
+    }
+    return u;
 }
 
 boost::program_options::options_description po_create_desc();

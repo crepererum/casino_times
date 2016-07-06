@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
         ("end", po::value(&end), "end of the year range (last year + 1), defaults to ylength")
         ("ylength", po::value(&ylength)->required(), "number of years to store")
         ("r", po::value(&r)->required(), "radius of Sakoe-Chiba Band")
-        ("limit", po::value(&limit)->required(), "number of ngrams to look for")
+        ("limit", po::value(&limit), "number of ngrams to look for")
         ("query", po::value(&query)->required()->multitoken(), "query ngram")
     ;
 
@@ -136,15 +136,52 @@ int main(int argc, char** argv) {
         }
     }
 
-    const std::size_t usable_limit = std::min(limit, n);
-    std::partial_sort(
-        distances.begin(),
-        distances.begin() + static_cast<std::iterator_traits<decltype(distances.begin())>::difference_type>(usable_limit),
-        distances.end(),
-        [](const auto& a, const auto& b){
-            return a.second < b.second;
+    std::size_t usable_limit;
+    if (vm.count("limit")) {
+        std::cout << "limit: " << limit << std::endl;
+        usable_limit = std::min(limit, n);
+        std::partial_sort(
+            distances.begin(),
+            distances.begin() + static_cast<std::iterator_traits<decltype(distances.begin())>::difference_type>(usable_limit),
+            distances.end(),
+            [](const auto& a, const auto& b){
+                return a.second < b.second;
+            }
+        );
+    } else {
+        std::cout << "limit (autodetection): " << std::flush;
+
+        std::sort(
+            distances.begin(),
+            distances.end(),
+            [](const auto& a, const auto& b){
+                return a.second < b.second;
+            }
+        );
+
+        std::vector<float> dn(n - 1);
+        float d1 = distances[1].second;
+        for (std::size_t idx = 0; idx < n - 1; ++idx) {
+            float d_idx_norm = (distances[idx + 1].second - d1);
+            dn[idx] = d_idx_norm;
         }
-    );
+
+        std::vector<float> grad1_norm = gradient(dn);
+        for (std::size_t idx = 0; idx < n; ++idx) {
+            grad1_norm[idx] /= dn[idx];
+        }
+
+        std::vector<float> grad2 = gradient(grad1_norm);
+
+        using dtype = std::iterator_traits<decltype(grad2.begin())>::difference_type;
+        auto it = std::max_element(
+            grad2.begin() + static_cast<dtype>(1),
+            grad2.begin() + static_cast<dtype>(n / 2)
+        );
+        usable_limit = limit = 1 + static_cast<std::size_t>(std::distance(grad2.begin(), it));
+
+        std::cout << limit << std::endl;
+    }
 
     constexpr std::size_t colw0 = 20;
     constexpr std::size_t colw1 = 10;
