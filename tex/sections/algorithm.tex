@@ -129,7 +129,7 @@ Now we want to discuss what data is actually transformed. It turns out that usin
     \label{algo:pruneTree}
 \end{algorithm}
 
-The first attempt to reduce the amount of data is an obvious but simple approach: pruning of sub-trees that do not hold important data. This does not entirly reflect the information loss approach we will use for the final algorithm, but it is a good milestone to grasp the idea. A tree node is pruned if the following conditions are met:
+The first attempt to reduce the amount of data is an obvious but simple approach: pruning of sub-trees that do not hold important data. This does not entirly reflect the information loss approach we will use for the final algorithm, but it is a good milestone to grasp the idea. The idea was also presented in \cite{RACE}. A tree node is pruned if the following conditions are met:
 
 \begin{enumerate}
     \item both children are pruned
@@ -161,7 +161,76 @@ An important thing to point out about tree pruning is that it does not exploit t
 
 Keep in mind to only merge nodes into others when their children are identical. Also we want to point out that we do not merge superroots. This would in theory be possible but we rarely see the case that two time series are similar enough to make that possible. Also it would complicate the implementation since we sometimes use the superroot to store additional information about the time series.
 
+\begin{algorithm}
+    \KwData{Node $N$}
+    \KwData{Error threshold $\epsilon$}
+
+    \SetKwFunction{FindNearestNeighbor}{findNearestNeighbor}
+    \SetKwFunction{GetChild}{getChild}
+    \SetKwFunction{GetIndex}{getIndex}
+    \SetKwFunction{IsMerged}{isMerged}
+    \SetKwFunction{NewMergeTask}{newMergeTask}
+
+    \Begin {
+        $m_l \leftarrow \IsMerged{\GetChild{$N$, $0$}}$\;
+        $m_r \leftarrow \IsMerged{\GetChild{$N$, $1$}}$\;
+        \If{$m_l \land m_r$}{
+            $i \leftarrow \GetIndex{\GetChild{$N$, $0$}, \GetChild{$N$, $1$}}$\;
+            $C \leftarrow \FindNearestNeighbor{i, N}$\;
+            \If{$C$}{
+                \Return{\NewMergeTask{$N$, $C$}};
+            }
+        }
+        \Return{0}\;
+    }
+
+    \caption{createMergeTask}
+    \label{algo:createMergeTask}
+\end{algorithm}
+
+\begin{algorithm}
+    \KwData{Tree $T$}
+    \KwData{Error threshold $\epsilon$}
+
+    \SetKwFunction{CreateMergeTask}{createMergeTask}
+    \SetKwFunction{Execute}{execute}
+    \SetKwFunction{GetLeafes}{getLeafes}
+    \SetKwFunction{GetParentOfNode}{getParentOfNode}
+    \SetKwFunction{IsInErrorRange}{isInErrorRange}
+    \SetKwFunction{IsEmpty}{isEmpty}
+    \SetKwFunction{Push}{push}
+    \SetKwFunction{RecalcError}{recalcError}
+    \SetKwFunction{RemoveTop}{removeTop}
+    \SetKwFunction{Shuffle}{shuffle}
+    \SetKwFunction{Update}{update}
+
+    \Begin {
+        $q \leftarrow \varnothing$\;
+        \For{$l \in \Shuffle{\GetLeafes{$T$}}$}{
+            $\Push{q, \CreateMergeTask{$l$}}$\;
+        }
+        \BlankLine
+        $E \leftarrow \RecalcError{T}$\;
+        \While{$\neg \IsEmpty{$q$}$}{
+            $t \leftarrow \RemoveTop{q}$\;
+            \If{$\IsInErrorRange{$E$, $\epsilon$, $t$}$}{
+                $\Update{E, t}$\;
+                $\Execute{t}$\;
+                $s \leftarrow \CreateMergeTask{\GetParentOfNode{$t$}}$\;
+                \If{$s$} {
+                    $\Push{q, s}$\;
+                }
+            }
+        }
+    }
+
+    \caption{addTreeToIndex}
+    \label{algo:addTreeToIndex}
+\end{algorithm}
+
 The construction of the database of known trees\footnote{To be precise: since the trees share common subtrees, they are not real trees anymore. We will continue to referr to them as trees since it is a simple and easy to understand term.} is solved as followed: the time series are added to the database in random order. One whole input tree of an entire time series is (partly) merged into the database, then the next one and so on. For the tree merging itself we changed from a strict buttom-up approach to a queue-based approach since that results in higher compression rates. The problem with the buttom-up approach is the following: it might be that there exist very similar subtrees which are cheap to merge but a strict level-ordered merging would result in prioritizing nodes next to the leaves of the tree. That is contridictary to our goal of merging as many subtrees as possible.
+
+The final algorithm is shown in \autoref{algo:addTreeToIndex}.
 
 
 
@@ -243,79 +312,84 @@ This metric has the same drawback as the one presented in \autoref{ssec:algorith
 \section{Tree as Index}
 \label{sec:algorithm:asindex}
 
-\dots
+\begin{algorithm}
+    \KwData{Nodes $N$}
+
+    \SetKwFunction{Append}{append}
+    \SetKwFunction{FilterDown}{filterDown}
+    \SetKwFunction{GetChild}{getChild}
+    \SetKwFunction{Insert}{insert}
+    \SetKwFunction{IsEmpty}{isEmpty}
+    \SetKwFunction{TraceDown}{traceDown}
+    \SetKwFunction{TraceUp}{traceUp}
+
+    \Begin {
+        $D \leftarrow \varnothing$\;
+        $U \leftarrow \varnothing$\;
+        \For{$n \in N$}{
+            $\Insert{U, n, 1, (a, b) \rightarrow ab}$\tcp*[r]{start with weight of $1$}
+            \If{$\FilterDown{$n$}$}{
+                $\Append{D, \GetChild{$n$, $0$}}$\;
+                $\Append{D, \GetChild{$n$, $1$}}$\;
+            }
+        }
+        \BlankLine
+        \If{$\neg\IsEmpty{$U$}$}{
+            $\TraceUp{U}$\;
+        }
+        \If{$\neg\IsEmpty{$D$}$}{
+            $\TraceDown{D}$\;
+        }
+    }
+
+    \caption{traceDown}
+    \label{algo:traceDown}
+\end{algorithm}
+
+\begin{algorithm}
+    \KwData{Nodes $N$}
+
+    \SetKwFunction{FilterUp}{filterUp}
+    \SetKwFunction{FindParents}{findParents}
+    \SetKwFunction{FindSuperroots}{findSuperroots}
+    \SetKwFunction{GetChild}{getChild}
+    \SetKwFunction{HandleSuperroot}{handleSuperroot}
+    \SetKwFunction{Insert}{insert}
+    \SetKwFunction{IsEmpty}{isEmpty}
+    \SetKwFunction{TraceUp}{traceUp}
+
+    \Begin {
+        $U \leftarrow \varnothing$\;
+        \For{$(n, w) \in N$}{
+            \If{$\FilterUp{$n$, $w$}$}{
+                $P \leftarrow \FindParents{n}$\;
+                \For{$p \in P$}{
+                    $v \leftarrow \frac{w}{|P|}$\tcp*[r]{split weight}
+                    $\Insert{U, p, v, (a, b) \rightarrow ab}$\tcp*[r]{accumulate weight per parent}
+                }
+                \BlankLine
+                $S \leftarrow \FindSuperroots{n}$\;
+                \For{$s \in S$}{
+                    $\HandleSuperroot{s, w}$\;
+                }
+            }
+        }
+        \BlankLine
+        \If{$\neg\IsEmpty{$U$}$}{
+            $\TraceUp{U}$\;
+        }
+    }
+
+    \caption{traceUp}
+    \label{algo:traceUp}
+\end{algorithm}
+
+Besides providing compression, our tree construction also expresses similarirty of time series in a way that it can be used as an index. To do so, we provide a generic tracing approach. Starting with the root of the anchor, we walk down the tree level by level to its leafes. At every level, we start trace backe the nodes of the current level to all possible superroots. While the children during the trace down are unambiguous, the parents during the trace up approach are not, since subtrees can be shared by multiple trees and therefore can have multiple superroots. The two parts of the algorithm are also shown in \autoref{algo:traceDown} and \autoref{algo:traceUp}. Besides emitting the superroots using a callback, we also provide filtering of the trace paths and some kind of weight accounting. Using this accounting calculates the chance ending up at a certain superroot if multiple random walkers would start at all possible nodes at the start of the trace up phase. It can be used to limit the number of possible paths. The filters can also be used to limit the tracer to specific parts of the time series or to stop the trace down earlier. This can be a huge advantage since higher error threshold during compression lead to too many possible superroots of nodes in the levels near the leaf nodes.
 
 
 
 \section{Optimizations}
 \label{sec:algorithm:opt}
-
-\begin{algorithm}
-    \KwData{Node $N$}
-    \KwData{Error threshold $\epsilon$}
-
-    \SetKwFunction{FindNearestNeighbor}{findNearestNeighbor}
-    \SetKwFunction{GetChild}{getChild}
-    \SetKwFunction{GetIndex}{getIndex}
-    \SetKwFunction{IsMerged}{isMerged}
-    \SetKwFunction{NewMergeTask}{newMergeTask}
-
-    \Begin {
-        $m_l \leftarrow \IsMerged{\GetChild{$N$, $0$}}$\;
-        $m_r \leftarrow \IsMerged{\GetChild{$N$, $1$}}$\;
-        \If{$m_l \land m_r$}{
-            $i \leftarrow \GetIndex{\GetChild{$N$, $0$}, \GetChild{$N$, $1$}}$\;
-            $C \leftarrow \FindNearestNeighbor{i, N}$\;
-            \If{$C$}{
-                \Return{\NewMergeTask{$N$, $C$}};
-            }
-        }
-        \Return{0}\;
-    }
-
-    \caption{createMergeTask}
-    \label{algo:createMergeTask}
-\end{algorithm}
-
-\begin{algorithm}
-    \KwData{Tree $T$}
-    \KwData{Error threshold $\epsilon$}
-
-    \SetKwFunction{CreateMergeTask}{createMergeTask}
-    \SetKwFunction{Execute}{execute}
-    \SetKwFunction{GetLeafes}{getLeafes}
-    \SetKwFunction{GetParentOfNode}{getParentOfNode}
-    \SetKwFunction{IsInErrorRange}{isInErrorRange}
-    \SetKwFunction{IsEmpty}{isEmpty}
-    \SetKwFunction{Push}{push}
-    \SetKwFunction{RecalcError}{recalcError}
-    \SetKwFunction{RemoveTop}{removeTop}
-    \SetKwFunction{Shuffle}{shuffle}
-    \SetKwFunction{Update}{update}
-
-    \Begin {
-        $q \leftarrow \varnothing$\;
-        \For{$l \in \Shuffle{\GetLeafes{$T$}}$}{
-            $\Push{q, \CreateMergeTask{$l$}}$\;
-        }
-        \BlankLine
-        $E \leftarrow \RecalcError{T}$\;
-        \While{$\neg \IsEmpty{$q$}$}{
-            $t \leftarrow \RemoveTop{q}$\;
-            \If{$\IsInErrorRange{$E$, $\epsilon$, $t$}$}{
-                $\Update{E, t}$\;
-                $\Execute{t}$\;
-                $s \leftarrow \CreateMergeTask{\GetParentOfNode{$t$}}$\;
-                \If{$s$} {
-                    $\Push{q, s}$\;
-                }
-            }
-        }
-    }
-
-    \caption{addTreeToIndex}
-    \label{algo:addTreeToIndex}
-\end{algorithm}
 
 There are two technical details which help to improve the compression ratio even further. The first one is the reduction of precision used to the coefficients. Instead of using full \SI{64}{\bit} floating point numbers we use \SI{16}{\bit} floats, also referred as \enquote{halfs} as definied by \cite{ieee_float}. This increases the the error due to conversion and leads to a lower amount of merges, but increases the overall compression rate in terms of memory size. The smaller size of the memory representation compensates the higher error. Using \SI{16}{\bit} numbers turned out to be better than \SI{32}{\bit}. There might be the possibility to use even less memory by using bit packing and changing the representation to a non-IEEE-compliant data type.
 

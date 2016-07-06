@@ -213,6 +213,8 @@ Here $\Delta_1$ calculates the gradient with distance \num{1}.
 
 That approach might seem to be slightly artificial and indeed its more a phenomenological metric instead of a mathematically proven approach. The main reason for this is that we want to keep the index as small as possible to enable users to understand the content of the list. If you try to use the set of nearest neighbors as an input for another algorithm you may want to choose another method.
 
+Keep in mind that our method requires sorting of all neighbors while na{\"i}ve $k$ nearest neighbors search requires only partial sorting. For a bruteforce search this should not be a problem since calculating the DTW distances dominates the execution time but it might be a problem when handling overly large data sets. Also it renders index techniques useless since the algorithm cannot ensure to draw enough data from the index to reach the cutoff point. Therefore we do not use this technique during evaluation.
+
 We also want to point out that this method is very instable. Small changes in the input data, e.g. by noise introduces by compression, will quickly lead to different results.
 
 
@@ -230,6 +232,19 @@ One of the fundamental problems of large-scale DTW-based similarity searches is 
 \end{figure}
 
 A problem with this type of index is that the structure of the indexed data is different than the one tested in the publication. Our rather short data (in terms of measured points) contains more entropy and is more jittering than the time series intended by the paper. Therefore we require more dimensions to get a tree that at least filters out some candidates as shown in \autoref{fig:dtw_index}. We need at least \num{16} dimensions to get any affect from the \code{LB\_PAA} and we do not even see any real filtering effect from the tree stucture itself\footnote{the amount of received time series is more than \SI{95}{\percent}}. So the tree structure only provides a sorting of the time series. That results in a very memory-inefficient data structure. Remember that for every dimension, the R-tree stores two data points, a minimum and a maximum. So we need to store at least \SI{12.5}{\percent} of the actual data size as an index to get a any effect and still have a linear complexity. The high dimensionality renders the tree performance and memory management nearly useless, as also found by \cite{rtree_highdim}. Because all of this is a general problem of R-tree-based algorithms, we did not implement the improvements suggested by \cite{LB_Improved}.
+
+
+
+\section{Prior Work}
+\label{sec:baseline:prior}
+
+Dimensionality reduction techniques (\cite{LB_Keogh,LB_Improved,dimred1,dimred2,dimred3,dimred4}) prune too much information to enable good indexing. Therefore our main goal is to not recude the dimensionality of the data but rather exploit similarities of the time series to compress data and build an index to speed-up DTW calculations.
+
+Compression techniques that extract specific features (\cite{compress1,compress2,compress3,compress4}) would suffer from another problem: during the compression process it is not clear how large or small the time ranges during the similarity search will be and therefore it is not clear how fine-graned the feature extraction should be.
+
+Noise reduction techniques (\cite{noise1}) are not desired in our case since we already know how to remove noise properly and that the level of noise reduction depends on the query behaveiour of our users.
+
+Because we think it is not expressed enough amongst researchers we want to emphasize the following point: these methods and algorithms are not bad in general and have their applications. The main issue is that the time series we work with are just different from the ones which are normally used.
 
 
 
