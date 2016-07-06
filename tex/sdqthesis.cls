@@ -246,7 +246,7 @@
 \setcounter{secnumdepth}{3}
 
 % subcaption
-\RequirePackage{subcaption}
+\RequirePackage[list=true]{subcaption}
 
 % wallpaper for title page (KIT-Frame)
 \RequirePackage{wallpaper}
@@ -409,6 +409,8 @@
 % better tables
 \RequirePackage{tabularx}
 \newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+\RequirePackage{floatrow}
+\floatsetup[table]{font=small}
 
 % rotation
 \RequirePackage{rotating}
