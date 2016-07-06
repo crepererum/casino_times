@@ -5,6 +5,376 @@
 
 
 
+\section{Baseline Sanity}
+\label{sec:evaluation:baseline}
+
+\begin{table}[ht]
+    \begin{subtable}[t]{.45\textwidth}
+        \centering
+        \begin{tabularx}{\textwidth}{r R l}
+            \toprule
+            rank & ngram & distance\\
+            \midrule
+            \num{0} & drug & \num{0}\\
+            \num{1} & treatment & \num{0.0334646}\\
+            \num{2} & impair & \num{0.0341294}\\
+            \num{3} & fundament & \num{0.0346226}\\
+            \num{4} & scar & \num{0.0348444}\\
+            \num{5} & tract & \num{0.0351414}\\
+            \num{6} & conjunct & \num{0.0352033}\\
+            \num{7} & univers & \num{0.0352465}\\
+            \num{8} & demonstr & \num{0.035316}\\
+            \num{9} & western & \num{0.0353187}\\
+            \num{10} & li & \num{0.0353931}\\
+            \num{11} & mayb & \num{0.0354463}\\
+            \num{12} & sex & \num{0.0354603}\\
+            \num{13} & promot & \num{0.0354636}\\
+            \midrule
+            \num{14} & member & \num{0.0354739}\\
+            \num{15} & blood & \num{0.0355806}\\
+            \num{16} & action & \num{0.0357162}\\
+            \num{17} & malign & \num{0.0357506}\\
+            \num{18} & counter & \num{0.0357843}\\
+            \num{19} & formal & \num{0.0358954}\\
+            \bottomrule
+        \end{tabularx}
+        \caption{$[1,256]$}
+        \label{tab:ranking_drug_all}
+    \end{subtable}
+    \hfill
+    \begin{subtable}[t]{.45\textwidth}
+        \centering
+        \begin{tabularx}{\textwidth}{r R l}
+            \toprule
+            rank & ngram & distance\\
+            \midrule
+            \num{0} & drug & \num{0}\\
+            \num{1} & character & \num{0.0186669}\\
+            \num{2} & abnorm & \num{0.0197631}\\
+            \num{3} & recurr & \num{0.0197718}\\
+            \num{4} & dissemin & \num{0.020063}\\
+            \num{5} & retent & \num{0.0202669}\\
+            \num{6} & primari & \num{0.0203592}\\
+            \num{7} & transplant & \num{0.0204965}\\
+            \num{8} & pregnant & \num{0.0206043}\\
+            \num{9} & tension & \num{0.0207585}\\
+            \num{10} & southeast & \num{0.020773}\\
+            \midrule
+            \num{11} & matern & \num{0.0208396}\\
+            \num{12} & crucial & \num{0.0210149}\\
+            \num{13} & region & \num{0.021018}\\
+            \num{14} & clinic & \num{0.0210344}\\
+            \num{15} & specif & \num{0.0210545}\\
+            \num{16} & proxim & \num{0.0210849}\\
+            \num{17} & relax & \num{0.0211782}\\
+            \num{18} & morpholog & \num{0.0211811}\\
+            \num{19} & vulner & \num{0.0212482}\\
+            \bottomrule
+        \end{tabularx}
+        \caption{$[129,256]$}
+        \label{tab:ranking_drug_secondhalf}
+    \end{subtable}
+    \caption{neighbors: $1$-grams, $r = 10$, \enquote{drug}}
+    \label{tab:ranking_drug_sane}
+\end{table}
+
+Before we start to evaluate the actual algorithms, we show that our baseline is sane. \autoref{tab:ranking_drug_all} shows the top \num{20} neighbors of the $1$-gram \enquote{drug} with a warping radius of $r = 10$, measured over the full \num{256} years. The auto-cutoff-point as described in \autoref{ssec:baseline:sim:rank} is marked. For these examples, only neighbors from the $1$-gram data set are shown. Neighbors are represented by there normalized placeholder which is derived as illustrated in \autoref{sec:baseline:data}. The neighbors are words that are related to the concept \enquote{drug} with some exceptions, for example the neighbor \enquote{li} which is not extracted from any meaningful word. The meaningfulness increases when limiting the DTW to the second half of the data set. This is shown in \autoref{tab:ranking_drug_secondhalf}. It also turns out that \enquote{drug} is used in two contexts: as medicin and in terms of narcotics.
+
+\begin{table}[ht]
+    \begin{subtable}[t]{.45\textwidth}
+        \centering
+        \begin{tabularx}{\textwidth}{r R l}
+            \toprule
+            rank & ngram & distance\\
+            \midrule
+            \num{0} & drug & \num{0}\\
+            \num{1} & treatment & \num{0.0516925}\\
+            \num{2} & follow & \num{0.052971}\\
+            \num{3} & new & \num{0.0534919}\\
+            \num{4} & s & \num{0.0537821}\\
+            \num{5} & enlarg & \num{0.0540329}\\
+            \num{6} & press & \num{0.0540962}\\
+            \num{7} & about & \num{0.0541345}\\
+            \num{8} & use & \num{0.0541729}\\
+            \midrule
+            \num{9} & sever & \num{0.0541923}\\
+            \num{10} & flow & \num{0.054294}\\
+            \num{11} & low & \num{0.0544294}\\
+            \num{12} & high & \num{0.0544914}\\
+            \num{13} & avoid & \num{0.0545074}\\
+            \num{14} & daili & \num{0.0545184}\\
+            \num{15} & for & \num{0.054555}\\
+            \num{16} & skill & \num{0.0546174}\\
+            \num{17} & remov & \num{0.054691}\\
+            \num{18} & chang & \num{0.0547283}\\
+            \num{19} & time & \num{0.0547318}\\
+            \bottomrule
+        \end{tabularx}
+        \caption{$r = 0$}
+        \label{tab:ranking_drug_r0}
+    \end{subtable}
+    \hfill
+    \begin{subtable}[t]{.45\textwidth}
+        \centering
+        \begin{tabularx}{\textwidth}{r R l}
+            \toprule
+            rank & ngram & distance\\
+            \midrule
+            \num{0} & drug & \num{0}\\
+            \num{1} & treatment & \num{0.0334636}\\
+            \num{2} & fundament & \num{0.0335999}\\
+            \num{3} & impair & \num{0.0339341}\\
+            \midrule
+            \num{4} & member & \num{0.0339427}\\
+            \num{5} & demonstr & \num{0.0341886}\\
+            \num{6} & scar & \num{0.0346951}\\
+            \num{7} & region & \num{0.0347242}\\
+            \num{8} & tract & \num{0.0348535}\\
+            \num{9} & mayb & \num{0.0350965}\\
+            \num{10} & becaus & \num{0.0351256}\\
+            \num{11} & current & \num{0.0351304}\\
+            \num{12} & degener & \num{0.0351406}\\
+            \num{13} & malign & \num{0.035153}\\
+            \num{14} & conjunct & \num{0.0351743}\\
+            \num{15} & western & \num{0.0352145}\\
+            \num{16} & univers & \num{0.0352465}\\
+            \num{17} & blood & \num{0.035328}\\
+            \num{18} & educ & \num{0.0353597}\\
+            \num{19} & li & \num{0.0353931}\\
+            \bottomrule
+        \end{tabularx}
+        \caption{$r = 20$}
+        \label{tab:ranking_drug_r20}
+    \end{subtable}
+    \caption{neighbors: $1$-grams, $[1,256]$, \enquote{drug}}
+    \label{tab:ranking_drug_rwrong}
+\end{table}
+
+The warping radius plays an inportant role when extracting good results from the data. \autoref{tab:ranking_drug_r0} and \autoref{tab:ranking_drug_r20} show too low and too high radius values and how in the first case the neighbors tend to be very pointless while in the latter case the results seem to be very common words.
+
+\begin{table}[ht]
+    \begin{subtable}[t]{.45\textwidth}
+        \centering
+        \begin{tabularx}{\textwidth}{r R l}
+            \toprule
+            rank & ngram & distance\\
+            \midrule
+            \num{0} & know & \num{0}\\
+            \num{1} & do & \num{0.00973317}\\
+            \num{2} & never & \num{0.010465}\\
+            \num{3} & not & \num{0.0106112}\\
+            \num{4} & what & \num{0.0111916}\\
+            \num{5} & out & \num{0.0112691}\\
+            \num{6} & how & \num{0.0114273}\\
+            \num{7} & down & \num{0.0114877}\\
+            \midrule
+            \num{8} & no & \num{0.0116395}\\
+            \num{9} & think & \num{0.0116744}\\
+            \num{10} & own & \num{0.0123218}\\
+            \num{11} & away & \num{0.0123529}\\
+            \num{12} & mistak & \num{0.012384}\\
+            \num{13} & that & \num{0.0125661}\\
+            \num{14} & hear & \num{0.012628}\\
+            \num{15} & as & \num{0.0126511}\\
+            \num{16} & neither & \num{0.0126813}\\
+            \num{17} & so & \num{0.0126882}\\
+            \num{18} & one & \num{0.012772}\\
+            \num{19} & too & \num{0.0127955}\\
+            \bottomrule
+        \end{tabularx}
+        \caption{\enquote{know}}
+        \label{tab:ranking_know_all}
+    \end{subtable}
+    \hfill
+    \begin{subtable}[t]{.45\textwidth}
+        \centering
+        \begin{tabularx}{\textwidth}{r R l}
+            \toprule
+            rank & ngram & distance\\
+            \midrule
+            \num{0} & war & \num{0}\\
+            \num{1} & fight & \num{0.0215918}\\
+            \num{2} & peac & \num{0.0238117}\\
+            \num{3} & freedom & \num{0.024415}\\
+            \num{4} & enemi & \num{0.0247643}\\
+            \num{5} & impend & \num{0.0249975}\\
+            \num{6} & steadi & \num{0.0250595}\\
+            \midrule
+            \num{7} & militari & \num{0.0253438}\\
+            \num{8} & nation & \num{0.025674}\\
+            \num{9} & peopl & \num{0.0262382}\\
+            \num{10} & countri & \num{0.0262423}\\
+            \num{11} & attack & \num{0.0263197}\\
+            \num{12} & arm & \num{0.0264513}\\
+            \num{13} & threaten & \num{0.0264571}\\
+            \num{14} & ralli & \num{0.0264952}\\
+            \num{15} & battl & \num{0.0265006}\\
+            \num{16} & suppli & \num{0.0268525}\\
+            \num{17} & violent & \num{0.0268842}\\
+            \num{18} & forese & \num{0.0269896}\\
+            \num{19} & over & \num{0.0270059}\\
+            \bottomrule
+        \end{tabularx}
+        \caption{\enquote{war}}
+        \label{tab:ranking_war_all}
+    \end{subtable}
+    \caption{neighbors: $1$-grams, $r = 10$, $[1,256]$}
+    \label{tab:ranking_other1grams_sane}
+\end{table}
+
+Another interesting but logical observation is that common verbs like \enquote{know} result in unenlightening results as shown in \autoref{tab:ranking_know_all}. On the other hand nouns like \enquote{war} show sane and meaningful data. This is shown in \autoref{tab:ranking_war_all}.
+
+\begin{table}[ht]
+    \begin{subtable}[t]{.45\textwidth}
+        \centering
+        \begin{tabularx}{\textwidth}{r R l}
+            \toprule
+            rank & ngram & distance\\
+            \midrule
+            \num{0} & think therefore i am & \num{0}\\
+            \num{1} & diversif from & \num{0.0674405}\\
+            \num{2} & term leadership & \num{0.0749373}\\
+            \num{3} & temporarili avoid & \num{0.0750777}\\
+            \num{4} & fellow survivor & \num{0.0756024}\\
+            \midrule
+            \num{5} & relev result & \num{0.0756395}\\
+            \num{6} & from subpoena & \num{0.0764528}\\
+            \num{7} & yet unsur & \num{0.0765537}\\
+            \num{8} & generat clear & \num{0.0767518}\\
+            \num{9} & arson charg & \num{0.0767596}\\
+            \num{10} & fieldwork have & \num{0.0768322}\\
+            \num{11} & cultur despit & \num{0.0770261}\\
+            \num{12} & fewer manag & \num{0.0770723}\\
+            \num{13} & poor weight & \num{0.0771743}\\
+            \num{14} & fund student & \num{0.0772}\\
+            \num{15} & stanley miller & \num{0.0774633}\\
+            \num{16} & requir technolog & \num{0.0775335}\\
+            \num{17} & particip keep & \num{0.0775552}\\
+            \num{18} & into gene & \num{0.0775731}\\
+            \num{19} & saxophon to & \num{0.0775923}\\
+            \bottomrule
+        \end{tabularx}
+        \caption{\enquote{think therefore i am}}
+        \label{tab:ranking_chance_1}
+    \end{subtable}
+    \hfill
+    \begin{subtable}[t]{.45\textwidth}
+        \centering
+        \begin{tabularx}{\textwidth}{r R l}
+            \toprule
+            rank & ngram & distance\\
+            \midrule
+            \num{0} & logic takes care of itself & \num{0}\\
+            \num{1} & keratomileusi for & \num{0.0555444}\\
+            \num{2} & unicompartment knee & \num{0.0562137}\\
+            \num{3} & the fasttrack & \num{0.0571033}\\
+            \num{4} & of mcts & \num{0.0586164}\\
+            \num{5} & base lube & \num{0.058743}\\
+            \num{6} & pareto rank & \num{0.0592106}\\
+            \num{7} & basket peg & \num{0.059318}\\
+            \num{8} & to rauschenberg & \num{0.0596529}\\
+            \num{9} & carcinoid & \num{0.0600035}\\
+            \num{10} & jiceng & \num{0.0602956}\\
+            \num{11} & cpe cours & \num{0.0604733}\\
+            \num{12} & the tetrodotoxin & \num{0.0604942}\\
+            \midrule
+            \num{13} & dibartola & \num{0.0606432}\\
+            \num{14} & qujiang & \num{0.0610779}\\
+            \num{15} & sequenti assembl & \num{0.06159}\\
+            \num{16} & engag scholarship & \num{0.0622144}\\
+            \num{17} & merrienbo & \num{0.062344}\\
+            \num{18} & zhang daol & \num{0.062384}\\
+            \num{19} & combust environ & \num{0.0623893}\\
+            \bottomrule
+        \end{tabularx}
+        \caption{\enquote{logic takes care of itself}}
+        \label{tab:ranking_chance_2}
+    \end{subtable}
+    \caption{neighbors: $1+2$-grams, $r = 10$, $[129,256]$}
+    \label{tab:ranking_chance}
+\end{table}
+
+The situation changes when we try to query phrases and add $2$-grams to the data set. As \autoref{tab:ranking_chance_1} shows, results may contain more entries which do not provide any insights. The data in \autoref{tab:ranking_chance_2} are even worse. At least for us, no insights are extracted at all.\footnote{People might be able to interpret the \enquote{zhang daol} entry which is derived from the name \enquote{Zhang Daoling}.} When limiting the search to the $1$-gram database, the results are even worse. Some reasons for this are that our cleaned up data contains a lot of words that do not provide direct insights. For example the words \enquote{the} and \enquote{of} which are listed in some of the $2$-gram neighbors do not provide meaningful data. On the other hand the same words may be important for $3$-grams, e.g. in \enquote{Medal of Honor}. The reason that so many neighbors are found which seem to contain random data is the following: the more data is stored in the database, the more likely it is to find neighbors that have a lower distance. A similar effect can be observed when dealing with correlations of real world data. \cite{correlations1} contains a list of these cases which, with a very high probability, do not belong to the same cause. This is a general issue with methods that try to extract links between words or concepts based on usage count. We were aware of this problem beforehand and it is discussed in \autoref{sec:baseline:sim}. Possible workarounds can be:
+
+\begin{table}[ht]
+    \begin{subtable}[t]{.45\textwidth}
+        \centering
+        \begin{tabularx}{\textwidth}{r R l}
+            \toprule
+            rank & ngram & distance\\
+            \midrule
+            \num{0} & basic introduct & \num{0.11728}\\
+            \num{1} & god beyond & \num{0.117417}\\
+            \num{2} & underground chamber & \num{0.117425}\\
+            \num{3} & all biblic & \num{0.11759}\\
+            \num{4} & stori add & \num{0.117698}\\
+            \num{5} & less put & \num{0.118025}\\
+            \num{6} & would altern & \num{0.118063}\\
+            \num{7} & also proof & \num{0.118091}\\
+            \midrule
+            \num{8} & for tighter & \num{0.118122}\\
+            \num{9} & pay consult & \num{0.118165}\\
+            \num{10} & simpli admit & \num{0.118373}\\
+            \num{11} & child requir & \num{0.11839}\\
+            \num{12} & aloud what & \num{0.118508}\\
+            \num{13} & those think & \num{0.118584}\\
+            \num{14} & univers scienc & \num{0.118605}\\
+            \num{15} & all sixti & \num{0.118674}\\
+            \num{16} & isaac in & \num{0.118777}\\
+            \num{17} & selfconsci of & \num{0.118791}\\
+            \num{18} & also imit & \num{0.118859}\\
+            \num{19} & some consult & \num{0.118875}\\
+            \bottomrule
+        \end{tabularx}
+        \caption{\enquote{think therefore i am}}
+        \label{tab:ranking_chance2_1}
+    \end{subtable}
+    \hfill
+    \begin{subtable}[t]{.45\textwidth}
+        \centering
+        \begin{tabularx}{\textwidth}{r R l}
+            \toprule
+            rank & ngram & distance\\
+            \midrule
+            \num{0} & via hematogen & \num{0.099445}\\
+            \num{1} & messag share & \num{0.1004}\\
+            \num{2} & creatur & \num{0.100961}\\
+            \num{3} & fof & \num{0.101037}\\
+            \num{4} & hree & \num{0.101637}\\
+            \num{5} & consult typic & \num{0.101826}\\
+            \midrule
+            \num{6} & hypoxia to & \num{0.101862}\\
+            \num{7} & irom & \num{0.101975}\\
+            \num{8} & of admiss & \num{0.102331}\\
+            \num{9} & vate & \num{0.102352}\\
+            \num{10} & nli & \num{0.102393}\\
+            \num{11} & reflect dietari & \num{0.102469}\\
+            \num{12} & hap & \num{0.102618}\\
+            \num{13} & economi surg & \num{0.102829}\\
+            \num{14} & fold plastic & \num{0.103087}\\
+            \num{15} & therapist obtain & \num{0.103215}\\
+            \num{16} & possibl point & \num{0.103358}\\
+            \num{17} & unlimit amount & \num{0.103394}\\
+            \num{18} & cide & \num{0.103399}\\
+            \num{19} & paranorm in & \num{0.10344}\\
+            \bottomrule
+        \end{tabularx}
+        \caption{\enquote{logic takes care of itself}}
+        \label{tab:ranking_chance2_2}
+    \end{subtable}
+    \caption{neighbors: $1+2$-grams, $r = 10$, $[129,256]$, combined with \enquote{philosophi}}
+    \label{tab:ranking_chance2}
+\end{table}
+
+\begin{itemize}
+    \item Increasing the pruning threshold: This ould eliminate many pointless entries which only do not represent a common trend.
+    \item Weighting dinstance with n-Gram importance: It should be possible to weight the distance with additional information about possible neighbors, e.g. with their total counts or with linguistic metrics on how common or special words are.
+    \item Extend filtering/normalization to take inter-word information into account: Currently prepositions and other non-important words in $2$-grams and at the end of $3+$-grams often do not provide value information.
+    \item Use multiple search anchors and calculate a (weighted) distance to all of them: An example is shown in \autoref{tab:ranking_chance2} where we add \enquote{philosophi} as a second anchor. There exist multiple methods on how to do that, in our example we just added the DTW distances together, but Euclidean distances may also work as well as more sophisticated ways like running a DTW against multiple time series at once.
+\end{itemize}
+
+
+
 \section{Compression Distortion}
 \label{sec:evaluation:distortion}
 
