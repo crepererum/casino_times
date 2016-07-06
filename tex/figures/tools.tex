@@ -62,6 +62,7 @@
     ]
 
     \newcommand{\shortdist}{0.5cm}
+    \newcommand{\longdist}{2.0cm}
 
 
     \node (scan)       [cpp]                                     {scan};
@@ -77,59 +78,74 @@
         \node[fit = (scan)(filter)(normalize)(stem)(estems)(create)(store)(psupport), header = Proprocessing, group] (preprocess) {};
     \end{scope}
 
-    \node (input)       [data, left = of preprocess.120]       {Google\\data};
-    \node (umatrix)     [data, right = of preprocess.60]       {data\\matrix\\(UInt)};
-    \node (fmatrix)     [data, right = of umatrix]             {data\\matrix\\(Float)};
+    \node (input)       [data, left = of preprocess.110]        {Google\\data};
+    \node (umatrix)     [data, right = of preprocess.70]        {data\\matrix\\(UInt)};
 
-    \node (transform)   [julia, above = of fmatrix]            {transform};
+    \node (ijulia)      [julia, below = of umatrix]             {iJulia};
+    \node (qdtwsimple)  [cpp, right = of ijulia]                {query\_dtw\_simple};
+    \node (idtw)        [cpp, right = of qdtwsimple]            {index\_dtw};
+    \node (iwavelet)    [cpp, right = of idtw]                  {index\_wavelet};
+    \node (dwavelet)    [cpp, right = of iwavelet]              {dump\_index\_wavelet};
 
-    \node (qdtwsimple)  [cpp, below = of fmatrix]              {query\_dtw\_simple};
-    \node (ijulia)      [julia, left = of qdtwsimple]          {iJulia};
-    \node (idtw)        [cpp, right = of qdtwsimple]           {index\_dtw};
-    \node (iwavelet)    [cpp, right = of idtw]                 {index\_wavelet};
+    \node (report)      [data, below = \longdist of ijulia]     {reports,\\plots};
+    \node (idxdtw)      [data, below = \shortdist of idtw]      {DTW\\index};
+    \node (idxwavelet)  [data, below = \shortdist of iwavelet]  {wavelet\\index};
 
-    \node (report)      [data, below = of ijulia]              {reports,\\plots};
-    \node (idxdtw)      [data, below = \shortdist of idtw]     {DTW\\index};
-    \node (idxwavelet)  [data, below = \shortdist of iwavelet] {wavelet\\index};
+    \node (qdtwindexed) [cpp, below = \shortdist of idxdtw]     {query\_dtw\_indexed};
+    \node (qdtwwavelet) [cpp, below = \shortdist of idxwavelet] {query\_dtw\_wavelet};
 
-    \node (qdtwindexed) [cpp, below = \shortdist of idxdtw]    {query\_dtw\_indexed};
+    \node (neighbors)   [data, below = of qdtwindexed]          {nearest\\neighbors};
 
-    \node (neighbors)   [data, below = of qdtwindexed]         {nearest\\neighbors};
+    \node (pwavelet)    [cpp, right = of qdtwwavelet]           {print\_wavelet\_tree};
 
-    \path (scan.south)        edge[arrow]                  (filter.north);
-    \path (filter.south)      edge[arrow]                  (normalize.north);
-    \path (normalize.south)   edge[arrow]                  (stem.north);
-    \path (stem.south)        edge[arrow]                  (estems.north);
-    \path (estems.south)      edge[arrow]                  (create.north);
-    \path (create.south)      edge[arrow]                  (store.north);
-    \path (store.south)       edge[arrow]                  (psupport.north);
+    \node (fmatrix)     [data, above = of idtw]                 {data\\matrix\\(Float)};
+    \node (transform)   [julia, above = of fmatrix]             {transform};
 
-    \path (input.east)        edge[arrow]                  (preprocess.120);
-    \path (preprocess.60)     edge[arrow]                  (umatrix.west);
+    \begin{scope}[on background layer]
+        \path (scan.south)        edge[arrow]                  (filter.north);
+        \path (filter.south)      edge[arrow]                  (normalize.north);
+        \path (normalize.south)   edge[arrow]                  (stem.north);
+        \path (stem.south)        edge[arrow]                  (estems.north);
+        \path (estems.south)      edge[arrow]                  (create.north);
+        \path (create.south)      edge[arrow]                  (store.north);
+        \path (store.south)       edge[arrow]                  (psupport.north);
 
-    \path (transform.east)    edge[arrow, bend left = 45]  (fmatrix.east);
-    \path (umatrix.north)     edge[arrow, bend left = 45]  (transform.west);
-    \path (fmatrix.west)      edge[arrow, bend left = 45]  (transform.west);
+        \path (input.east)        edge[arrow]                  (preprocess.110);
+        \path (preprocess.70)     edge[arrow]                  (umatrix.west);
 
-    \path (umatrix.south)     edge[arrow]                  (ijulia.north);
+        \path (transform.east)    edge[arrow, bend left = 45]  (fmatrix.east);
+        \path (umatrix.north)     edge[arrow, bend left = 45]  (transform.west);
+        \path (fmatrix.west)      edge[arrow, bend left = 45]  (transform.west);
 
-    \path (fmatrix.south)     edge[arrow]                  (qdtwsimple.north);
-    \path (fmatrix.south)     edge[arrow,out=345,in=140]   (qdtwindexed.north);
-    \path (fmatrix.south)     edge[arrow]                  (idtw.north);
-    \path (fmatrix.south)     edge[arrow]                  (iwavelet.north);
-    \path (fmatrix.south)     edge[arrow]                  (ijulia.north);
+        \path (umatrix.south)     edge[arrow]                  (ijulia.north);
 
-    \path (ijulia.south)      edge[arrow]                  (report.north);
+        \path (fmatrix.south)     edge[arrow]                  (qdtwsimple.north);
+        \path (fmatrix.south)     edge[arrow,out=195,in=150]   (qdtwindexed.north);
+        \path (fmatrix.south)     edge[arrow,out=345,in=140]   (qdtwwavelet.north);
+        \path (fmatrix.south)     edge[arrow]                  (idtw.north);
+        \path (fmatrix.south)     edge[arrow]                  (iwavelet.north);
+        \path (fmatrix.south)     edge[arrow]                  (ijulia.north);
 
-    \path (idtw.south)        edge[arrow]                  (idxdtw.north);
-    \path (idxdtw.south)      edge[arrow]                  (qdtwindexed.north);
+        \path (ijulia.south)      edge[arrow]                  (report.north);
 
-    \path (iwavelet.south)    edge[arrow]                  (idxwavelet.north);
+        \path (idtw.south)        edge[arrow]                  (idxdtw.north);
+        \path (idxdtw.south)      edge[arrow]                  (qdtwindexed.north);
+        \path (idxwavelet.south)  edge[arrow]                  (qdtwwavelet.north);
+        \path (idxwavelet.east)   edge[arrow, bend right = 25] (dwavelet.south);
+        \path (idxwavelet.east)   edge[arrow, bend left = 25]  (pwavelet.north);
 
-    \path (qdtwsimple.south)  edge[arrow, bend right = 45] (neighbors.north);
-    \path (qdtwindexed.south) edge[arrow]                  (neighbors.north);
+        \path (iwavelet.south)    edge[arrow]                  (idxwavelet.north);
 
-    \node[fit = (input)(preprocess)(iwavelet)(neighbors)] (all) {};
+        \path (qdtwsimple.south)  edge[arrow, bend right = 45] (neighbors.north);
+        \path (qdtwindexed.south) edge[arrow]                  (neighbors.north);
+        \path (qdtwwavelet.south) edge[arrow]                  (neighbors.north);
+
+        \path (dwavelet.north)    edge[arrow, bend right = 45] (fmatrix.east);
+
+        \path (pwavelet.south)    edge[arrow, bend left = 45]  (report.south);
+    \end{scope}
+
+    \node[fit = (input)(preprocess)(iwavelet)(neighbors)(dwavelet)(transform)] (all) {};
 
     \begin{customlegend}[
             legend cell align=left,
