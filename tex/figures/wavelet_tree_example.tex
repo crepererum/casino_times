@@ -20,14 +20,19 @@
             minimum height=0.75cm,
             circle
         },
-        xabove/.style args={of #1}{above=1.0cm of #1.center}
+        xabove/.style args={of #1}{above=1.2cm of #1.center}
     ]
+
+    \newcommand{\explainnode}[3]{
+        \node (#1) [anchor = west, above right = 0.2cm and 1.5cm of #2.east, font = {\itshape\small}] {#3};
+        \path (#1.west) edge[->, > = spaced to, thick, out = 180, in = 0] (#2.east);
+    }
 
     \begin{axis}[
         xlabel={x},
         ylabel={y},
-        fullwidth,
-        height=0.30\textwidth
+        height=0.30\textwidth,
+        width=0.85\textwidth
     ]
         \addplot [mark=*,color=kit-blue] table {
             1 -1
@@ -90,4 +95,9 @@
     \draw[arrow] (n12345678.south) |- (n5678.west);
 
     \draw[arrow] (root.south) -- (n12345678.north);
+
+    \explainnode{esr}{root}{superroot}
+    \explainnode{er}{n12345678}{root}
+    \explainnode{ei}{n5678}{inner node}
+    \explainnode{el}{n78}{leaf}
 \end{tikzpicture}
