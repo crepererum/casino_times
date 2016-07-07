@@ -72,6 +72,10 @@ The selection of the time range of \num{256} years has other advantages apart fr
 \label{sec:baseline:sim}
 We first discuss which time series we want to consider as similar. We want to explore which nGrams are used together. Because there might be a normal usage of certain words or phrases in the day to day life, interesting data might be hidden by an overall large number and therefore interesting changes in usage patterns might not be discovered when total numbers of mentiones are compared. Consider the following example: $n_1 \Rightarrow n_2$ but not vice versa and $n_2$ is already used in many books but $n_1$ is a new nGram at a certain point of time. This implication cannot be found by comparing total numbers, because $n_2$ might be way larger than $n_1$ but the implication will lead to similar changes in the overall time series. So we seek to find similar structure instead of similar usage numbers.
 
+\begin{definition}[Query]
+    A query is a time series for which the user (or some program) wants to know the nearest neighbors for. By writing \enquote{some word} we refer to the time series which belongs to the normalized n-Gram or the n-Gram itself, depending on the context. The plural form queries is used to express multiple starting points for a nearest neighbor search, either when generating statistics or when calculating the distance to multiple time series.
+\end{definition}
+
 Furthermore we limit our analysis to the \enquote{match count} because it seems to be more useful for later research than the less fine graned \enquote{unique book count}.
 
 
@@ -188,22 +192,22 @@ It seems obvious to use the DTW distances to rank nearest neighbors. There are t
     \label{fig:dists_hist}
 \end{figure}
 
-First the distribution of the distances differs heavily from anchor to anchor as shown in \autoref{fig:dists_hist}.
+First the distribution of the distances differs heavily from query to query as shown in \autoref{fig:dists_hist}.
 
 \begin{figure}
     \centering
     \input{figures/dists_sorted.tex}
-    \caption{Distance of the first \num{100} neighbors of example $1$-grams, without first element which is the anchor itself}
+    \caption{Distance of the first \num{100} neighbors of example $1$-grams, without first element which is the query itself}
     \label{fig:dists_sorted}
 \end{figure}
 
-Second it is not clear how many nearest neighbors should be taken into account, escpecially when designing user-facing applications. To solve this problem we sort all neighbors by their distance and only take rank $1$ to $\frac{n}{2}$ into account. This ignores the anchor itself with its distance of \num{0} and also prunes the second half of the sorted list because there are usualy many outliers at the end of the spectrum. Then we normalize the distances:
+Second it is not clear how many nearest neighbors should be taken into account, escpecially when designing user-facing applications. To solve this problem we sort all neighbors by their distance and only take rank $1$ to $\frac{n}{2}$ into account. This ignores the query itself with its distance of \num{0} and also prunes the second half of the sorted list because there are usualy many outliers at the end of the spectrum. Then we normalize the distances:
 
 \begin{equation}\label{eq:dists_norm}
     d_{n,i} = \frac{d_i - d_1}{d_1}
 \end{equation}
 
-Here $d_i$ is the distance of the neighbor with rank $i$, starting at \num{0} with the anchor itself. The result is shown in \autoref{fig:dists_sorted}. Now we search for the index which clearly cuts a group of nearest neighbors from the rest of data. To do so we do the following:
+Here $d_i$ is the distance of the neighbor with rank $i$, starting at \num{0} with the query itself. The result is shown in \autoref{fig:dists_sorted}. Now we search for the index which clearly cuts a group of nearest neighbors from the rest of data. To do so we do the following:
 
 \begin{equation}\label{eq:dists_cut}
     i_\text{cut} = 1 + \argmax_{i=1}^\frac{n}{2} \left( \Delta_1 \left( \frac{\Delta_1(d_n)}{d_n} \right) \right)_i

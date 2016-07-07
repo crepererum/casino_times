@@ -370,7 +370,7 @@ The situation changes when we try to query phrases and add $2$-grams to the data
     \item Increasing the pruning threshold: This ould eliminate many pointless entries which only do not represent a common trend.
     \item Weighting dinstance with n-Gram importance: It should be possible to weight the distance with additional information about possible neighbors, e.g. with their total counts or with linguistic metrics on how common or special words are.
     \item Extend filtering/normalization to take inter-word information into account: Currently prepositions and other non-important words in $2$-grams and at the end of $3+$-grams often do not provide value information.
-    \item Use multiple search anchors and calculate a (weighted) distance to all of them: An example is shown in \autoref{tab:ranking_chance2} where we add \enquote{philosophi} as a second anchor. There exist multiple methods on how to do that, in our example we just added the DTW distances together, but Euclidean distances may also work as well as more sophisticated ways like running a DTW against multiple time series at once.
+    \item Use multiple search queries and calculate a (weighted) distance to all of them: An example is shown in \autoref{tab:ranking_chance2} where we add \enquote{philosophi} as a second query. There exist multiple methods on how to do that, in our example we just added the DTW distances together, but Euclidean distances may also work as well as more sophisticated ways like running a DTW against multiple time series at once.
 \end{itemize}
 
 
@@ -387,7 +387,7 @@ Because our compression method leads to information loss, we need to figure out 
 \begin{figure}
     \centering
     \input{figures/compression.tex}
-    \caption{Compression distortion, user facing data, anchor is \enquote{drug}}
+    \caption{Compression distortion, user facing data, query is \enquote{drug}}
     \label{fig:compression}
 \end{figure}
 
@@ -398,7 +398,7 @@ First we want to figure out how compression affects the data which is perceived 
     \item We measure the amount of new entries produced by compressed version compared to the uncompressed reference as a relative measure.
 \end{enumerate}
 
-As shown in \autoref{fig:compression} the set of nearest neighbors and the ranking of these neighbors is very unstable as soon as we introduce some noise to the data. This makes our algorithm rather bad when the output data is directly presented to the user. This situation might be improve when combining the distance to multiple anchors to one final score which might be required for handling groups of words or entire concepts as a search query.
+As shown in \autoref{fig:compression} the set of nearest neighbors and the ranking of these neighbors is very unstable as soon as we introduce some noise to the data. This makes our algorithm rather bad when the output data is directly presented to the user. This situation might be improve when combining the distance to multiple queries to one final score which might be required for handling groups of words or entire concepts as a search query.
 
 
 \subsection{All distances}
@@ -407,11 +407,11 @@ As shown in \autoref{fig:compression} the set of nearest neighbors and the ranki
 \begin{figure}
     \centering
     \input{figures/compression2.tex}
-    \caption{Compression distortion, all distances, anchor is \enquote{drug}}
+    \caption{Compression distortion, all distances, query is \enquote{drug}}
     \label{fig:compression2}
 \end{figure}
 
-To measure how the compression affects the actual distance, we calculate a the distance to a fixed anchor and calculate the normalized distance of the original result and the ones produced by the compressed data:
+To measure how the compression affects the actual distance, we calculate a the distance to a fixed query and calculate the normalized distance of the original result and the ones produced by the compressed data:
 
 \begin{equation}
     \delta_i(a, b) = \frac{b_i - a_i}{a_i}
