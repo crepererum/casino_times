@@ -5,7 +5,7 @@
 
 
 
-\section{A modern approach}
+\section{A KISS approach}
 \label{sec:implementation:approach}
 
 After considering multiple ways of implementing a high-performance algorithm, we decided to use \Cpp{14} as standardized in \cite{cpp14} and under partial application of the recommendations of \cite{effective_cpp} and \cite{effective_cpp2}. This gives us the ability to have fine control over memory allocations and data structures as well as the opportunity to write modern, well-structured and reusable code. In combination with a modern compiler this results in native executables which exploit a wide variety of instruction sets of current CPUs.
@@ -17,7 +17,29 @@ After considering multiple ways of implementing a high-performance algorithm, we
     \label{fig:tools}
 \end{sidewaysfigure}
 
-Instead of developing the algorithms as a single monolithic block we designed them as reusable executables with single scopes similar to the system tools provided by UNIX-like systems. An overview of these tools and their interaction can be found in \autoref{fig:tools}. Parameters are usually passed via command line arguments and data is stored either in text files or in case of data matrices as C-like arrays. Data matrices are stored in row-major order with every time series stored in a single row. This enables us to use memory-mapped IO so the operating system with its global and complete view of system resources can decide about memory management. As a result we get caching between program executions and good behaviour in case of low-memory situations\footnote{This should not happen during in an optimal setup but might occur due to bugs or during testing on development machines.}. Another advantage of storing the data this way is that it can be loaded by other tools and programming languages, e.g. for visualization purposes. So we used Julia\footnote{\url{http://julialang.org/}} to run quick analyzis task and to produce plots and smaller reports\footnote{We recomment a combination of Julia, iJulia and Gadfly for that.}.
+Instead of developing the algorithms as a single monolithic block we designed them as reusable executables with single scopes similar to the system tools provided by UNIX-like systems. An overview of these tools and their interaction can be found in \autoref{fig:tools}. There purposes are:
+
+\begin{itemize}
+    \item create: creates a new matrix-like storage file with given size and filled with $0$ values
+    \item dump\_index\_wavelet: decompresses wavelet tree data and stores resulting time series data back into an uncompressed matrix
+    \item extract\_stems: extracts list of normalized words from a word-to-stem transformation file
+    \item filter: filters list of ngrams according to the pattern described in \autoref{ssec:baseline:data:filter}
+    \item iJulia: generic tool to analyse and visualize data and to prototype algorithms
+    \item index\_dtw: indexed data as described in \autoref{sec:baseline:speed}
+    \item index\_wavelet: transforms time series data into trees, merges them and stores the result together with a child-to-parent index into a file
+    \item normalize: normalizes strings as described in \autoref{ssec:baseline:data:snorm}
+    \item print\_wavelet\_tree: extracts multiple wavelet trees and their merges from a wavelet index and outputs a DOT file
+    \item prune\_support: prunes list of possible normalized ngrams according to \autoref{ssec:baseline:data:prune}
+    \item query\_dtw\_indexed: queries nearest neighbors, accelerated with an indexed produced by index\_dtw and described in \autoref{sec:baseline:speed}
+    \item query\_dtw\_simple: queries nearest neighbors with a simple bruteforce approach
+    \item query\_dtw\_wavelet: queries nearest neighbors, accelerated by an indexed produced by index\_wavelet
+    \item scan: reads input data from Google and stores all n-Grams as well as the range of years and the value ranges present in the given file
+    \item stem: applies word normalizion as described in \autoref{ssec:baseline:data:wnorm} and stores the transformation into a file; this is done because this step is usually to slow to do ad-hoc in contrast to the string normalization
+    \item store: stores data from Google input files into a matrix created with create; applies string normalizion and word normalization from a transformation file and correctly adds overlapping results
+    \item transform: generic transformation of time series data, e.g. to execute $\Delta_1(\log(x + 1))$
+\end{itemize}
+
+Parameters are usually passed via command line arguments and data is stored either in text files or in case of data matrices as C-like arrays. Data matrices are stored in row-major order with every time series stored in a single row. This enables us to use memory-mapped IO so the operating system with its global and complete view of system resources can decide about memory management. As a result we get caching between program executions and good behaviour in case of low-memory situations\footnote{This should not happen during in an optimal setup but might occur due to bugs or during testing on development machines.}. Another advantage of storing the data this way is that it can be loaded by other tools and programming languages, e.g. for visualization purposes. So we used Julia\footnote{\url{http://julialang.org/}} to run quick analyzis task and to produce plots and smaller reports\footnote{We recomment a combination of Julia, iJulia and Gadfly for that.}.
 
 Common code is shared by header files and static libraries and executables are linked statically. While this increases their size, it enables easy deployment of binaries compiled on a devloper machine which includes the compiler suite to a server which has fewer packages installed and might even be equipped with a different C library. To simplify development and reusability the compilation process is managed by CMake which also ensures that most required libraries are downloaded and compiled on-the-fly. In theory this also enables cross-compilation for different architectures like ARM64.
 
@@ -42,6 +64,21 @@ Another optimization is the reduction of the precision. Originally we intended t
 During the implementation we took special care of efficient memory management. During the entire DTW calculation no dynamic memory is allocated or freed. We create all buffer once and reuse them during the execution. This reduces the interaction with data to input, buffers and output memory which increases cache efficiency and overall performance. The code uses a strategy pattern to implement the control flow driver once and providing optimized plugins for single comparisons and vectorized inputs. It is possible to use the same driver to also store warping path or other meta data from the execution. Because the strategy is using templates instead of polymorphism, there is no runtime overhead.
 
 An improvement we have tried but dumped was the early rejection of possible neighbors. Because we only use the $k$ nearest neighbors it should be possible to maintain a heap with the best $k$ candidates and stop the DTW calculation for new ones if all possible paths already exceed the distance to the farest candidate. This works in theory but shows some problems during the real world tests. To do this early stop efficiently the breaking conditions must be met by all time series which are handled in parallel by the vectorized engine. This delays the break in many cases and also introduces additional checks. Also the maintainance of the queue is slower than calculating all distances and doing a partial sort. In the end the improvement is slightly slower than the na{\"i}ve full calculation of all distances.
+
+
+
+\section{Tree Merging}
+\label{sec:implementation:tree}
+
+We now explain which decisions where made during the implementation of the main algorithm. Some details are already listed in \autoref{sec:algorithm:opt} and we do not repeat them here.
+
+The tree is implemented in a way that every node only stores its coeffecient and two child pointers with the child pointers of the leaf nodes being null. A similar concept is implement for the superroot. Apart from the anchor value and the root pointer we also store the final error value of the compression and an integer value representing the n-Gram the superroot belongs to. The child-to-parent and root-to-superroot indices are stored as hash maps, mapping node pointers to vectors. Since pointers change during program execution, all pointers are stored as offset pointers and for hash maps we calculate the offset to a global anchor before hashing, so that the hash is indepedent from the offset value stored in the pointer as well as from the global address.
+
+During the index process additional data structures are needed. Indices to lookup nearest neighbors are implemented as sorted vectors and binary searches. This preserves memory localitiy and efficiency. For root nodes and inner nodes we store a hash map mapping two children to one index. This ensures that only neighbors are stored in an index which only have the same children than the merge candidate. For leaf nodes we use the time-relative position of the leaf (\num{0} is the very left leaf and \num{255} the very right one) as keys to retrieve the index. The correct position of the leaf nodes and the correct child-parent relationship ensures that inner nodes also have the right position. Modifications to that index where made for possible but failed improvements, e.g. in \autoref{ssec:algorithm:fail:dtw}. Furthermore we store counters for the number of stored nodes to output statistics and compression rate information.
+
+There is no special serialization handling. Instead we just use a memory mapped file and the Boost Interprocess library to allocate and manage memory withing that file. That means that the index can only be used on machines of the same endianess. We usually use oversized index files to ensure that we do not need to grow files during operation, which usually requires remapping it, and to speed up memory allocation. There might be more efficient storage implementations but since our algorithm has generic weaknesses, we did not try to improve this part further. As for the matrix data we also rely on the operating system to handle low memory situation and paging for our index data.
+
+Another aspect of our algorithm is randomness. We use fixed seeds to ensure reproducability and to simplify bug hunting. Keep in mind that the results might change depending on the stdlib implementation. Hash maps are not initialized with random seeds which can affect security for real world applications. We encourage users of the code to re-evaluate the entire package in terms of security before usage.
 
 
 
