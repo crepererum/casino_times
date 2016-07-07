@@ -109,7 +109,7 @@
 
 \RequirePackage{tikz}
 \usetikzlibrary{
-    arrows,
+    arrows.spaced,
     backgrounds,
     calc,
     fit,
