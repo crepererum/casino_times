@@ -1,7 +1,7 @@
 \chapter{Algorithm}
 \label{ch:algorithm}
 
-\dots
+In this chapter we explain our approach to compress the data and how we want to exploit this compression to find similar time series. To do so we first describe how we transform time series into tree structures, then we explain the general idea of information pruning. Afterwards we develop a method that instead of pruning of information relys on the merging of similar information packages. We then discuss different error metrics, detail how our construction can be used as an index and explain some technical improvements made to the algorithm. Finally we show which issues our approach has and how we tried to work-around these.
 
 
 
@@ -391,9 +391,11 @@ Besides providing compression, our tree construction also expresses similarirty 
 \section{Optimizations}
 \label{sec:algorithm:opt}
 
-There are two technical details which help to improve the compression ratio even further. The first one is the reduction of precision used to the coefficients. Instead of using full \SI{64}{\bit} floating point numbers we use \SI{16}{\bit} floats, also referred as \enquote{halfs} as definied by \cite{ieee_float}. This increases the the error due to conversion and leads to a lower amount of merges, but increases the overall compression rate in terms of memory size. The smaller size of the memory representation compensates the higher error. Using \SI{16}{\bit} numbers turned out to be better than \SI{32}{\bit}. There might be the possibility to use even less memory by using bit packing and changing the representation to a non-IEEE-compliant data type.
+There are three technical details which help to improve the compression ratio even further. The first one is the reduction of precision used to the coefficients. Instead of using full \SI{64}{\bit} floating point numbers we use \SI{16}{\bit} floats, also referred as \enquote{halfs} as definied by \cite{ieee_float}. This increases the the error due to conversion and leads to a lower amount of merges, but increases the overall compression rate in terms of memory size. The smaller size of the memory representation compensates the higher error. Using \SI{16}{\bit} numbers turned out to be better than \SI{32}{\bit}. There might be the possibility to use even less memory by using bit packing and changing the representation to a non-IEEE-compliant data type.
 
 The second improvement is made by changing the representation of the child pointers within the tree nodes. Because we store all trees within a single memory-mapped region and this region may appear at different offsets during different program executions, we use offset pointers instead of real pointers. These offset pointers store the offset from the pointer itself to its target. Because the target is always located within the same mapped region, the offset stays constant no matter which global position the region has. Originally we stored \SI{64}{\bit} signed integer values as offsets. We reduced this to \SI{48}{\bit} values which is enough to store \SI[parse-numbers = false]{2^{48 - 1}}{\byte} $=$ \SI{128}{\tera\byte}.
+
+The last one is a change on how the time series are shuffled before added to the index. Instead of doing a complete random shuffle, we separate the set of time series into chunks and shuffle these while preserving the order within the chunks. This improves memory locality and therefore results in better IO performance. The results vary from case to case and can be slightly worse than a full shuffle. We set the chunk size to \num{16} which we found a good tradeoff.
 
 A possible improvement closely related to reducing the size of the offset pointers is the removal of the null pointers stored in all leaf nodes. We did not implement this simply because it makes the code more complicated and also because there are not enough leaf nodes left after compression to justify this change.
 
@@ -411,14 +413,16 @@ A possible improvement closely related to reducing the size of the offset pointe
 
 The main problem with our approach is its greedy nature. As shown in \autoref{fig:weakness}, the merges usually do not reach very high levels. This is caused by the decreasing propability of merging with a node that belongs to the same large subtree. They further the merge process continues, the more likely it gets that somewhere in between there was a better node from a different subtree as a nearest neighbor. On we other hand we can not check all possible merges in all layers because the runtime complexity would grow exponentially with the number of indexed time series. So we to limit the algorithm to a subset of decisions.
 
-While the following section explain some of the fixes we have tried, we came to the conclusion that it might require a totally different strategy to find larger merges.
-
 \begin{figure}
     \centering
     \input{figures/compression_timeline.tex}
     \caption{Compression over the compression process}
     \label{fig:compression_timeline}
 \end{figure}
+
+\autoref{fig:compression_timeline} adds another detail to that problem. It shows how the compression rate developes when more data is added to the index. When using low error thresholds, the following can be observed: at the beginning, not enough data is present in the database so the first entries are not compressed very well. As more data is added, the compression rate improves. This improvement is limited by the fact that it becomes harder to find the right merges that allow to merge larger subtrees. When using higher error thresholds this becomes more obvious. Because the local merging is not limited by the threshold anymore, the choice of the right neighbor that allows to merge its parent as well plays a bigger role now. As a result the behaveiour flips and the results get worse the more data is added to the index. When using such high thresholds it would be better to compress the data in chunks instead of the whole data set as one piece.
+
+While the following section explain some of the fixes we have tried, we came to the conclusion that it might require a totally different strategy to find larger merges.
 
 
 
@@ -439,7 +443,7 @@ To increase the chance that the greedy algorithm chooses merges that belong to t
     \item check which pairs of merges belong to the same subtree and priorize them
 \end{enumerate}
 
-This requires that we are quickly able to figure out which nodes have which parents, so we introduced a subtree and superroot index to do so. Also we need to query multiple neighbors instead of just one. Alltogether that renders the entire approach inpractical and we abandond it. Also the the compression results only improved slighly and sometimes even got worse.
+This requires that we are quickly able to figure out which nodes have which parents, so we introduced a subtree and superroot index to do so. Also we need to query multiple neighbors instead of just one. The index structure is the same as used for the tracer, but since compression requires way more index requests than the normal index usage, that approach is to slow for that application. Alltogether that renders the entire approach inpractical and we abandond it. Also the the compression results only improved slighly and sometimes even got worse.
 
 
 \subsection{FLANN}

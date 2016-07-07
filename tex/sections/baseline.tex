@@ -217,7 +217,7 @@ Here $\Delta_1$ calculates the gradient with distance \num{1}.
 
 That approach might seem to be slightly artificial and indeed its more a phenomenological metric instead of a mathematically proven approach. The main reason for this is that we want to keep the index as small as possible to enable users to understand the content of the list. If you try to use the set of nearest neighbors as an input for another algorithm you may want to choose another method.
 
-Keep in mind that our method requires sorting of all neighbors while na{\"i}ve $k$ nearest neighbors search requires only partial sorting. For a bruteforce search this should not be a problem since calculating the DTW distances dominates the execution time but it might be a problem when handling overly large data sets. Also it renders index techniques useless since the algorithm cannot ensure to draw enough data from the index to reach the cutoff point. Therefore we do not use this technique during evaluation.
+Keep in mind that our method requires sorting of all neighbors while na{\"i}ve $k$ nearest neighbors search requires only partial sorting. For a bruteforce search this should not be a problem since calculating the DTW distances dominates the execution time but it might be a problem when handling overly large data sets. Also it renders index techniques useless since the algorithm cannot ensure to draw enough data from the index to reach the cutoff point. Therefore we do not use this technique during all evaluations.
 
 We also want to point out that this method is very instable. Small changes in the input data, e.g. by noise introduces by compression, will quickly lead to different results.
 
