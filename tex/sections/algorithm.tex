@@ -464,6 +464,12 @@ This improvement is similar to the one presented in \autoref{ssec:algorithm:fail
 One of the main limitations of the current neighborhood search is that the we are only looking for nodes which correspond to the same time span. This contridicts the later usage of the data through Dynamic Time Warping. So we tried to decouble the tree structure and subtree merging from the actual time dimensions. We limited the the search for the child nodes to a time-monotonic warping and reused the implementation of the existing DTW. For the non-leaf-nodes we did not apply any constraint since the same children policy already forces merges with the correct level and correct warping. The results of this technique were not convincing since the additional degree of freedom during the merging makes it even more unlikely to hit neighbors which belong to the same subtree. So the compression rates got worse and we dropped this approach.
 
 
+\subsection{Timeless Index}
+\label{ssec:algorithm:fail:timeless}
+
+One idea that may arise during investigating the results of DTW is that the time aspect of the index structure might not be that important at all. We gave this a try and removed the contraint from the leaf nodes entirely so that there exist a one-dimensional index for them. The inner nodes and the root node are only constrained by the same-children-policy. The results are, without surprise, pretty bad. The reason for this is that now the chance of finding large subtree-merges is even lower since merges on the leaf-layer are purely picked based on the coefficient and without any consideration of the consequences for the parent layer.
+
+
 \subsection{Pruning}
 \label{ssec:algorithm:fail:pruning}
 
