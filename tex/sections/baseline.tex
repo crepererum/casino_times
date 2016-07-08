@@ -242,13 +242,52 @@ A problem with this type of index is that the structure of the indexed data is d
 \section{Prior Work}
 \label{sec:baseline:prior}
 
-Dimensionality reduction techniques (\cite{LB_Keogh,LB_Improved,dimred1,dimred2,dimred3,dimred4}) prune too much information to enable good indexing. Therefore our main goal is to not recude the dimensionality of the data but rather exploit similarities of the time series to compress data and build an index to speed-up DTW calculations.
+Now we would like to introduce some prior work and discuss how they differ from our work. Before doing so and because we think it is not expressed enough amongst researchers we want to emphasize the following point: these methods and algorithms are not bad in general and have their applications, but there are reasons for not using them. Either the time series we work with are just different from the ones which are normally used or it is because many fields do not face the vast amount of data as we do. And some of them are just not able to simultaneasly match the goals we have:
 
-Compression techniques that extract specific features (\cite{compress1,compress2,compress3,compress4}) would suffer from another problem: during the compression process it is not clear how large or small the time ranges during the similarity search will be and therefore it is not clear how fine-graned the feature extraction should be.
+\begin{itemize}
+    \item finding similarities as defined by us amongst a large set of short but entropy-right time series
+    \item use these findings to speed-up nearest neighbor queries
+    \item at the same time exploit shared information to compress the data
+    \item enable similarity search on subranges of the data set without the need to prepare the data again
+\end{itemize}
+
+
+\subsection{Dimension Reduction}
+\label{ssec:baseline:prior:dimred}
+
+The first idea on how to deal with our data set would be a dimension reduction. To do so, the time series data is usually transformed into another representation and from there multiple parts are removed. This can be either done as a compression technique or to speed up index lookups (\cite{LB_Keogh,LB_Improved,dimred1,dimred2}). As shown in the previous section, this prunes too much information to enable good indexing. Therefore our main goal is to not recude the dimensionality of the data but rather exploit similarities of the time series to compress data and build an index to speed-up DTW calculations.
+
+
+\subsection{No Compression or Reduction}
+\label{ssec:baseline:prior:nocompression}
+
+Some methods (\cite{dimred3,dimred4}) try to transform the data into another representation and use this representation to speed up similarity search. The problem here that this does not lead to a data reduction and therefore does not enable users to process the full n-gram corpus.
+
+
+\subsection{Feature Extraction}
+\label{ssec:baseline:prior:extract}
+
+Another hole topic is the extraction of specific features (\cite{compress1,compress2,compress3,compress4,compress5}). It leads to a compression and sometimes (\cite{compress1}) to human-readable outputs. The reduced and refined amount of data usually enables better index structures. The reason why this is not applyable to our problem is the following: during the feature extraction process it is not clear how large or small the time ranges during the similarity search will be and therefore it is not clear how fine-graned the resulting description should should be. We have shown that the frequency of our time series is high and a corse-graned extraction would be equal to a dimension reduction and therefore would not work as well. A fine-graned extraction results in too much information to index and process on demand and is also a bad compression.
+
+
+\subsection{Similarity}
+\label{ssec:baseline:prior:sim}
+
+It is not surprising that others also tried to find similarities amongst time series.
+
+One example is similarity based on mutual information (\cite{MISE}). We believe that this definition is a great idea and is a very generic approach which can be applied to many fields. Sadly their method relies on slow pairwise comparison. Also their idea of relationship does not match the one we developed for this particular application.
+
+The definition developed in \cite{sim1} is based on the matching of rescaled subsequences. This is similar to our idea of using DTW and might be worth to consider for future research work. For now we are not able to use this approach because it does not scale well enough to the large amount of time series.
+
+An interesting approach is presented in \cite{sim2}. There time series are described by rules that describe descretized data. In our oppinion that could be classified as feature extraction. The two issues are: the discetization loss and the amount of extraced rules. Both do not work very well with our idea of similarity, but it might be worth to consider to use this technology to add additional information to neighbors that we find with our method and make the results more understable to the users.
+
+One last idea which we want present here is an alternative to the used DTW: Longest Common Subsequence (LCSS) and Edit Distance on Real Sequence (EDR). These require either descrete data or $\epsilon$-thresholds. \cite{sim3} crafts a generic and fast approach to compute these. Other groups might find this helpful but we decided that DTW is better suited for our application since its idea of a Euclidian distance with some time inaccuraries better match our model of similarity.
+
+
+\subsection{Related Techniques}
+\label{ssec:baseline:prior:other}
 
 Noise reduction techniques (\cite{noise1}) are not desired in our case since we already know how to remove noise properly and that the level of noise reduction depends on the query behaveiour of our users.
-
-Because we think it is not expressed enough amongst researchers we want to emphasize the following point: these methods and algorithms are not bad in general and have their applications. The main issue is that the time series we work with are just different from the ones which are normally used.
 
 
 
