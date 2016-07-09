@@ -117,10 +117,10 @@
     shapes
 }
 \newcommand{\xdiameter}{15}
-\newcommand{\xone}{-15}
-\newcommand{\xtwo}{145}
+\newcommand{\xone}{-13}
+\newcommand{\xtwo}{150}
 \newcommand{\yone}{25}
-\newcommand{\ytwo}{-243}
+\newcommand{\ytwo}{-245}
 
 % Logos
 \newcommand{\thegrouplogo}{sdqlogo}
