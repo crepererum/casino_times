@@ -217,10 +217,16 @@ One of the fundamental problems of large-scale DTW-based similarity searches is 
 \begin{figure}
     \centering
     \input{figures/dtw_index.tex}
-    \caption{DTW index efficiency}\label{fig:dtw_index}
+    \caption{DTW index efficiency, over resolution, $r$ is \num{10}}\label{fig:dtw_index}
 \end{figure}
 
-A problem with this type of index is that the structure of the indexed data is different than the one tested in the publication. Our rather short data (in terms of measured points) contains more entropy and is more jittering than the time series intended by the paper. Therefore we require more dimensions to get a tree that at least filters out some candidates as shown in \autoref{fig:dtw_index}. We need at least \num{16} dimensions to get any affect from the \code{LB\_PAA} and we do not even see any real filtering effect from the tree structure itself\footnote{the amount of received time series is more than \SI{95}{\percent}}. So the tree structure only provides a sorting of the time series. That results in a very memory-inefficient data structure. Remember that for every dimension, the R-tree stores two data points, a minimum and a maximum. So we need to store at least \SI{12.5}{\percent} of the actual data size as an index to get a any effect and still have a linear complexity. The high dimensionality renders the tree performance and memory management nearly useless, as also found by \cite{rtree_highdim}. Because all of this is a general problem of R-tree-based algorithms, we did not implement the improvements suggested by \cite{LB_Improved}.
+\begin{figure}
+    \centering
+    \input{figures/dtw_index2.tex}
+    \caption{DTW index efficiency, over $r$, resolution is \num{64}}\label{fig:dtw_index2}
+\end{figure}
+
+A problem with this type of index is that the structure of the indexed data is different than the one tested in the publication. Our rather short data (in terms of measured points) contains more entropy and is more jittering than the time series intended by the paper. Therefore we require more dimensions to get a tree that at least filters out some candidates as shown in \autoref{fig:dtw_index}. We need at least \num{16} dimensions to get any affect from the \code{LB\_PAA} and we do not even see any real filtering effect from the tree structure itself\footnote{the amount of received time series is more than \SI{95}{\percent}}. So the tree structure only provides a sorting of the time series. That results in a very memory-inefficient data structure. Remember that for every dimension, the R-tree stores two data points, a minimum and a maximum. So we need to store at least \SI{12.5}{\percent} of the actual data size as an index to get a any effect and still have a linear complexity. The high dimensionality renders the tree performance and memory management nearly useless, as also found by \cite{rtree_highdim}. The situation depends on the warping radius as shown in \autoref{fig:dtw_index2}. For non-trivial values nearly the entire data is fetched from the index. Because all of this is a general problem of R-tree-based algorithms, we did not implement the improvements suggested by \cite{LB_Improved}.
 
 
 
