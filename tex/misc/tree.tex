@@ -1,0 +1,106 @@
+\newcommand{\megatree}[1]{
+
+\begin{tikzpicture}[
+    zlevel/.style = {
+        execute at begin scope = {\pgfonlayer{##1}},
+        execute at end scope = {\endpgfonlayer}
+    },
+    group/.style args = {##1 ##2 ##3}{
+        local bounding box = localbb,
+        yshift = {-1 * \mylevelmargin * \mynodesize * ##1},
+        xshift = {
+            \mygmargin * \mymaxgsize * \mynodemargin * \mynodesize * ##2 * 2^(\mydepth - max(0, ##1) - 1)           % position
+            + 0.5 * \mynodemargin * \mynodesize * (\mymaxgsize - ##3)                                              % missing nodes
+            + 0.5 * \mygmargin * \mymaxgsize * \mynodemargin * \mynodesize * (2^(\mydepth - max(0, ##1) - 1) - 1)  % missing groups
+        },
+        execute at end scope = {
+            \begin{scope}[zlevel = lgroups]
+                \node [
+                    fit = (localbb),
+                    draw,
+                    dash pattern=on \pgflinewidth off 0.1mm,
+                    rounded corners = \mygsep,
+                    inner sep = \mygsep,
+                    line width = \myedgewidth
+                ] {};
+            \end{scope}
+        }
+    },
+    sgroup/.style args = {##1}{
+        yshift = {1.2 * \mylevelmargin * \mynodesize},
+        xshift = {
+            -0.5 * (##1 - 1) * \mysrmargin * \mysrwidth
+            + 0.5 * \mygmargin * \mymaxgsize * \mynodemargin * \mynodesize * (2^(\mydepth - 1) - 1)
+            + 0.5 * \mygmargin * \mymaxgsize * \mynodemargin * \mynodesize
+        }
+    },
+    link/.style = {
+        -{Latex[
+            length = \myheadsize,
+            width = \myheadsize
+        ]},
+        shorten < = \myptrsize,
+        shorten > = \myptrsize,
+    }
+]
+
+\def\mynodesize{0.06cm}
+\def\myptrsize{0.01cm}
+\def\mynodemargin{1.2}
+\def\mylevelmargin{25}
+\def\mygmargin{0.5}
+\def\mygsep{0.02cm}
+\def\myheadsize{0.3mm}
+\def\myedgewidth{0.05mm}
+\def\mymaxgsize{5}
+\def\mydepth{8}
+\def\mysrwidth{2cm}
+\def\mysrheight{0.5cm}
+\def\mysrmargin{1.5}
+
+\pgfdeclarelayer{lgroups}
+\pgfdeclarelayer{lnodes}
+\pgfdeclarelayer{llinks}
+\pgfdeclarelayer{lanchors}
+\pgfsetlayers{lgroups,lnodes,llinks,lanchors}
+
+\newcommand{\mynode}[3]{
+    \begin{scope}[xshift = {\mynodemargin * \mynodesize * ##2}]
+        \begin{scope}[zlevel = lnodes]
+            \pgfmathparse{100 * ##1}
+            \def\myvalue{\pgfmathresult}
+            \fill[blue!\myvalue!red] (0cm, 0cm) rectangle (\mynodesize, \mynodesize);
+        \end{scope}
+
+        \begin{scope}[zlevel = lanchors]
+            \filldraw[fill = white, draw = black, line width = \myedgewidth] (\mynodesize * 0.5, \mynodesize) coordinate (##3;##2;p) circle (\myptrsize);
+            \fill[black] (\mynodesize * 0.25, 0cm) coordinate (##3;##2;c0) circle (\myptrsize);
+            \fill[black] (\mynodesize * 0.75, 0cm) coordinate (##3;##2;c1) circle (\myptrsize);
+        \end{scope}
+    \end{scope}
+}
+
+\newcommand{\mysr}[2]{
+    \begin{scope}[xshift = {\mysrmargin * \mysrwidth * ##2}]
+        \begin{scope}[zlevel = lnodes, yshift = 0.5 * \mysrheight]
+            \node (s;##2) [
+                draw,
+                font = \scriptsize,
+                align = center,
+                inner sep = 0pt,
+                minimum height = \mysrheight,
+                minimum width = \mysrwidth
+            ] {##1};
+        \end{scope}
+    \end{scope}
+}
+
+\newcommand{\link}[3]{
+    \path (##1) edge[link, line width = {\myedgewidth * ##3}, out = 270, in = 90, looseness = 0.2] (##2);
+}
+
+\input{#1}
+
+\end{tikzpicture}
+
+}
