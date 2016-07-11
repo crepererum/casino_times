@@ -327,6 +327,14 @@
         height=0.50\textwidth,
         width=\textwidth
     },
+    legend above/.style={
+        legend columns=-1,
+        legend style={
+            /tikz/every even column/.append style={column sep=0.2cm},
+            at={(0.5,1.15)},
+            anchor=south
+        }
+    },
     filter discard warning=false,
     every tick label/.append style={font=\scriptsize},
     legend style={font=\scriptsize},
