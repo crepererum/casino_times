@@ -183,16 +183,19 @@ int main(int argc, char** argv) {
         std::cout << limit << std::endl;
     }
 
-    constexpr std::size_t colw0 = 20;
-    constexpr std::size_t colw1 = 10;
+    constexpr std::size_t colw0 = 5;
+    constexpr std::size_t colw1 = 20;
     constexpr std::size_t colw2 = 10;
+    constexpr std::size_t colw3 = 10;
     std::cout
         << "| "
-        << std::setw(colw0) << "ngram"
+        << std::setw(colw0) << "rank"
         << " | "
-        << std::setw(colw1) << "id"
+        << std::setw(colw1) << "ngram"
         << " | "
-        << std::setw(colw2) << "distance"
+        << std::setw(colw2) << "id"
+        << " | "
+        << std::setw(colw3) << "distance"
         << " |"
         << std::endl;
     std::cout
@@ -202,16 +205,20 @@ int main(int argc, char** argv) {
         << std::string(colw1, '-')
         << "-|-"
         << std::string(colw2, '-')
+        << "-|-"
+        << std::string(colw3, '-')
         << "-|"
         << std::endl;
     for (std::size_t j = 0; j < usable_limit; ++j) {
         std::cout
             << "| "
-            << std::setw(colw0) << boost::locale::conv::utf_to_utf<char>(idxmap[distances[j].first])
+            << std::setw(colw0) << j
             << " | "
-            << std::setw(colw1) << distances[j].first
+            << std::setw(colw1) << boost::locale::conv::utf_to_utf<char>(idxmap[distances[j].first])
             << " | "
-            << std::setw(colw2) << (std::sqrt(distances[j].second / static_cast<float>(end - begin)))
+            << std::setw(colw2) << distances[j].first
+            << " | "
+            << std::setw(colw3) << (std::sqrt(distances[j].second / static_cast<float>(end - begin)))
             << " |"
             << std::endl;
     }

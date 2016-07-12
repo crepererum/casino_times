@@ -14,7 +14,7 @@ set (external_flags_c "${external_flags}")
 externalproject_add (
     project_half
     PREFIX "${CMAKE_CURRENT_BINARY_DIR}/half"
-    URL "http://downloads.sourceforge.net/project/half/half/1.11.0/half-1.11.0.zip"
+    URL "${CMAKE_SOURCE_DIR}/extern/half-1.11.0.zip"
     URL_HASH SHA512=e8c21a4a596482d0d32ee085140dd34b24ba3088fe50096557f5ac3d1f3be1b826b58161452cb115cbd31534fba9d5116ddcbd70b1cd0486a856cebbe0880b30
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
@@ -127,6 +127,8 @@ link_directories (
 #       That makes the management of this build scripts way easier.
 set (
     ngrams_dep
+    project_half
+    project_int48
     project_libicu
     project_libsimdpp
     project_libtcmalloc
@@ -187,6 +189,16 @@ target_link_libraries (
     ${ngrams_libs}
 )
 
+# executable: exp_001
+add_executable (exp_001 "src/exp_001.cpp")
+add_dependencies (exp_001 ${ngrams_dep})
+target_link_libraries (
+    exp_001
+    parser
+    utils
+    ${ngrams_libs}
+)
+
 # executable: normalize
 add_executable (normalize "src/normalize.cpp")
 add_dependencies (normalize ${ngrams_dep})
@@ -222,6 +234,16 @@ add_executable (print_wavelet_tree "src/print_wavelet_tree.cpp")
 add_dependencies (print_wavelet_tree ${ngrams_dep})
 target_link_libraries (
     print_wavelet_tree
+    parser
+    utils
+    ${ngrams_libs}
+)
+
+# executable: print_wavelet_tree2
+add_executable (print_wavelet_tree2 "src/print_wavelet_tree2.cpp")
+add_dependencies (print_wavelet_tree2 ${ngrams_dep})
+target_link_libraries (
+    print_wavelet_tree2
     parser
     utils
     ${ngrams_libs}

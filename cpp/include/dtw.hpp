@@ -276,7 +276,7 @@ struct dtw_impl_simple {
     }
 
     inline dist_t infinity() {
-        return std::numeric_limits<calc_t>::infinity();
+        return std::numeric_limits<dist_t>::infinity();
     }
 
     inline dist_t zero() {
