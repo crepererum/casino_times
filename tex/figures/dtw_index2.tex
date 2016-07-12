@@ -1,0 +1,16 @@
+\begin{tikzpicture}
+    \begin{axis}[
+        xlabel={$r$},
+        ylabel={n},
+        legend above,
+        fullwidth
+    ]
+        \addplot [mark=*,color=kit-green2] table [x=r, y=fetched, col sep=comma, ignore chars={"}, discard if not={ngram}{drug}] {data/dtw_index2.csv};
+        \addplot [mark=*,color=kit-cyan] table [x=r, y=fetched, col sep=comma, ignore chars={"}, discard if not={ngram}{know}] {data/dtw_index2.csv};
+        \addplot [mark=*,color=kit-red] table [x=r, y=fetched, col sep=comma, ignore chars={"}, discard if not={ngram}{war}] {data/dtw_index2.csv};
+        \addplot [mark=x,color=kit-green2] table [x=r, y=dtw, col sep=comma, ignore chars={"}, discard if not={ngram}{drug}] {data/dtw_index2.csv};
+        \addplot [mark=x,color=kit-cyan] table [x=r, y=dtw, col sep=comma, ignore chars={"}, discard if not={ngram}{know}] {data/dtw_index2.csv};
+        \addplot [mark=x,color=kit-red] table [x=r, y=dtw, col sep=comma, ignore chars={"}, discard if not={ngram}{war}] {data/dtw_index2.csv};
+        \legend{drug (fetched),know (fetched),war (fetched),drug (DTW),know (DTW),war (DTW)};
+    \end{axis}
+\end{tikzpicture}
