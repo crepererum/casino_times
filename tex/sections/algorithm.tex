@@ -379,6 +379,15 @@ This metric has the same drawback as the one presented in \autoref{ssec:algorith
 
 Besides providing compression, our tree construction also expresses similarity of time series in a way that it can be used as an index. To do so, we provide a generic tracing approach. Starting with the root of the query, we walk down the tree level by level to its leafs. At every level, we start trace back the nodes of the current level to all possible superroots. While the children during the trace down are unambiguous, the parents during the trace up approach are not, since subtrees can be shared by multiple trees and therefore can have multiple superroots. The two parts of the algorithm are also shown in \autoref{algo:traceDown} and \autoref{algo:traceUp}. Besides emitting the superroots using a callback, we also provide filtering of the trace paths and some kind of weight accounting. Using this accounting calculates the chance ending up at a certain superroot if multiple random walkers would start at all possible nodes at the start of the trace up phase. It can be used to limit the number of possible paths. The filters can also be used to limit the tracer to specific parts of the time series or to stop the trace down earlier. This can be a huge advantage since higher error threshold during compression lead to too many possible superroots of nodes in the levels near the leaf nodes.
 
+Our experiments will implement the following filter scheme:
+
+\begin{itemize}
+    \item \code{filterDown}: drop branch if it leads to a time domain which were not requested for DTW; stop if a maximum depth is reached
+    \item \code{filterUp}: drop branch if weight is below or equal a threshold
+\end{itemize}
+
+We leave an open call to find and apply more sophisticated filtering techniques.
+
 
 
 \section{Optimizations}
