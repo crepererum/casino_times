@@ -61,10 +61,10 @@ entry parse_entry(std::pair<const char*, const char*> line){
     auto s2 = get_column(it, end);
     auto s3 = get_column(it, end);
     return {
-        .ngram=boost::locale::conv::utf_to_utf<char32_t>(s0),
-        .year=static_cast<std::uint16_t>(std::stoul(s1)),
-        .var0=std::stoull(s2),
-        .var1=std::stoull(s3),
+        std::stoull(s2),
+        std::stoull(s3),
+        boost::locale::conv::utf_to_utf<char32_t>(s0),
+        static_cast<std::uint16_t>(std::stoul(s1))
     };
 }
 

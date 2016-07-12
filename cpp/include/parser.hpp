@@ -28,6 +28,18 @@ struct entry {
     ngram_t      ngram;
     year_t       year;
     std::uint8_t _padding[6];
+
+    entry(var_t var0_, var_t var1_, const ngram_t& ngram_, year_t year_)
+        : var0(var0_),
+        var1(var1_),
+        ngram(ngram_),
+        year(year_) {}
+
+    entry(var_t var0_, var_t var1_, ngram_t&& ngram_, year_t year_)
+        : var0(var0_),
+        var1(var1_),
+        ngram(std::move(ngram_)),
+        year(year_) {}
 };
 
 entry parse_line_to_entry(const char*& it, const char* end);
