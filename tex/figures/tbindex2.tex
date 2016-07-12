@@ -1,0 +1,38 @@
+\begin{tikzpicture}
+    \newcommand{\mytbplot}[3]{
+        \addplot [mark=#2,color=#3,only marks] table [x=ndtw, y=enew, col sep=comma, ignore chars={"}, discard if not={minweight}{#1}] {data/tbindex2.csv};
+    }
+
+    \begin{axis}[
+        xlabel={\# DTWs executed},
+        ylabel={\# new entries in top 20 neighbors},
+        legend above,
+        ymin=0,
+        ymax=1,
+        xmin=0,
+        xmax=803042,
+        enlargelimits={rel=0.1},
+        fullwidth
+    ]
+        \mytbplot{0.000000000001}{+}{kit-green2}
+        \addlegendentry{\num{1e-12}};
+
+        \mytbplot{0.00000000001}{x}{kit-brown}
+        \addlegendentry{\num{1e-11}};
+
+        \mytbplot{0.0000000001}{square}{kit-violet}
+        \addlegendentry{\num{1e-10}};
+
+        \mytbplot{0.000000001}{diamond}{kit-cyan}
+        \addlegendentry{\num{1e-9}};
+
+        \mytbplot{0.00000001}{pentagon}{kit-green}
+        \addlegendentry{\num{1e-8}};
+
+        \mytbplot{0.0000001}{oplus}{kit-blue}
+        \addlegendentry{\num{1e-7}};
+
+        \mytbplot{0.000001}{asterisk}{kit-red}
+        \addlegendentry{\num{1e-6}};
+    \end{axis}
+\end{tikzpicture}

@@ -1,0 +1,66 @@
+\begin{tikzpicture}
+    \newcommand{\mytbplot}[4]{
+        \addplot [mark=#3,color=#4,only marks] table [x=ndtw, y=enew, col sep=comma, ignore chars={"}, discard if not 2=maxlevel #1 and maxerror #2] {data/tbindex.csv};
+    }
+
+    \begin{groupplot}[
+        xlabel={\# DTWs executed},
+        ylabel={\# new entries in top 20 neighbors},
+        legend above,
+        group style={
+            group name=my tbplots,
+            group size=1 by 3,
+            xlabels at=edge bottom,
+            vertical sep=1cm
+        },
+        ymin=0,
+        ymax=1,
+        xmin=0,
+        xmax=803042,
+        enlargelimits={rel=0.1},
+        fullwidth
+    ]
+        \nextgroupplot
+
+        \mytbplot{0}{1}{+}{kit-green2}
+        \addlegendentry{0};
+
+        \mytbplot{1}{1}{x}{kit-brown}
+        \addlegendentry{1};
+
+        \mytbplot{2}{1}{square}{kit-yellow}
+        \addlegendentry{2};
+
+        \mytbplot{3}{1}{o}{kit-violet}
+        \addlegendentry{3};
+
+        \mytbplot{4}{1}{diamond}{kit-cyan}
+        \addlegendentry{4};
+
+        \mytbplot{5}{1}{pentagon}{kit-green}
+        \addlegendentry{5};
+
+        \mytbplot{6}{1}{oplus}{kit-blue}
+        \addlegendentry{6};
+
+        \nextgroupplot
+
+        \mytbplot{0}{2}{+}{kit-green2}
+        \mytbplot{1}{2}{x}{kit-brown}
+        \mytbplot{2}{2}{square}{kit-yellow}
+        \mytbplot{3}{2}{o}{kit-violet}
+        \mytbplot{4}{2}{diamond}{kit-cyan}
+        \mytbplot{5}{2}{pentagon}{kit-green}
+        \mytbplot{6}{2}{oplus}{kit-blue}
+
+        \nextgroupplot
+
+        \mytbplot{0}{5}{+}{kit-green2}
+        \mytbplot{1}{5}{x}{kit-brown}
+        \mytbplot{2}{5}{square}{kit-yellow}
+        \mytbplot{3}{5}{o}{kit-violet}
+        \mytbplot{4}{5}{diamond}{kit-cyan}
+        \mytbplot{5}{5}{pentagon}{kit-green}
+        \mytbplot{6}{5}{oplus}{kit-blue}
+    \end{groupplot}
+\end{tikzpicture}

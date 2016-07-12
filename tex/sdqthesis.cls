@@ -297,7 +297,10 @@
 \definecolor{kit-violet}{cmyk}{0.25,1,0,0.2}
 \definecolor{kit-cyan}{cmyk}{0.9,0.05,0,0.2}
 \RequirePackage{pgfplots}
-\usepgfplotslibrary{fillbetween}
+\usepgfplotslibrary{
+    fillbetween,
+    groupplots
+}
 \pgfplotsset{
     compat=1.13,
     lua backend=true,
@@ -306,6 +309,44 @@
             \edef\tempa{\thisrow{#1}}
             \edef\tempb{#2}
             \ifx\tempa\tempb
+            \else
+                \def\pgfmathresult{inf}
+            \fi
+        }
+    },
+    discard if not 2/.style args={#1 #2 and #3 #4}{
+        x filter/.code={
+            \edef\tempa{\thisrow{#1}}
+            \edef\tempb{#2}
+            \edef\tempc{\thisrow{#3}}
+            \edef\tempd{#4}
+            \ifx\tempa\tempb
+                \ifx\tempc\tempd
+                \else
+                    \def\pgfmathresult{inf}
+                \fi
+            \else
+                \def\pgfmathresult{inf}
+            \fi
+        }
+    },
+    discard if not 3/.style args={#1 #2 and #3 #4 and #5 #6}{
+        x filter/.code={
+            \edef\tempa{\thisrow{#1}}
+            \edef\tempb{#2}
+            \edef\tempc{\thisrow{#3}}
+            \edef\tempd{#4}
+            \edef\tempe{\thisrow{#5}}
+            \edef\tempf{#6}
+            \ifx\tempa\tempb
+                \ifx\tempc\tempd
+                    \ifx\tempe\tempf
+                    \else
+                        \def\pgfmathresult{inf}
+                    \fi
+                \else
+                    \def\pgfmathresult{inf}
+                \fi
             \else
                 \def\pgfmathresult{inf}
             \fi
