@@ -7,7 +7,7 @@
     },
     group/.style args = {##1 ##2 ##3}{
         local bounding box = localbb,
-        yshift = {-1 * \mylevelmargin * \mynodesize * ##1},
+        yshift = {-1 * \mylevelmargin * \mynodear * \mynodesize * ##1},
         xshift = {
             \mygmargin * \mymaxgsize * \mynodemargin * \mynodesize * ##2 * 2^(\mydepth - max(0, ##1) - 1)           % position
             + 0.5 * \mynodemargin * \mynodesize * (\mymaxgsize - ##3)                                              % missing nodes
@@ -27,7 +27,7 @@
         }
     },
     sgroup/.style args = {##1}{
-        yshift = {1.2 * \mylevelmargin * \mynodesize},
+        yshift = {\mylevelmargin * \mynodear * \mynodesize},
         xshift = {
             -0.5 * (##1 - 1) * \mysrmargin * \mysrwidth
             + 0.5 * \mygmargin * \mymaxgsize * \mynodemargin * \mynodesize * (2^(\mydepth - 1) - 1)
@@ -45,9 +45,10 @@
 ]
 
 \def\mynodesize{0.06cm}
+\def\mynodear{2}
 \def\myptrsize{0.01cm}
 \def\mynodemargin{1.2}
-\def\mylevelmargin{25}
+\def\mylevelmargin{12}
 \def\mygmargin{0.5}
 \def\mygsep{0.02cm}
 \def\myheadsize{0.3mm}
@@ -69,11 +70,11 @@
         \begin{scope}[zlevel = lnodes]
             \pgfmathparse{100 * ##1}
             \def\myvalue{\pgfmathresult}
-            \fill[blue!\myvalue!red] (0cm, 0cm) rectangle (\mynodesize, \mynodesize);
+            \fill[blue!\myvalue!red] (0cm, 0cm) rectangle (\mynodesize, \mynodear * \mynodesize);
         \end{scope}
 
         \begin{scope}[zlevel = lanchors]
-            \filldraw[fill = white, draw = black, line width = \myedgewidth] (\mynodesize * 0.5, \mynodesize) coordinate (##3;##2;p) circle (\myptrsize);
+            \filldraw[fill = white, draw = black, line width = \myedgewidth] (\mynodesize * 0.5, \mynodear * \mynodesize) coordinate (##3;##2;p) circle (\myptrsize);
             \fill[black] (\mynodesize * 0.25, 0cm) coordinate (##3;##2;c0) circle (\myptrsize);
             \fill[black] (\mynodesize * 0.75, 0cm) coordinate (##3;##2;c1) circle (\myptrsize);
         \end{scope}
