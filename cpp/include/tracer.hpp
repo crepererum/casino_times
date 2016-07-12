@@ -85,20 +85,22 @@ class tracer final {
 
             _next_up_b.clear();
             for (const auto& n : _next_up_a) {
-                if (n.first.l > 0) {
-                    auto parents = _index->find_parents(n.first.node);
-                    if (parents) {
-                        float weight = n.second / static_cast<float>(parents->size());
-                        for (const auto& p : *parents) {
-                            tracer_types::node_plus_t candidate{p, n.first.l - 1, n.first.j / n_children};
-                            add_to_next_up(_next_up_b, candidate, weight);
+                if (_t.filter_node_up(n.first, n.second)) {
+                    if (n.first.l > 0) {
+                        auto parents = _index->find_parents(n.first.node);
+                        if (parents) {
+                            float weight = n.second / static_cast<float>(parents->size());
+                            for (const auto& p : *parents) {
+                                tracer_types::node_plus_t candidate{p, n.first.l - 1, n.first.j / n_children};
+                                add_to_next_up(_next_up_b, candidate, weight);
+                            }
                         }
-                    }
-                } else {
-                    auto superroots = _index->find_superroots(n.first.node);
-                    if (superroots) {
-                        for (const auto& s : *superroots) {
-                            _t.found_superroot(s, n.second);
+                    } else {
+                        auto superroots = _index->find_superroots(n.first.node);
+                        if (superroots) {
+                            for (const auto& s : *superroots) {
+                                _t.found_superroot(s, n.second);
+                            }
                         }
                     }
                 }
@@ -146,13 +148,11 @@ class tracer final {
         }
 
         void add_to_next_up(tracer_types::next_up_t& next_up, tracer_types::node_plus_t n, float weight) {
-            if (_t.filter_node_up(n, weight)) {
-                auto it = next_up.find(n);
-                if (it == next_up.end()) {
-                    next_up.emplace(std::make_pair(n, weight));
-                } else {
-                    it->second *= weight;
-                }
+            auto it = next_up.find(n);
+            if (it == next_up.end()) {
+                next_up.emplace(std::make_pair(n, weight));
+            } else {
+                it->second *= weight;
             }
         }
 };
