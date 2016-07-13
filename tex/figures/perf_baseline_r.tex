@@ -1,0 +1,16 @@
+\begin{tikzpicture}
+    \begin{axis}[
+        xlabel={$r$},
+        ylabel={t},
+        legend above,
+        fullwidth
+    ]
+        \addplot [mark=*,color=kit-green2] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{drug}] {data/perf_qsimple_r.csv};
+        \addplot [mark=*,color=kit-cyan] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{know}] {data/perf_qsimple_r.csv};
+        \addplot [mark=*,color=kit-red] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{war}] {data/perf_qsimple_r.csv};
+        \addplot [mark=x,color=kit-green2] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{drug}] {data/perf_qindexed_r.csv};
+        \addplot [mark=x,color=kit-cyan] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{know}] {data/perf_qindexed_r.csv};
+        \addplot [mark=x,color=kit-red] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{war}] {data/perf_qindexed_r.csv};
+        \legend{drug (no index),know (no index),war (no index),drug (index),know (index),war (index)};
+    \end{axis}
+\end{tikzpicture}

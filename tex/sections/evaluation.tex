@@ -443,3 +443,17 @@ The results are shown in \autoref{fig:tbindex}. The top graphics shows the index
 \end{figure}
 
 Sometimes using the compression rate as hint how exact the nearest neighbor search should be might not be sufficient, for example if the index is already created. Luckily our generic tracer approach allows us to incorporate weight-based filtering. We used that to retrieve data from the index with a maximum error of \num{2} faster in trade-off against the quality of the results. How the minimum weight threshold affects the quality is shown in \autoref{fig:tbindex2}. The setup is identical to \autoref{fig:tbindex}. It turns out that the impact of the filter varies heavily from query to query so it may be hard for users to guess the right value for their expected results. Also the filter response is not monotonic in neither result quality nor number of executed DTWs. Further research is required to make the filter results more predictable.
+
+
+
+\section{Performance}
+\label{sec:evaluation:perf}
+
+\begin{figure}
+    \centering
+    \input{figures/perf_baseline_r.tex}
+    \caption{Time of baseline algorithms over $r$}
+    \label{fig:perf_baseline_r}
+\end{figure}
+
+\dots
