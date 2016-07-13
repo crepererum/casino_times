@@ -11,6 +11,7 @@
 #include <string>
 #include <tuple>
 #include <map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -26,21 +27,13 @@
 
 
 struct tracer_impl_dtw : tracer_impl_limiter {
-    std::size_t level = 0;
-    std::size_t i;
-    std::map<float, std::size_t> best;
-    dtw_simple mydtw_simple;
+    std::unordered_set<std::size_t> candidates;
 
-    tracer_impl_dtw(const calc_t* base, std::size_t ylength, std::size_t maxdepth, std::size_t begin, std::size_t end, std::size_t r, float minweight, std::size_t i_)
-        : tracer_impl_limiter(power_of_2(ylength), maxdepth, begin, end, minweight),
-        i(i_),
-        mydtw_simple(base, ylength, begin, end, r) {}
+    tracer_impl_dtw(std::size_t ylength, std::size_t maxdepth, std::size_t begin, std::size_t end, float minweight)
+        : tracer_impl_limiter(power_of_2(ylength), maxdepth, begin, end, minweight) {}
 
     void found_superroot(const superroot_ptr_t& s, float) {
-        std::size_t j = s->i;
-        if (best.find(j) == best.end()) {
-            best.emplace(std::make_pair(mydtw_simple.calc(i, j), j));
-        }
+        candidates.emplace(s->i);
     }
 };
 
@@ -138,19 +131,60 @@ int main(int argc, char** argv) {
     tracer<tracer_impl_dtw> t{
         &index,
         {
-            base,
             ylength,
             maxdepth,
             begin,
             end,
-            r,
-            minweight,
-            i
+            minweight
         }
     };
     t(i);
 
-    std::cout << "#dtw=" << t.t().best.size() << std::endl;
+    const std::size_t n_new = t.t().candidates.size();
+    std::cout << "#dtw=" << n_new << std::endl;
+
+    std::vector<std::size_t> candidates_sorted(t.t().candidates.begin(), t.t().candidates.end());
+    std::sort(candidates_sorted.begin(), candidates_sorted.end());  // sort to speed-up memory ops
+
+    dtw_vectorized_shuffled mydtw_vectorized(base, ylength, begin, end, r);
+    dtw_simple mydtw_simple(base, ylength, begin, end, r);
+    const std::size_t n_over = n_new % static_cast<std::size_t>(dtw_vectorized_linear::n);
+    const std::size_t n_good = n_new - n_over;
+    std::vector<std::pair<std::size_t, float>> distances(n_new);
+
+    std::array<std::size_t, dtw_vectorized_shuffled::n> vindices;
+    for (std::size_t j_base = 0; j_base < n_good; j_base += dtw_vectorized_linear::n) {
+        for (std::size_t idx = 0; idx < dtw_vectorized_shuffled::n; ++idx) {
+            vindices[idx] = candidates_sorted[j_base + idx];
+        }
+
+        auto v_results = mydtw_vectorized.calc(i, vindices);
+
+        std::array<float, dtw_vectorized_linear::n> d_results;
+        simdpp::store(&d_results, v_results);
+
+        for (std::size_t idx = 0; idx < dtw_vectorized_linear::n; ++idx) {
+            // d_results are squared at this point!
+            distances[j_base + idx] = std::make_pair(vindices[idx], d_results[idx]);
+        }
+    }
+
+    for (std::size_t j_base = n_good; j_base < n_new; ++j_base) {
+        std::size_t j = candidates_sorted[j_base];
+
+        // result is squared at this point!
+        distances[j_base] = std::make_pair(j, mydtw_simple.calc(i, j));
+    }
+
+    const std::size_t usable_limit = std::min(limit, n_new);
+    std::partial_sort(
+        distances.begin(),
+        distances.begin() + static_cast<std::iterator_traits<decltype(distances.begin())>::difference_type>(usable_limit),
+        distances.end(),
+        [](const auto& a, const auto& b){
+            return a.second < b.second;
+        }
+    );
 
     constexpr std::size_t colw0 = 20;
     constexpr std::size_t colw1 = 10;
@@ -173,19 +207,15 @@ int main(int argc, char** argv) {
         << std::string(colw2, '-')
         << "-|"
         << std::endl;
-    std::size_t j = 0;
-    auto it = t.t().best.begin();
-    while ((j < limit) && (it != t.t().best.end())) {
+    for (std::size_t j = 0; j < usable_limit; ++j) {
         std::cout
             << "| "
-            << std::setw(colw0) << boost::locale::conv::utf_to_utf<char>(idxmap[it->second])
+            << std::setw(colw0) << boost::locale::conv::utf_to_utf<char>(idxmap[distances[j].first])
             << " | "
-            << std::setw(colw1) << it->second
+            << std::setw(colw1) << distances[j].first
             << " | "
-            << std::setw(colw2) << (std::sqrt(it->first / static_cast<float>(end - begin)))
+            << std::setw(colw2) << (std::sqrt(distances[j].second / static_cast<float>(end - begin)))
             << " |"
             << std::endl;
-        ++j;
-        ++it;
     }
 }
