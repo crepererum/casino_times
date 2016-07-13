@@ -3,6 +3,14 @@
         \addplot [mark=#3,color=#4,only marks] table [x=ndtw, y=enew, col sep=comma, ignore chars={"}, discard if not 2=maxlevel #1 and maxerror #2] {data/tbindex.csv};
     }
 
+    \newcommand{\mytraces}[1]{
+        \foreach \myng in {{democraci},{drug},{german},{happi},{health},{know},{money},{religion},{soft},{war}} {
+            \foreach \myr in {0,5,10,15,20} {
+                \addplot [mark=none,color=black,draw opacity=0.05,smooth,tension=0.2,forget plot] table [x=ndtw, y=enew, col sep=comma, ignore chars={"}, discard if not 3=maxerror #1 and ngram {\myng} and r \myr] {data/tbindex.csv};
+            }
+        }
+    }
+
     \begin{groupplot}[
         xlabel={\# DTWs executed},
         ylabel={\# new entries in top 20 neighbors},
@@ -21,6 +29,8 @@
         fullwidth
     ]
         \nextgroupplot
+
+        \mytraces{1}
 
         \mytbplot{0}{1}{+}{kit-green2}
         \addlegendentry{0};
@@ -45,6 +55,8 @@
 
         \nextgroupplot
 
+        \mytraces{2}
+
         \mytbplot{0}{2}{+}{kit-green2}
         \mytbplot{1}{2}{x}{kit-brown}
         \mytbplot{2}{2}{square}{kit-yellow}
@@ -54,6 +66,8 @@
         \mytbplot{6}{2}{oplus}{kit-blue}
 
         \nextgroupplot
+
+        \mytraces{5}
 
         \mytbplot{0}{5}{+}{kit-green2}
         \mytbplot{1}{5}{x}{kit-brown}

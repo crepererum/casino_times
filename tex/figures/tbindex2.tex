@@ -7,13 +7,17 @@
         xlabel={\# DTWs executed},
         ylabel={\# new entries in top 20 neighbors},
         legend above,
-        ymin=0,
-        ymax=1,
-        xmin=0,
-        xmax=803042,
-        enlargelimits={rel=0.1},
         fullwidth
     ]
+        \foreach \myng in {{democraci},{drug},{german},{happi},{health},{know},{money},{religion},{soft},{war}} {
+            \foreach \myr in {0,5,10,15,20} {
+                \addplot [mark=none,color=black,draw opacity=0.1,smooth,tension=0.5,forget plot] table [x=ndtw, y=enew, col sep=comma, ignore chars={"}, discard if not 2=ngram {\myng} and r \myr] {data/tbindex2.csv};
+            }
+        }
+
+        \mytbplot{0.0000000000001}{o}{kit-red}
+        \addlegendentry{\num{1e-13}};
+
         \mytbplot{0.000000000001}{+}{kit-green2}
         \addlegendentry{\num{1e-12}};
 
