@@ -225,7 +225,7 @@ The construction of the database of known trees\footnote{To be precise: since th
 
 Still the queue-based approach needs to start at the bottom and tends to be bottom-up. This is useful in a sense that the similarity we have defined is based on the gradient. Gradients are more influenced by the lower layers of the wavelet tree and so we merge this information first. This will be helpful for using the merged trees as an index structure.
 
-The final algorithm is shown in \autoref{algo:addTreeToIndex}.
+The final algorithm is shown in \autoref{algo:addTreeToIndex}. An exemplary visual representation of how the merged results look like is shown in \autoref{fig:megatree1} and \autoref{fig:megatree2}. Pay attention to the differences which are the results of the different nearest neighbor query ranges.
 
 
 
