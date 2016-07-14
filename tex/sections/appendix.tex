@@ -39,11 +39,10 @@
         $\sum$ & \num{19970216} & \num{7018462} & \num{5136939} & \num{4017929} & \num{803051}\\
         \bottomrule
     \end{tabularx}
-    \caption{Total amount of \num{1}-grams after each clean-up step}
-    \label{tab:clean_up_numbers_1}
+    \caption{Total amount of \num{1}-grams after each clean-up step}\label{tab:clean_up_numbers_1}
 \end{table}
 
-\FloatBarrier
+\FloatBarrier{}
 \begin{table}[ht]
     \centering
     \begin{tabularx}{\textwidth}{r R R R R R}
@@ -80,35 +79,33 @@
         $\sum$ & \num{446221170} & \num{86884341} & \num{69620202} & \num{40689934} & \num{6420462}\\
         \bottomrule
     \end{tabularx}
-    \caption{Total amount of \num{2}-grams after each clean-up step}
-    \label{tab:clean_up_numbers_2}
+    \caption{Total amount of \num{2}-grams after each clean-up step}\label{tab:clean_up_numbers_2}
 \end{table}
 
 \input{misc/tree.tex}
 
-\FloatBarrier
+\FloatBarrier{}
 \begin{sidewaysfigure}
     \centering
     \megatree{misc/tree_data2.tex}
     \caption{Example tree merges, nearest neighbors of \enquote{drug} in $[129,256]$ with $r=10$}\label{fig:megatree2}
 \end{sidewaysfigure}
 
-\FloatBarrier
+\FloatBarrier{}
 \begin{table}[ht]
     \centering
     \begin{tabularx}{\textwidth}{l X p{4cm} p{2.5cm}}
         \toprule
         library & usage & license & version\\
         \midrule
-        Boost     & align (aligned memory allocation), functional (hash calculation), geometry (R-tree index), interprocess (managed mapped file), iostream (mmaped file), locale (UTF conversion), program option parser & Boost Software License -- Version 1.0       & \code{1.60.0} \\
+        Boost     & align (aligned memory allocation), functional (hash calculation), geometry (R-tree index), interprocess (managed mapped file), iostream (mmaped file), locale (UTF conversion), program option parser & Boost Software License --- Version 1.0       & \code{1.60.0} \\
         half      & half-precision IEEE floating point emulation & MIT License                                 & \code{1.11.0} \\
         int48\_t  & emulation of signed \num{48}-bit integer     & MIT License                                 & \code{GIT:ccfd6891} \\
-        ICU       & Unicode handling                             & ICU License -- ICU 1.8.1 and later          & \code{57.1} \\
-        libsimdpp & high-level interface to SSE/AVX/FMA/\dots    & Boost Software License -- Version 1.0       & \code{2.0-rc2} \\
+        ICU       & Unicode handling                             & ICU License --- ICU 1.8.1 and later          & \code{57.1} \\
+        libsimdpp & high-level interface to SSE/AVX/FMA/\dots    & Boost Software License --- Version 1.0       & \code{2.0-rc2} \\
         tcmalloc  & fast replacement for libc malloc             & BSD 3-Clause License                        & \code{2.5} \newline (part of gperftools) \\
         wavelib   & Discrete Wavelet Transform                   & BSD 3-Clause License (includes modifiction) & \code{GIT:a2c70971} \\
         \bottomrule
     \end{tabularx}
-    \caption{Used libraries during the implementation}
-    \label{tab:lib_version}
+    \caption{Used libraries during the implementation}\label{tab:lib_version}
 \end{table}

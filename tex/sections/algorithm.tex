@@ -77,17 +77,17 @@ Now we want to discuss what data is actually transformed. It turns out that usin
     \SetKwFunction{SetCoefficient}{setCoefficient}
     \SetKwFunction{SetPruned}{setPruned}
 
-    \Begin {
+    \Begin{
         \tcc{Check if children are pruned}
         $p_l \leftarrow \IsPruned{\GetChild{$N$, $0$}}$\;
         $p_r \leftarrow \IsPruned{\GetChild{$N$, $1$}}$\;
         $p_c \leftarrow p_l \land p_r$\;
 
-        \BlankLine
+        \BlankLine{}
         \tcc{Calculate maximum error increase}
         $i \leftarrow 2^{d - l + 1}$\;
         $e \leftarrow |\GetCoefficient{N}| \cdot \sqrt{i}$\;
-        \BlankLine
+        \BlankLine{}
         \tcc{Prune if requirements are met}
         \eIf{$e < \epsilon \land p_c$}{
             $\SetPruned{N}$\;
@@ -111,7 +111,7 @@ Now we want to discuss what data is actually transformed. It turns out that usin
     \SetKwFunction{Shuffle}{shuffle}
     \SetKwFunction{Sort}{sort}
 
-    \Begin {
+    \Begin{
         \For{$l=d$ \emph{\KwTo} $1$}{
             $N \leftarrow \GetLayer{T, l}$\;
             $\Shuffle{N}$\;
@@ -126,7 +126,7 @@ Now we want to discuss what data is actually transformed. It turns out that usin
     \caption{pruneTree}\label{algo:pruneTree}
 \end{algorithm}
 
-The first attempt to reduce the amount of data is an obvious but simple approach: pruning of sub-trees that do not hold important data. This does not entirely reflect the information loss approach we will use for the final algorithm, but it is a good milestone to grasp the idea. The idea was also presented~in \cite{RACE}. A tree node is pruned if the following conditions are met:
+The first attempt to reduce the amount of data is an obvious but simple approach: pruning of sub-trees that do not hold important data. This does not entirely reflect the information loss approach we will use for the final algorithm, but it is a good milestone to grasp the idea. The idea was also presented in~\cite{RACE}. A tree node is pruned if the following conditions are met:
 
 \begin{enumerate}
     \item both children are pruned
@@ -166,7 +166,7 @@ Keep in mind to only merge nodes into others when their children are identical. 
     \SetKwFunction{IsMerged}{isMerged}
     \SetKwFunction{NewMergeTask}{newMergeTask}
 
-    \Begin {
+    \Begin{
         $m_l \leftarrow \IsMerged{\GetChild{$N$, $0$}}$\;
         $m_r \leftarrow \IsMerged{\GetChild{$N$, $1$}}$\;
         \If{$m_l \land m_r$}{
@@ -198,12 +198,12 @@ Keep in mind to only merge nodes into others when their children are identical. 
     \SetKwFunction{Shuffle}{shuffle}
     \SetKwFunction{Update}{update}
 
-    \Begin {
+    \Begin{
         $q \leftarrow \varnothing$\;
         \For{$l \in \Shuffle{\GetLeafes{$T$}}$}{
             $\Push{q, \CreateMergeTask{$l$}}$\;
         }
-        \BlankLine
+        \BlankLine{}
         $E \leftarrow \RecalcError{T}$\;
         \While{$\neg \IsEmpty{$q$}$}{
             $t \leftarrow \RemoveTop{q}$\;
@@ -318,7 +318,7 @@ This metric has the same drawback as the one presented in \autoref{ssec:algorith
     \SetKwFunction{TraceDown}{traceDown}
     \SetKwFunction{TraceUp}{traceUp}
 
-    \Begin {
+    \Begin{
         $D \leftarrow \varnothing$\;
         $U \leftarrow \varnothing$\;
         \For{$n \in N$}{
@@ -328,7 +328,7 @@ This metric has the same drawback as the one presented in \autoref{ssec:algorith
                 $\Append{D, \GetChild{$n$, $1$}}$\;
             }
         }
-        \BlankLine
+        \BlankLine{}
         \If{$\neg\IsEmpty{$U$}$}{
             $\TraceUp{U}$\;
         }
@@ -352,7 +352,7 @@ This metric has the same drawback as the one presented in \autoref{ssec:algorith
     \SetKwFunction{IsEmpty}{isEmpty}
     \SetKwFunction{TraceUp}{traceUp}
 
-    \Begin {
+    \Begin{
         $U \leftarrow \varnothing$\;
         \For{$(n, w) \in N$}{
             \If{$\FilterUp{$n$, $w$}$}{
@@ -361,14 +361,14 @@ This metric has the same drawback as the one presented in \autoref{ssec:algorith
                     $v \leftarrow \frac{w}{|P|}$\tcp*[r]{split weight}
                     $\Insert{U, p, v, (a, b) \rightarrow ab}$\tcp*[r]{accumulate weight per parent}
                 }
-                \BlankLine
+                \BlankLine{}
                 $S \leftarrow \FindSuperroots{n}$\;
                 \For{$s \in S$}{
                     $\HandleSuperroot{s, w}$\;
                 }
             }
         }
-        \BlankLine
+        \BlankLine{}
         \If{$\neg\IsEmpty{$U$}$}{
             $\TraceUp{U}$\;
         }
@@ -382,7 +382,7 @@ Besides providing compression, our tree construction also expresses similarity o
 Our experiments will implement the following filter scheme:
 
 \begin{itemize}
-    \item \code{filterDown}: drop branch if it leads to a time domain which were not requested for DTW; stop if a maximum depth is reached
+    \item \code{filterDown}: drop branch if it leads to a time domain which were not requested for DTW\@; stop if a maximum depth is reached
     \item \code{filterUp}: drop branch if weight is below or equal a threshold
 \end{itemize}
 

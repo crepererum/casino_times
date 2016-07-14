@@ -38,8 +38,7 @@
             \num{19} & formal & \num{0.0358954}\\
             \bottomrule
         \end{tabularx}
-        \caption{$[1,256]$}
-        \label{tab:ranking_drug_all}
+        \caption{$[1,256]$}\label{tab:ranking_drug_all}
     \end{subtable}
     \hfill
     \begin{subtable}[t]{.45\textwidth}
@@ -71,11 +70,9 @@
             \num{19} & vulner & \num{0.0212482}\\
             \bottomrule
         \end{tabularx}
-        \caption{$[129,256]$}
-        \label{tab:ranking_drug_secondhalf}
+        \caption{$[129,256]$}\label{tab:ranking_drug_secondhalf}
     \end{subtable}
-    \caption{neighbors: $1$-grams, $r = 10$, \enquote{drug}}
-    \label{tab:ranking_drug_sane}
+    \caption{neighbors: $1$-grams, $r = 10$, \enquote{drug}}\label{tab:ranking_drug_sane}
 \end{table}
 
 Before we start to evaluate the actual algorithms, we show that our baseline is sane. \autoref{tab:ranking_drug_all} shows the top \num{20} neighbors of the $1$-gram \enquote{drug} with a warping radius of $r = 10$, measured over the full \num{256} years. The auto-cutoff-point as described in \autoref{ssec:baseline:sim:rank} is marked. For these examples, only neighbors from the $1$-gram data set are shown. Neighbors are represented by there normalized placeholder which is derived as illustrated in \autoref{sec:baseline:data}. The neighbors are words that are related to the concept \enquote{drug} with some exceptions, for example the neighbor \enquote{li} which is not extracted from any meaningful word. The meaningfulness increases when limiting the DTW to the second half of the data set. This is shown in \autoref{tab:ranking_drug_secondhalf}. It also turns out that \enquote{drug} is used in two contexts: as medicine and in terms of narcotics.
@@ -110,8 +107,7 @@ Before we start to evaluate the actual algorithms, we show that our baseline is 
             \num{19} & time & \num{0.0547318}\\
             \bottomrule
         \end{tabularx}
-        \caption{$r = 0$}
-        \label{tab:ranking_drug_r0}
+        \caption{$r = 0$}\label{tab:ranking_drug_r0}
     \end{subtable}
     \hfill
     \begin{subtable}[t]{.45\textwidth}
@@ -143,8 +139,7 @@ Before we start to evaluate the actual algorithms, we show that our baseline is 
             \num{19} & li & \num{0.0353931}\\
             \bottomrule
         \end{tabularx}
-        \caption{$r = 20$}
-        \label{tab:ranking_drug_r20}
+        \caption{$r = 20$}\label{tab:ranking_drug_r20}
     \end{subtable}
     \caption{neighbors: $1$-grams, $[1,256]$, \enquote{drug}}\label{tab:ranking_drug_rwrong}
 \end{table}
@@ -181,8 +176,7 @@ The warping radius plays an important role when extracting good results from the
             \num{19} & too & \num{0.0127955}\\
             \bottomrule
         \end{tabularx}
-        \caption{\enquote{know}}
-        \label{tab:ranking_know_all}
+        \caption{\enquote{know}}\label{tab:ranking_know_all}
     \end{subtable}
     \hfill
     \begin{subtable}[t]{.45\textwidth}
@@ -214,8 +208,7 @@ The warping radius plays an important role when extracting good results from the
             \num{19} & over & \num{0.0270059}\\
             \bottomrule
         \end{tabularx}
-        \caption{\enquote{war}}
-        \label{tab:ranking_war_all}
+        \caption{\enquote{war}}\label{tab:ranking_war_all}
     \end{subtable}
     \caption{neighbors: $1$-grams, $r = 10$, $[1,256]$}\label{tab:ranking_other1grams_sane}
 \end{table}
@@ -252,8 +245,7 @@ Another interesting but logical observation is that common verbs like \enquote{k
             \num{19} & saxophon to & \num{0.0775923}\\
             \bottomrule
         \end{tabularx}
-        \caption{\enquote{think therefore i am}}
-        \label{tab:ranking_chance_1}
+        \caption{\enquote{think therefore i am}}\label{tab:ranking_chance_1}
     \end{subtable}
     \hfill
     \begin{subtable}[t]{.45\textwidth}
@@ -285,13 +277,12 @@ Another interesting but logical observation is that common verbs like \enquote{k
             \num{19} & combust environ & \num{0.0623893}\\
             \bottomrule
         \end{tabularx}
-        \caption{\enquote{logic takes care of itself}}
-        \label{tab:ranking_chance_2}
+        \caption{\enquote{logic takes care of itself}}\label{tab:ranking_chance_2}
     \end{subtable}
     \caption{neighbors: $1+2$-grams, $r = 10$, $[129,256]$}\label{tab:ranking_chance}
 \end{table}
 
-The situation changes when we try to query phrases and add $2$-grams to the data set. As \autoref{tab:ranking_chance_1} shows, results may contain more entries which do not provide any insights. The data in \autoref{tab:ranking_chance_2} are even worse. At least for us, no insights are extracted at all.\footnote{People might be able to interpret the \enquote{zhang daol} entry which is derived from the name \enquote{Zhang Daoling}.} When limiting the search to the $1$-gram database, the results are even worse. Some reasons for this are that our cleaned up data contains a lot of words that do not provide direct insights. For example the words \enquote{the} and \enquote{of} which are listed in some of the $2$-gram neighbors do not provide meaningful data. On the other hand the same words may be important for $3$-grams, e.g. in \enquote{Medal of Honor}. The reason that so many neighbors are found which seem to contain random data is the following: the more data is stored in the database, the more likely it is to find neighbors that have a lower distance. A similar effect can be observed when dealing with correlations of real world data. \cite{correlations1} contains a list of these cases which, with a very high probability, do not belong to the same cause. This is a general issue with methods that try to extract links between words or concepts based on usage count. We were aware of this problem beforehand and it is discussed in \autoref{sec:baseline:sim}. Possible workarounds can be:
+The situation changes when we try to query phrases and add $2$-grams to the data set. As \autoref{tab:ranking_chance_1} shows, results may contain more entries which do not provide any insights. The data in \autoref{tab:ranking_chance_2} are even worse. At least for us, no insights are extracted at all.\footnote{People might be able to interpret the \enquote{zhang daol} entry which is derived from the name \enquote{Zhang Daoling}.} When limiting the search to the $1$-gram database, the results are even worse. Some reasons for this are that our cleaned up data contains a lot of words that do not provide direct insights. For example the words \enquote{the} and \enquote{of} which are listed in some of the $2$-gram neighbors do not provide meaningful data. On the other hand the same words may be important for $3$-grams, e.g.\ in \enquote{Medal of Honor}. The reason that so many neighbors are found which seem to contain random data is the following: the more data is stored in the database, the more likely it is to find neighbors that have a lower distance. A similar effect can be observed when dealing with correlations of real world data. \cite{correlations1} contains a list of these cases which, with a very high probability, do not belong to the same cause. This is a general issue with methods that try to extract links between words or concepts based on usage count. We were aware of this problem beforehand and it is discussed in \autoref{sec:baseline:sim}. Possible workarounds can be:
 
 \begin{table}[ht]
     \begin{subtable}[t]{.45\textwidth}
@@ -323,8 +314,7 @@ The situation changes when we try to query phrases and add $2$-grams to the data
             \num{19} & some consult & \num{0.118875}\\
             \bottomrule
         \end{tabularx}
-        \caption{\enquote{think therefore i am}}
-        \label{tab:ranking_chance2_1}
+        \caption{\enquote{think therefore i am}}\label{tab:ranking_chance2_1}
     \end{subtable}
     \hfill
     \begin{subtable}[t]{.45\textwidth}
@@ -356,15 +346,14 @@ The situation changes when we try to query phrases and add $2$-grams to the data
             \num{19} & paranorm in & \num{0.10344}\\
             \bottomrule
         \end{tabularx}
-        \caption{\enquote{logic takes care of itself}}
-        \label{tab:ranking_chance2_2}
+        \caption{\enquote{logic takes care of itself}}\label{tab:ranking_chance2_2}
     \end{subtable}
     \caption{neighbors: $1+2$-grams, $r = 10$, $[129,256]$, combined with \enquote{philosophi}}\label{tab:ranking_chance2}
 \end{table}
 
 \begin{itemize}
     \item Increasing the pruning threshold: This ould eliminate many pointless entries which only do not represent a common trend.
-    \item Weighting distance with n-Gram importance: It should be possible to weight the distance with additional information about possible neighbors, e.g. with their total counts or with linguistic metrics on how common or special words are.
+    \item Weighting distance with n-Gram importance: It should be possible to weight the distance with additional information about possible neighbors, e.g.\ with their total counts or with linguistic metrics on how common or special words are.
     \item Extend filtering/normalization to take inter-word information into account: Currently prepositions and other non-important words in $2$-grams and at the end of $3+$-grams often do not provide value information.
     \item Use multiple search queries and calculate a (weighted) distance to all of them: An example is shown in \autoref{tab:ranking_chance2} where we add \enquote{philosophi} as a second query. There exist multiple methods on how to do that, in our example we just added the DTW distances together, but Euclidean distances may also work as well as more sophisticated ways like running a DTW against multiple time series at once.
 \end{itemize}

@@ -34,7 +34,7 @@ As a first step we download the raw data from the Google server. A complete list
 
 \url{https://storage.googleapis.com/books/ngrams/books/datasetsv2.html}
 
-The data collection and processing is described in \cite{Google_nGrams}. The raw text data which was downloaded from the Google servers is mangled by a high-performance C++ implementation to speed-up the upcoming steps. During the first steps, only the nGram content is required without any knowledge of the actual time series data. We exploit this fact and delay the actual parsing and storage of the time series until the data is required and focus on the handling of the string data as long as possible.
+The data collection and processing is described in~\cite{Google_nGrams}. The raw text data which was downloaded from the Google servers is mangled by a high-performance C++ implementation to speed-up the upcoming steps. During the first steps, only the nGram content is required without any knowledge of the actual time series data. We exploit this fact and delay the actual parsing and storage of the time series until the data is required and focus on the handling of the string data as long as possible.
 
 
 \subsection{String filtering}
@@ -45,14 +45,14 @@ It seems that the nGrams that Google extracted does not only contain pure words 
 
 \subsection{String Normalization}
 \label{ssec:baseline:data:snorm}
-Since the data the nGrams are described by Unicode strings, there may exist string describing the same content. We apply NFKC normalization as described in \cite{unicode8annex15} to solve this issue. Furthermore we lowercase all inputs with respect to the Unicode standard. If this procedure will lead to duplicate nGrams, they are joined by adding the corresponding time series data.
+Since the data the nGrams are described by Unicode strings, there may exist string describing the same content. We apply NFKC normalization as described in~\cite{unicode8annex15} to solve this issue. Furthermore we lowercase all inputs with respect to the Unicode standard. If this procedure will lead to duplicate nGrams, they are joined by adding the corresponding time series data.
 
 Notice that the lowercase transformation may not work as expected for other languages than English since it may lead to a lose of important information.
 
 
 \subsection{Word Normalization}
 \label{ssec:baseline:data:wnorm}
-The words forming the nGrams exist in multiple variants, e.g. different terms for verbs or singular and plural form for nouns. Naturally the resulting time series are very similar and do not contain valuable information, neither for our algorithms nor for a human analyst. We solve this issue by applying the WordNet lemmatizer (\cite{wordnet}) and afterwards the snowball stemmer (\cite{porter2}) to all words. In case of same output nGrams the related time series are added again.
+The words forming the nGrams exist in multiple variants, e.g.\ different terms for verbs or singular and plural form for nouns. Naturally the resulting time series are very similar and do not contain valuable information, neither for our algorithms nor for a human analyst. We solve this issue by applying the WordNet lemmatizer (\cite{wordnet}) and afterwards the snowball stemmer (\cite{porter2}) to all words. In case of same output nGrams the related time series are added again.
 
 As for the former transformation step be aware of the language problem. Other languages may require other word normalization techniques. Also there may be more advanced techniques that exploit the knowledge of the entire nGram instead of single words.
 
@@ -63,7 +63,7 @@ We decided not to run any OCR (optical character recognition) error recognition 
 \label{ssec:baseline:data:prune}
 The original data sets contains a lot of very rare nGrams that, in our opinion, do not provide enough statistical information to be considered during the further analysis. The same applies to all nGrams for the early years that are contained in the data. We decided to only use the last \num{256} years of the time series data and that we drop all nGrams where the related match count time series is too small, or in mathematical terms where $\sum_{1753 \leq y \leq 2008} v_{0, y} < 1000$ ($v_0$ is the \enquote{match count}) applies. Notice that this is the first step where the actual time series content is required. Therefore it is also the first step where we parse the time series data for all nGram strings which survived up to this point.
 
-The selection of the time range of \num{256} years has other advantages apart from the pure pruning. Since it is a power of \num{2} it is easier to apply many transformations (e.g. Fourier or Discrete Wavelet Transformation) to it without the need to think about and justify additional edge case handling.
+The selection of the time range of \num{256} years has other advantages apart from the pure pruning. Since it is a power of \num{2} it is easier to apply many transformations (e.g.\ Fourier or Discrete Wavelet Transformation) to it without the need to think about and justify additional edge case handling.
 
 
 
@@ -153,7 +153,7 @@ As \autoref{fig:ngrams_ex2_fitavg} shows, there are cases where time series look
     \caption{Frequency distribution (mean + standard deviation) for different smoothing levels}\label{fig:smoothing_frequencies}
 \end{figure}
 
-Since calculating the distances of noisy gradients may lead to useless results, we smooth the time series using a Gauss kernel with $\sigma = 1$ before deriving the gradient. An example is shown in \autoref{fig:ngrams_ex2_grad_smooth}. The reason we can use a Gauss kernel, which takes past and future values into account, for a time series here is the fact that the data we are transforming is known beforehand. This is different to most other scenarios where smoothing techniques like EWMA (exponentially weighted moving average) are required. Frequency distributions for different smoothing levels are shown in \autoref{fig:smoothing_frequencies}. The non-smoothed data shows quite high amplitudes in higher frequencies ranges which is uncommon for most time series data sets. The chosen smoothing of $\sigma = 1$ reduces noise while $\sigma = 2$ leads to a heavy loss of information. The overall pattern of fast switching gradients will also lead to some other problems, e.g. in \autoref{sec:baseline:speed}. The similarity of the nGram \enquote{kiss} is clearer now. As expected, the time data does not quite fit the other example series. This is intended since the underlying data also has a slightly different structure.
+Since calculating the distances of noisy gradients may lead to useless results, we smooth the time series using a Gauss kernel with $\sigma = 1$ before deriving the gradient. An example is shown in \autoref{fig:ngrams_ex2_grad_smooth}. The reason we can use a Gauss kernel, which takes past and future values into account, for a time series here is the fact that the data we are transforming is known beforehand. This is different to most other scenarios where smoothing techniques like EWMA (exponentially weighted moving average) are required. Frequency distributions for different smoothing levels are shown in \autoref{fig:smoothing_frequencies}. The non-smoothed data shows quite high amplitudes in higher frequencies ranges which is uncommon for most time series data sets. The chosen smoothing of $\sigma = 1$ reduces noise while $\sigma = 2$ leads to a heavy loss of information. The overall pattern of fast switching gradients will also lead to some other problems, e.g.\ in \autoref{sec:baseline:speed}. The similarity of the nGram \enquote{kiss} is clearer now. As expected, the time data does not quite fit the other example series. This is intended since the underlying data also has a slightly different structure.
 
 
 \subsection{Dynamic Time Warping}
@@ -165,7 +165,7 @@ Since calculating the distances of noisy gradients may lead to useless results, 
     \caption{Extrema of gradients of $\sigma = 2$ smoothed example time series}\label{fig:ngrams_ex2_extrema}
 \end{figure}
 
-As \autoref{fig:ngrams_ex2_extrema} shows, while having the same structure the gradients do not align perfectly. To calculate a meaningful distance, we use DTW (Dynamic Time Warping)\footnote{We do not cite a publication here since it is a commonly known algorithm and the only online publisher of the assumed original publication wants you to pay $>$\SI{30}{\$} after $>$\num{45} years.} with an Euclidean distance and a Sakoe-Chiba Band (\cite{sakoe}) of radius $r$. The usage of gradients as an input of Dynamic Time Warping follows the idea presented in \cite{DDTW}.
+As \autoref{fig:ngrams_ex2_extrema} shows, while having the same structure the gradients do not align perfectly. To calculate a meaningful distance, we use DTW (Dynamic Time Warping)\footnote{We do not cite a publication here since it is a commonly known algorithm and the only online publisher of the assumed original publication wants you to pay $>$\SI{30}{\$} after $>$\num{45} years.} with an Euclidean distance and a Sakoe-Chiba Band (\cite{sakoe}) of radius $r$. The usage of gradients as an input of Dynamic Time Warping follows the idea presented in~\cite{DDTW}.
 
 
 \subsection{Ranking}
@@ -203,16 +203,16 @@ Here $\Delta_1$ calculates the gradient with distance \num{1}.
 
 That approach might seem to be slightly artificial and indeed its more a phenomenological metric instead of a mathematically proven approach. The main reason for this is that we want to keep the index as small as possible to enable users to understand the content of the list. If you try to use the set of nearest neighbors as an input for another algorithm you may want to choose another method.
 
-Keep in mind that our method requires sorting of all neighbors while na{\"i}ve $k$ nearest neighbors search requires only partial sorting. For a bruteforce search this should not be a problem since calculating the DTW distances dominates the execution time but it might be a problem when handling overly large data sets. Also it renders index techniques useless since the algorithm cannot ensure to draw enough data from the index to reach the cutoff point. Therefore we do not use this technique during all evaluations.
+Keep in mind that our method requires sorting of all neighbors while na{\"\i}ve $k$ nearest neighbors search requires only partial sorting. For a bruteforce search this should not be a problem since calculating the DTW distances dominates the execution time but it might be a problem when handling overly large data sets. Also it renders index techniques useless since the algorithm cannot ensure to draw enough data from the index to reach the cutoff point. Therefore we do not use this technique during all evaluations.
 
-We also want to point out that this method is very instable. Small changes in the input data, e.g. by noise introduces by compression, will quickly lead to different results.
+We also want to point out that this method is very instable. Small changes in the input data, e.g.\ by noise introduces by compression, will quickly lead to different results.
 
 
 
 \section{Index-based Speed-up}
 \label{sec:baseline:speed}
 
-One of the fundamental problems of large-scale DTW-based similarity searches is that, without further preparation, a linear scan is required. In preparation of further research and usage of $5$-grams, we want to avoid this and cut the runtime complexity to $\mathcal{O}(\log{n})$. While doing so we still want to archive exact results, at least for our baseline. We decided to implement \cite{LB_Keogh} which is a combination of an R-tree index (\cite{rtree}) and early sorting and pruning by utilizing bound checks.
+One of the fundamental problems of large-scale DTW-based similarity searches is that, without further preparation, a linear scan is required. In preparation of further research and usage of $5$-grams, we want to avoid this and cut the runtime complexity to $\mathcal{O}(\log{n})$. While doing so we still want to archive exact results, at least for our baseline. We decided to implement~\cite{LB_Keogh} which is a combination of an R-tree index (\cite{rtree}) and early sorting and pruning by utilizing bound checks.
 
 \begin{figure}
     \centering
@@ -226,7 +226,7 @@ One of the fundamental problems of large-scale DTW-based similarity searches is 
     \caption{DTW index efficiency, over $r$, resolution is \num{64}}\label{fig:dtw_index2}
 \end{figure}
 
-A problem with this type of index is that the structure of the indexed data is different than the one tested in the publication. Our rather short data (in terms of measured points) contains more entropy and is more jittering than the time series intended by the paper. Therefore we require more dimensions to get a tree that at least filters out some candidates as shown in \autoref{fig:dtw_index}. We need at least \num{16} dimensions to get any affect from the \code{LB\_PAA} and we do not even see any real filtering effect from the tree structure itself\footnote{the amount of received time series is more than \SI{95}{\percent}}. So the tree structure only provides a sorting of the time series. That results in a very memory-inefficient data structure. Remember that for every dimension, the R-tree stores two data points, a minimum and a maximum. So we need to store at least \SI{12.5}{\percent} of the actual data size as an index to get a any effect and still have a linear complexity. The high dimensionality renders the tree performance and memory management nearly useless, as also found by \cite{rtree_highdim}. The situation depends on the warping radius as shown in \autoref{fig:dtw_index2}. For non-trivial values nearly the entire data is fetched from the index. Because all of this is a general problem of R-tree-based algorithms, we did not implement the improvements suggested by \cite{LB_Improved}.
+A problem with this type of index is that the structure of the indexed data is different than the one tested in the publication. Our rather short data (in terms of measured points) contains more entropy and is more jittering than the time series intended by the paper. Therefore we require more dimensions to get a tree that at least filters out some candidates as shown in \autoref{fig:dtw_index}. We need at least \num{16} dimensions to get any affect from the \code{LB\_PAA} and we do not even see any real filtering effect from the tree structure itself\footnote{the amount of received time series is more than \SI{95}{\percent}}. So the tree structure only provides a sorting of the time series. That results in a very memory-inefficient data structure. Remember that for every dimension, the R-tree stores two data points, a minimum and a maximum. So we need to store at least \SI{12.5}{\percent} of the actual data size as an index to get a any effect and still have a linear complexity. The high dimensionality renders the tree performance and memory management nearly useless, as also found by~\cite{rtree_highdim}. The situation depends on the warping radius as shown in \autoref{fig:dtw_index2}. For non-trivial values nearly the entire data is fetched from the index. Because all of this is a general problem of R-tree-based algorithms, we did not implement the improvements suggested by~\cite{LB_Improved}.
 
 
 
@@ -268,11 +268,11 @@ It is not surprising that others also tried to find similarities amongst time se
 
 One example is similarity based on mutual information (\cite{MISE}). We believe that this definition is a great idea and is a very generic approach which can be applied to many fields. Sadly their method relies on slow pairwise comparison. Also their idea of relationship does not match the one we developed for this particular application.
 
-The definition developed in \cite{sim1} is based on the matching of rescaled subsequences. This is similar to our idea of using DTW and might be worth to consider for future research work. For now we are not able to use this approach because it does not scale well enough to the large amount of time series.
+The definition developed in~\cite{sim1} is based on the matching of rescaled subsequences. This is similar to our idea of using DTW and might be worth to consider for future research work. For now we are not able to use this approach because it does not scale well enough to the large amount of time series.
 
-An interesting approach is presented in \cite{sim2}. There time series are described by rules that describe discretized data. In our opinion that could be classified as feature extraction. The two issues are: the discretization loss and the amount of extracted rules. Both do not work very well with our idea of similarity, but it might be worth to consider to use this technology to add additional information to behavior that we find with our method and make the results more understandable to the users.
+An interesting approach is presented in~\cite{sim2}. There time series are described by rules that describe discretized data. In our opinion that could be classified as feature extraction. The two issues are: the discretization loss and the amount of extracted rules. Both do not work very well with our idea of similarity, but it might be worth to consider to use this technology to add additional information to behavior that we find with our method and make the results more understandable to the users.
 
-One last idea which we want present here is an alternative to the used DTW: Longest Common Subsequence (LCSS) and Edit Distance on Real Sequence (EDR). These require either discrete data or $\epsilon$-thresholds. \cite{sim3} crafts a generic and fast approach to compute these. Other groups might find this helpful but we decided that DTW is better suited for our application since its idea of a Euclidean distance with some time inaccuracies better match our model of similarity.
+One last idea which we want present here is an alternative to the used DTW\@: Longest Common Subsequence (LCSS) and Edit Distance on Real Sequence (EDR). These require either discrete data or $\epsilon$-thresholds. \cite{sim3} crafts a generic and fast approach to compute these. Other groups might find this helpful but we decided that DTW is better suited for our application since its idea of a Euclidean distance with some time inaccuracies better match our model of similarity.
 
 
 \subsection{Related Techniques}
