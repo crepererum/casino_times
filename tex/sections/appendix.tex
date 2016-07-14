@@ -43,6 +43,7 @@
     \label{tab:clean_up_numbers_1}
 \end{table}
 
+\FloatBarrier
 \begin{table}[ht]
     \centering
     \begin{tabularx}{\textwidth}{r R R R R R}
@@ -83,6 +84,16 @@
     \label{tab:clean_up_numbers_2}
 \end{table}
 
+\input{misc/tree.tex}
+
+\FloatBarrier
+\begin{sidewaysfigure}
+    \centering
+    \megatree{misc/tree_data2.tex}
+    \caption{Example tree merges, nearest neighbors of \enquote{drug} in $[129,256]$ with $r=10$}\label{fig:megatree2}
+\end{sidewaysfigure}
+
+\FloatBarrier
 \begin{table}[ht]
     \centering
     \begin{tabularx}{\textwidth}{l X p{4cm} p{2.5cm}}
@@ -101,11 +112,3 @@
     \caption{Used libraries during the implementation}
     \label{tab:lib_version}
 \end{table}
-
-\input{misc/tree.tex}
-
-\begin{sidewaysfigure}
-    \centering
-    \megatree{misc/tree_data2.tex}
-    \caption{Example tree merges, nearest neighbors of \enquote{drug} in $[129,256]$ with $r=10$}\label{fig:megatree2}
-\end{sidewaysfigure}

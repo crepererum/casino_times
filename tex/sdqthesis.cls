@@ -481,3 +481,6 @@
 \def\subsectionautorefname{Subsection}
 \def\subsubsectionautorefname{Subsection}
 \def\paragraphautorefname{Paragraph}
+
+% misc
+\RequirePackage{placeins}
