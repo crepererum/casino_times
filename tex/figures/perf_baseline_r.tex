@@ -2,7 +2,7 @@
     \begin{axis}[
         xlabel={$r$},
         ylabel={t},
-        legend above,
+        legend above cols=3,
         fullwidth
     ]
         \addplot [mark=*,color=kit-green2] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{drug}] {data/perf_qsimple_r.csv};

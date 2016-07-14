@@ -257,6 +257,7 @@
 
 % languages
 \RequirePackage{babel}
+\RequirePackage{hyphenat}
 
 % hyphenation for compound words
 \RequirePackage[shortcuts]{extdash}
@@ -368,13 +369,17 @@
         height=0.50\textwidth,
         width=\textwidth
     },
-    legend above/.style={
-        legend columns=-1,
+    legend above cols/.style args={#1}{
+        legend columns=#1,
         legend style={
             /tikz/every even column/.append style={column sep=0.2cm},
             at={(0.5,1.15)},
+            cells={anchor=west},
             anchor=south
         }
+    },
+    legend above/.style={
+        legend above cols=-1
     },
     filter discard warning=false,
     every tick label/.append style={font=\scriptsize},
@@ -458,7 +463,9 @@
 
 % better tables
 \RequirePackage{tabularx}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
 \newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+\newcolumntype{C}{>{\centering\arraybackslash}X}
 \RequirePackage{floatrow}
 \floatsetup[table]{font=small}
 

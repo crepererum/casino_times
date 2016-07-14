@@ -1,0 +1,39 @@
+\begin{tikzpicture}
+    \begin{axis}[
+        xlabel={$r$},
+        ylabel={t},
+        legend above cols=3,
+        fullwidth
+    ]
+        \addplot [mark=+,color=kit-green2] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{drug}] {data/perf_qwavelet_me2_md4_mw0_r.csv};
+        \addplot [mark=+,color=kit-cyan] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{know}] {data/perf_qwavelet_me2_md4_mw0_r.csv};
+        \addplot [mark=+,color=kit-red] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{war}] {data/perf_qwavelet_me2_md4_mw0_r.csv};
+
+        \addplot [mark=x,color=kit-green2] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{drug}] {data/perf_qwavelet_me2_md5_mw0_r.csv};
+        \addplot [mark=x,color=kit-cyan] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{know}] {data/perf_qwavelet_me2_md5_mw0_r.csv};
+        \addplot [mark=x,color=kit-red] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{war}] {data/perf_qwavelet_me2_md5_mw0_r.csv};
+
+        \addplot [mark=o,color=kit-green2] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{drug}] {data/perf_qwavelet_me2_md5_mw0.0000001_r.csv};
+        \addplot [mark=o,color=kit-cyan] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{know}] {data/perf_qwavelet_me2_md5_mw0.0000001_r.csv};
+        \addplot [mark=o,color=kit-red] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{war}] {data/perf_qwavelet_me2_md5_mw0.0000001_r.csv};
+
+        \addplot [mark=square,color=kit-green2] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{drug}] {data/perf_qwavelet_me2_md5_mw0.0000000000001_r.csv};
+        \addplot [mark=square,color=kit-cyan] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{know}] {data/perf_qwavelet_me2_md5_mw0.0000000000001_r.csv};
+        \addplot [mark=square,color=kit-red] table [x=r, y=t, col sep=comma, ignore chars={"}, discard if not={ngram}{war}] {data/perf_qwavelet_me2_md5_mw0.0000000000001_r.csv};
+
+        \legend{
+            {drug (depth $=$ \num{4}, weight $=$ \num{0})},
+            {know (depth $=$ \num{4}, weight $=$ \num{0})},
+            {war (depth $=$ \num{4}, weight $=$ \num{0})},
+            {drug (depth $=$ \num{5}, weight $=$ \num{0})},
+            {know (depth $=$ \num{5}, weight $=$ \num{0})},
+            {war (depth $=$ \num{5}, weight $=$ \num{0})},
+            {drug (depth $=$ \num{5}, weight $=$ \num{1e-13})},
+            {know (depth $=$ \num{5}, weight $=$ \num{1e-13})},
+            {war (depth $=$ \num{5}, weight $=$ \num{1e-13})},
+            {drug (depth $=$ \num{5}, weight $=$ \num{1e-7})},
+            {know (depth $=$ \num{5}, weight $=$ \num{1e-7})},
+            {war (depth $=$ \num{5}, weight $=$ \num{1e-7})}
+        };
+    \end{axis}
+\end{tikzpicture}
