@@ -22,17 +22,17 @@ Instead of developing the algorithms as a single monolithic block we designed th
     \item create: creates a new matrix-like storage file with given size and filled with $0$ values
     \item dump\_index\_wavelet: decompresses wavelet tree data and stores resulting time series data back into an uncompressed matrix
     \item extract\_stems: extracts list of normalized words from a word-to-stem transformation file
-    \item filter: filters list of ngrams according to the pattern described in \autoref{ssec:baseline:data:filter}
+    \item filter: filters list of $n$-grams according to the pattern described in \autoref{ssec:baseline:data:filter}
     \item iJulia: generic tool to analyze and visualize data and to prototype algorithms
     \item index\_dtw: indexed data as described in \autoref{sec:baseline:speed}
     \item index\_wavelet: transforms time series data into trees, merges them and stores the result together with a child-to-parent index into a file
     \item normalize: normalizes strings as described in \autoref{ssec:baseline:data:snorm}
     \item print\_wavelet\_tree: extracts multiple wavelet trees and their merges from a wavelet index and outputs a DOT file
-    \item prune\_support: prunes list of possible normalized ngrams according to \autoref{ssec:baseline:data:prune}
+    \item prune\_support: prunes list of possible normalized $n$-grams according to \autoref{ssec:baseline:data:prune}
     \item query\_dtw\_indexed: queries nearest neighbors, accelerated with an indexed produced by index\_dtw and described in \autoref{sec:baseline:speed}
     \item query\_dtw\_simple: queries nearest neighbors with a simple bruteforce approach
     \item query\_dtw\_wavelet: queries nearest neighbors, accelerated by an indexed produced by index\_wavelet
-    \item scan: reads input data from Google and stores all n-Grams as well as the range of years and the value ranges present in the given file
+    \item scan: reads input data from Google and stores all $n$-grams as well as the range of years and the value ranges present in the given file
     \item stem: applies word normalization as described in \autoref{ssec:baseline:data:wnorm} and stores the transformation into a file; this is done because this step is usually to slow to do ad-hoc in contrast to the string normalization
     \item store: stores data from Google input files into a matrix created with create; applies string normalization and word normalization from a transformation file and correctly adds overlapping results
     \item transform: generic transformation of time series data, e.g.\ to execute $\Delta_1(\log(x + 1))$
@@ -70,7 +70,7 @@ An improvement we have tried but dumped was the early rejection of possible neig
 
 We now explain which decisions where made during the implementation of the main algorithm. Some details are already listed in \autoref{sec:algorithm:opt} and we do not repeat them here.
 
-The tree is implemented in a way that every node only stores its coefficient and two child pointers with the child pointers of the leaf nodes being null. A similar concept is implement for the superroot. Apart from the anchor value and the root pointer we also store the final error value of the compression and an integer value representing the n-Gram the superroot belongs to. The child-to-parent and root-to-superroot indices are stored as hash maps, mapping node pointers to vectors. Since pointers change during program execution, all pointers are stored as offset pointers and for hash maps we calculate the offset to a global anchor before hashing, so that the hash is independent from the offset value stored in the pointer as well as from the global address.
+The tree is implemented in a way that every node only stores its coefficient and two child pointers with the child pointers of the leaf nodes being null. A similar concept is implement for the superroot. Apart from the anchor value and the root pointer we also store the final error value of the compression and an integer value representing the $n$-gram the superroot belongs to. The child-to-parent and root-to-superroot indices are stored as hash maps, mapping node pointers to vectors. Since pointers change during program execution, all pointers are stored as offset pointers and for hash maps we calculate the offset to a global anchor before hashing, so that the hash is independent from the offset value stored in the pointer as well as from the global address.
 
 During the index process additional data structures are needed. Indices to lookup nearest neighbors are implemented as sorted vectors and binary searches. Additionally, coefficients are inlined into the index so the vectors contain coefficient-pointer pairs. This construction preserves memory locality and efficiency. For root nodes and inner nodes we store a hash map mapping two children to one index. This ensures that only neighbors are stored in an index which only have the same children than the merge candidate. For leaf nodes we use the time-relative position of the leaf (\num{0} is the very left leaf and \num{255} the very right one) as keys to retrieve the index. The correct position of the leaf nodes and the correct child-parent relationship ensures that inner nodes also have the right position. Modifications to that index where made for possible but failed improvements, e.g.\ in \autoref{ssec:algorithm:fail:dtw}. Furthermore we store counters for the number of stored nodes to output statistics and compression rate information.
 

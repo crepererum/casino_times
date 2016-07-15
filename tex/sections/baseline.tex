@@ -36,34 +36,34 @@ As a first step we download the raw data from the Google server. A complete list
 
 \url{https://storage.googleapis.com/books/ngrams/books/datasetsv2.html}
 
-The data collection and processing is described in~\cite{Google_nGrams}. The raw text data which was downloaded from the Google servers is mangled by a high-performance C++ implementation to speed-up the upcoming steps. During the first steps, only the nGram content is required without any knowledge of the actual time series data. We exploit this fact and delay the actual parsing and storage of the time series until the data is required and focus on the handling of the string data as long as possible.
+The data collection and processing is described in~\cite{Google_nGrams}. The raw text data which was downloaded from the Google servers is mangled by a high-performance C++ implementation to speed-up the upcoming steps. During the first steps, only the $n$-gram content is required without any knowledge of the actual time series data. We exploit this fact and delay the actual parsing and storage of the time series until the data is required and focus on the handling of the string data as long as possible.
 
 
 \subsection{String filtering}
 \label{ssec:baseline:data:filter}
-It seems that the nGrams that Google extracted does not only contain pure words but also punctuation characters and word classes. To simplify storage of the strings and because our users are not interested in searching for whole word types, we filter out all entries that contain characters of the following class:
+It seems that the $n$-grams that Google extracted does not only contain pure words but also punctuation characters and word classes. To simplify storage of the strings and because our users are not interested in searching for whole word types, we filter out all entries that contain characters of the following class:
 
 \code{\[\_.\slash{},:;!?\textbackslash'"\#()<>=+*\{\}0-9\]}
 
 \subsection{String Normalization}
 \label{ssec:baseline:data:snorm}
-Since the data the nGrams are described by Unicode strings, there may exist string describing the same content. We apply NFKC normalization as described in~\cite{unicode8annex15} to solve this issue. Furthermore we lowercase all inputs with respect to the Unicode standard. If this procedure will lead to duplicate nGrams, they are joined by adding the corresponding time series data.
+Since the data the $n$-grams are described by Unicode strings, there may exist string describing the same content. We apply NFKC normalization as described in~\cite{unicode8annex15} to solve this issue. Furthermore we lowercase all inputs with respect to the Unicode standard. If this procedure will lead to duplicate $n$-grams, they are joined by adding the corresponding time series data.
 
 Notice that the lowercase transformation may not work as expected for other languages than English since it may lead to a lose of important information.
 
 
 \subsection{Word Normalization}
 \label{ssec:baseline:data:wnorm}
-The words forming the nGrams exist in multiple variants, e.g.\ different terms for verbs or singular and plural form for nouns. Naturally the resulting time series are very similar and do not contain valuable information, neither for our algorithms nor for a human analyst. We solve this issue by applying the WordNet lemmatizer (\cite{wordnet}) and afterwards the snowball stemmer (\cite{porter2}) to all words. In case of same output nGrams the related time series are added again.
+The words forming the $n$-grams exist in multiple variants, e.g.\ different terms for verbs or singular and plural form for nouns. Naturally the resulting time series are very similar and do not contain valuable information, neither for our algorithms nor for a human analyst. We solve this issue by applying the WordNet lemmatizer (\cite{wordnet}) and afterwards the snowball stemmer (\cite{porter2}) to all words. In case of same output $n$-grams the related time series are added again.
 
-As for the former transformation step be aware of the language problem. Other languages may require other word normalization techniques. Also there may be more advanced techniques that exploit the knowledge of the entire nGram instead of single words.
+As for the former transformation step be aware of the language problem. Other languages may require other word normalization techniques. Also there may be more advanced techniques that exploit the knowledge of the entire $n$-gram instead of single words.
 
 We decided not to run any OCR (optical character recognition) error recognition since we are not aware of any general purpose approach that does not transform rare words or names like a na\"{\i}ve spell checker would do.
 
 
 \subsection{Pruning}
 \label{ssec:baseline:data:prune}
-The original data sets contains a lot of very rare nGrams that, in our opinion, do not provide enough statistical information to be considered during the further analysis. The same applies to all nGrams for the early years that are contained in the data. We decided to only use the last \num{256} years of the time series data and that we drop all nGrams where the related match count time series is too small, or in mathematical terms where $\sum_{1753 \leq y \leq 2008} v_{0, y} < 1000$ ($v_0$ is the \enquote{match count}) applies. Notice that this is the first step where the actual time series content is required. Therefore it is also the first step where we parse the time series data for all nGram strings which survived up to this point.
+The original data sets contains a lot of very rare $n$-grams that, in our opinion, do not provide enough statistical information to be considered during the further analysis. The same applies to all $n$-grams for the early years that are contained in the data. We decided to only use the last \num{256} years of the time series data and that we drop all $n$-grams where the related match count time series is too small, or in mathematical terms where $\sum_{1753 \leq y \leq 2008} v_{0, y} < 1000$ ($v_0$ is the \enquote{match count}) applies. Notice that this is the first step where the actual time series content is required. Therefore it is also the first step where we parse the time series data for all $n$-gram strings which survived up to this point.
 
 The selection of the time range of \num{256} years has other advantages apart from the pure pruning. Since it is a power of \num{2} it is easier to apply many transformations (e.g.\ Fourier or Discrete Wavelet Transformation) to it without the need to think about and justify additional edge case handling.
 
@@ -71,10 +71,10 @@ The selection of the time range of \num{256} years has other advantages apart fr
 
 \section{Similarity}
 \label{sec:baseline:sim}
-We first discuss which time series we want to consider as similar. We want to explore which nGrams are used together. Because there might be a normal usage of certain words or phrases in the day to day life, interesting data might be hidden by an overall large number and therefore interesting changes in usage patterns might not be discovered when total numbers of mentions are compared. Consider the following example: $n_1 \Rightarrow n_2$ but not vice versa and $n_2$ is already used in many books but $n_1$ is a new nGram at a certain point of time. This implication cannot be found by comparing total numbers, because $n_2$ might be way larger than $n_1$ but the implication will lead to similar changes in the overall time series. So we seek to find similar structure instead of similar usage numbers.
+We first discuss which time series we want to consider as similar. We want to explore which $n$-grams are used together. Because there might be a normal usage of certain words or phrases in the day to day life, interesting data might be hidden by an overall large number and therefore interesting changes in usage patterns might not be discovered when total numbers of mentions are compared. Consider the following example: $n_1 \Rightarrow n_2$ but not vice versa and $n_2$ is already used in many books but $n_1$ is a new $n$-gram at a certain point of time. This implication cannot be found by comparing total numbers, because $n_2$ might be way larger than $n_1$ but the implication will lead to similar changes in the overall time series. So we seek to find similar structure instead of similar usage numbers.
 
 \begin{definition}[Query]
-    A query is a time series for which the user (or some program) wants to know the nearest neighbors for. By writing \enquote{some word} we refer to the time series which belongs to the normalized n-Gram or the n-Gram itself, depending on the context. The plural form queries is used to express multiple starting points for a nearest neighbor search, either when generating statistics or when calculating the distance to multiple time series.
+    A query is a time series for which the user (or some program) wants to know the nearest neighbors for. By writing \enquote{some word} we refer to the time series which belongs to the normalized $n$-gram or the $n$-gram itself, depending on the context. The plural form queries is used to express multiple starting points for a nearest neighbor search, either when generating statistics or when calculating the distance to multiple time series.
 \end{definition}
 
 Furthermore we limit our analysis to the \enquote{match count} because it seems to be more useful for later research than the less fine grained \enquote{unique book count}.
@@ -86,7 +86,7 @@ Furthermore we limit our analysis to the \enquote{match count} because it seems 
 \begin{figure}
     \centering
     \input{figures/ngrams_ex_total.tex}
-    \caption{Total counts of example nGrams}\label{fig:ngrams_ex_total}
+    \caption{Total counts of example $n$-grams}\label{fig:ngrams_ex_total}
 \end{figure}
 
 \begin{figure}
@@ -106,15 +106,15 @@ In \autoref{fig:ngrams_ex_total} you can observe the following: the words \enquo
 \begin{figure}
     \centering
     \input{figures/ngrams_ex_relative.tex}
-    \caption{Relative counts of example nGrams}\label{fig:ngrams_ex_relative}
+    \caption{Relative counts of example $n$-grams}\label{fig:ngrams_ex_relative}
 \end{figure}
 
-\autoref{fig:ngrams_sums} shows the foundation of such a factor. The problem with this approach is that time series with an overall huge impact on the sum will also influence the normalized results of small time series heavily. In other words: rather than symbolizing a straight growth, the sum itself has a structure which than will influence the normalized result. An example result of this normalization is shown in \autoref{fig:ngrams_ex_relative}. It can be observed that the ngram \enquote{war} seems to grow heavily during during the time around the world wars. The reason for this is that the overall number of publications decreased during this time except for war-related topics. As explained, the structure of the sum time series itself now results in a new feature of the \enquote{war} data.
+\autoref{fig:ngrams_sums} shows the foundation of such a factor. The problem with this approach is that time series with an overall huge impact on the sum will also influence the normalized results of small time series heavily. In other words: rather than symbolizing a straight growth, the sum itself has a structure which than will influence the normalized result. An example result of this normalization is shown in \autoref{fig:ngrams_ex_relative}. It can be observed that the $n$-gram \enquote{war} seems to grow heavily during during the time around the world wars. The reason for this is that the overall number of publications decreased during this time except for war-related topics. As explained, the structure of the sum time series itself now results in a new feature of the \enquote{war} data.
 
 \begin{figure}
     \centering
     \input{figures/ngrams_ex_log.tex}
-    \caption{$\log$ counts of example nGrams}\label{fig:ngrams_ex_log}
+    \caption{$\log$ counts of example $n$-grams}\label{fig:ngrams_ex_log}
 \end{figure}
 
 \begin{figure}
@@ -132,13 +132,13 @@ So we choose to apply $\log(x + 1)$ to all values for normalizing. Note the \num
 \begin{figure}
     \centering
     \input{figures/ngrams_ex2_fitavg.tex}
-    \caption{Example nGrams, fit using AVG}\label{fig:ngrams_ex2_fitavg}
+    \caption{Example $n$-grams, fit using AVG}\label{fig:ngrams_ex2_fitavg}
 \end{figure}
 
 \begin{figure}
     \centering
     \input{figures/ngrams_ex2_grad.tex}
-    \caption{Gradients of example nGrams}\label{fig:ngrams_ex2_grad}
+    \caption{Gradients of example $n$-grams}\label{fig:ngrams_ex2_grad}
 \end{figure}
 
 As \autoref{fig:ngrams_ex2_fitavg} shows, there are cases where time series look very similar but are difficult to fit by using a linear transformation. Therefore a simple $p$-distance is not sufficient for as a distance measure. We decided to fit the gradients instead. An example is shown in \autoref{fig:ngrams_ex2_grad}. We use the $\Delta = 1$ gradient of $\log(x + 1)$. Now time series with similar structure have a low distance. The following two subsections will explain two additional tunings we made to make this distance more meaningful.
@@ -146,7 +146,7 @@ As \autoref{fig:ngrams_ex2_fitavg} shows, there are cases where time series look
 \begin{figure}
     \centering
     \input{figures/ngrams_ex2_grad_smooth.tex}
-    \caption{Gradients of example nGrams, smoothed with $\sigma = 1$}\label{fig:ngrams_ex2_grad_smooth}
+    \caption{Gradients of example $n$-grams, smoothed with $\sigma = 1$}\label{fig:ngrams_ex2_grad_smooth}
 \end{figure}
 
 \begin{figure}
@@ -155,7 +155,7 @@ As \autoref{fig:ngrams_ex2_fitavg} shows, there are cases where time series look
     \caption{Frequency distribution (mean + standard deviation) for different smoothing levels}\label{fig:smoothing_frequencies}
 \end{figure}
 
-Since calculating the distances of noisy gradients may lead to useless results, we smooth the time series using a Gauss kernel with $\sigma = 1$ before deriving the gradient. An example is shown in \autoref{fig:ngrams_ex2_grad_smooth}. The reason we can use a Gauss kernel, which takes past and future values into account, for a time series here is the fact that the data we are transforming is known beforehand. This is different to most other scenarios where smoothing techniques like EWMA (exponentially weighted moving average) are required. Frequency distributions for different smoothing levels are shown in \autoref{fig:smoothing_frequencies}. The non-smoothed data shows quite high amplitudes in higher frequencies ranges which is uncommon for most time series data sets. The chosen smoothing of $\sigma = 1$ reduces noise while $\sigma = 2$ leads to a heavy loss of information. The overall pattern of fast switching gradients will also lead to some other problems, e.g.\ in \autoref{sec:baseline:speed}. The similarity of the nGram \enquote{kiss} is clearer now. As expected, the time data does not quite fit the other example series. This is intended since the underlying data also has a slightly different structure.
+Since calculating the distances of noisy gradients may lead to useless results, we smooth the time series using a Gauss kernel with $\sigma = 1$ before deriving the gradient. An example is shown in \autoref{fig:ngrams_ex2_grad_smooth}. The reason we can use a Gauss kernel, which takes past and future values into account, for a time series here is the fact that the data we are transforming is known beforehand. This is different to most other scenarios where smoothing techniques like EWMA (exponentially weighted moving average) are required. Frequency distributions for different smoothing levels are shown in \autoref{fig:smoothing_frequencies}. The non-smoothed data shows quite high amplitudes in higher frequencies ranges which is uncommon for most time series data sets. The chosen smoothing of $\sigma = 1$ reduces noise while $\sigma = 2$ leads to a heavy loss of information. The overall pattern of fast switching gradients will also lead to some other problems, e.g.\ in \autoref{sec:baseline:speed}. The similarity of the $1$-gram \enquote{kiss} is clearer now. As expected, the time data does not quite fit the other example series. This is intended since the underlying data also has a slightly different structure.
 
 
 \subsection{Dynamic Time Warping}
@@ -254,7 +254,7 @@ The first idea on how to deal with our data set would be a dimension reduction. 
 \subsection{No Compression or Reduction}
 \label{ssec:baseline:prior:nocompression}
 
-Some methods (\cite{dimred3,dimred4}) try to transform the data into another representation and use this representation to speed up similarity search. The problem here that this does not lead to a data reduction and therefore does not enable users to process the full n-gram corpus.
+Some methods (\cite{dimred3,dimred4}) try to transform the data into another representation and use this representation to speed up similarity search. The problem here that this does not lead to a data reduction and therefore does not enable users to process the full $n$-gram corpus.
 
 
 \subsection{Feature Extraction}

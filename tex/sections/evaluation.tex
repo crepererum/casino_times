@@ -24,7 +24,7 @@
         \centering
         \begin{tabularx}{\textwidth}{r R l}
             \toprule
-            rank & ngram & distance\\
+            rank & $n$-gram & distance\\
             \midrule
             \num{0} & drug & \num{0}\\
             \num{1} & treatment & \num{0.0334646}\\
@@ -56,7 +56,7 @@
         \centering
         \begin{tabularx}{\textwidth}{r R l}
             \toprule
-            rank & ngram & distance\\
+            rank & $n$-gram & distance\\
             \midrule
             \num{0} & drug & \num{0}\\
             \num{1} & character & \num{0.0186669}\\
@@ -93,7 +93,7 @@ Before we start to evaluate the actual algorithms, we show that our baseline is 
         \centering
         \begin{tabularx}{\textwidth}{r R l}
             \toprule
-            rank & ngram & distance\\
+            rank & $n$-gram & distance\\
             \midrule
             \num{0} & drug & \num{0}\\
             \num{1} & treatment & \num{0.0516925}\\
@@ -125,7 +125,7 @@ Before we start to evaluate the actual algorithms, we show that our baseline is 
         \centering
         \begin{tabularx}{\textwidth}{r R l}
             \toprule
-            rank & ngram & distance\\
+            rank & $n$-gram & distance\\
             \midrule
             \num{0} & drug & \num{0}\\
             \num{1} & treatment & \num{0.0334636}\\
@@ -162,7 +162,7 @@ The warping radius plays an important role when extracting good results from the
         \centering
         \begin{tabularx}{\textwidth}{r R l}
             \toprule
-            rank & ngram & distance\\
+            rank & $n$-gram & distance\\
             \midrule
             \num{0} & know & \num{0}\\
             \num{1} & do & \num{0.00973317}\\
@@ -194,7 +194,7 @@ The warping radius plays an important role when extracting good results from the
         \centering
         \begin{tabularx}{\textwidth}{r R l}
             \toprule
-            rank & ngram & distance\\
+            rank & $n$-gram & distance\\
             \midrule
             \num{0} & war & \num{0}\\
             \num{1} & fight & \num{0.0215918}\\
@@ -231,7 +231,7 @@ Another interesting but logical observation is that common verbs like \enquote{k
         \centering
         \begin{tabularx}{\textwidth}{r R l}
             \toprule
-            rank & ngram & distance\\
+            rank & $n$-gram & distance\\
             \midrule
             \num{0} & think therefore i am & \num{0}\\
             \num{1} & diversif from & \num{0.0674405}\\
@@ -263,7 +263,7 @@ Another interesting but logical observation is that common verbs like \enquote{k
         \centering
         \begin{tabularx}{\textwidth}{r R l}
             \toprule
-            rank & ngram & distance\\
+            rank & $n$-gram & distance\\
             \midrule
             \num{0} & logic takes care of itself & \num{0}\\
             \num{1} & keratomileusi for & \num{0.0555444}\\
@@ -300,7 +300,7 @@ The situation changes when we try to query phrases and add $2$-grams to the data
         \centering
         \begin{tabularx}{\textwidth}{r R l}
             \toprule
-            rank & ngram & distance\\
+            rank & $n$-gram & distance\\
             \midrule
             \num{0} & basic introduct & \num{0.11728}\\
             \num{1} & god beyond & \num{0.117417}\\
@@ -332,7 +332,7 @@ The situation changes when we try to query phrases and add $2$-grams to the data
         \centering
         \begin{tabularx}{\textwidth}{r R l}
             \toprule
-            rank & ngram & distance\\
+            rank & $n$-gram & distance\\
             \midrule
             \num{0} & via hematogen & \num{0.099445}\\
             \num{1} & messag share & \num{0.1004}\\
@@ -364,7 +364,7 @@ The situation changes when we try to query phrases and add $2$-grams to the data
 
 \begin{itemize}
     \item Increasing the pruning threshold: This ould eliminate many pointless entries which only do not represent a common trend.
-    \item Weighting distance with n-Gram importance: It should be possible to weight the distance with additional information about possible neighbors, e.g.\ with their total counts or with linguistic metrics on how common or special words are.
+    \item Weighting distance with $n$-gram importance: It should be possible to weight the distance with additional information about possible neighbors, e.g.\ with their total counts or with linguistic metrics on how common or special words are.
     \item Extend filtering/normalization to take inter-word information into account: Currently prepositions and other non-important words in $2$-grams and at the end of $3+$-grams often do not provide value information.
     \item Use multiple search queries and calculate a (weighted) distance to all of them: An example is shown in \autoref{tab:ranking_chance2} where we add \enquote{philosophi} as a second query. There exist multiple methods on how to do that, in our example we just added the DTW distances together, but Euclidean distances may also work as well as more sophisticated ways like running a DTW against multiple time series at once.
 \end{itemize}
@@ -426,7 +426,7 @@ Then we measure different quantiles of this distance as plotted in \autoref{fig:
 
 We now want to evaluate how the index structure described in \autoref{sec:algorithm:asindex} behaves under certain compression levels and tracing limits. The wavelet index is only used to select candidates for the DTW-driven nearest neighbor search. It is not used to provide the actual time series data. This information is retrieved from the uncompressed data set. We doubt that our compression method is good enough to drive both components at the same time, especially when the same maximum error is used.
 
-We set up the following experiment: We use the n-grams \enquote{democraci}, \enquote{drug}, \enquote{german} \enquote{happi}, \enquote{health}, \enquote{know}, \enquote{money}, \enquote{religion}, \enquote{soft}, and \enquote{war} and a warping radius of \num{0}, \num{5}, \num{10}, \num{15}, and \num{20}. No weight-based filtering is applied. We then compare the top \num{20} neighbors for all combinations under the set of compression levels and maximum trace-down limits. We compare the number of new entries within that list. If the resulting is shorted than \num{20}, because not enough candidates could be extracted from the index, we do a fill-up with virtual entries that never match any existing one. Without that special handling, only the precision of the index would be measured and low recall values would not affect the score. Also we do not measure the string distance here since our approach does not influence the pair-wise ranking of the correctly drawn neighbors. This is due to the fact that all candidates returned by the index are compared via DTW without any priority handling.
+We set up the following experiment: We use the $n$-grams \enquote{democraci}, \enquote{drug}, \enquote{german} \enquote{happi}, \enquote{health}, \enquote{know}, \enquote{money}, \enquote{religion}, \enquote{soft}, and \enquote{war} and a warping radius of \num{0}, \num{5}, \num{10}, \num{15}, and \num{20}. No weight-based filtering is applied. We then compare the top \num{20} neighbors for all combinations under the set of compression levels and maximum trace-down limits. We compare the number of new entries within that list. If the resulting is shorted than \num{20}, because not enough candidates could be extracted from the index, we do a fill-up with virtual entries that never match any existing one. Without that special handling, only the precision of the index would be measured and low recall values would not affect the score. Also we do not measure the string distance here since our approach does not influence the pair-wise ranking of the correctly drawn neighbors. This is due to the fact that all candidates returned by the index are compared via DTW without any priority handling.
 
 The results are shown in \autoref{fig:tbindex}. The top graphics shows the index under a maximum compression error of \num{1}, the middle one with an error of \num{2} and the bottom one with a value of \num{5}. The different plotting styles represent different maximum tracing levels. Sets of markers which share the same x-coordinate usually have their origin in the same warping radius since our tracing algorithm does not take this variable into account. The different groups of markers then correspond to different queries. Measurements which belong to the same query and warping radius, hence the same information request, are connected with a thin line to simplify tracking of the parameter response. It can be observed that different queries are affected differently by the index while the influence of different warping radius values is not that big. Another aspect is the choice of the right compression level. A maximum error of \num{1} makes it hard to draw enough candidates from the index while an error of \num{5} results in too many results and therefore does not provide enough value. We therefore assume that a maximum error of around \num{2} results in good results and we will use this index for further measurements.
 
