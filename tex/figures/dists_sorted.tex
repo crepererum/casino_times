@@ -13,8 +13,8 @@
         \addplot [mark=none,color=kit-red] table [x=n, y=d, col sep=comma, ignore chars={"}, discard if not={ngram}{war}] {data/dists_sorted.csv};
         \addlegendentry{war};
 
-        \addplot [mark=|,color=kit-green2] coordinates {(16,0.0632296354112135)};
-        \addplot [mark=|,color=kit-cyan] coordinates {(10,0.1994456116321715)};
-        \addplot [mark=|,color=kit-red] coordinates {(9,0.1890627965205028)};
+        \addplot [mark=|,mark size=0.2cm,color=kit-green2] coordinates {(16,0.0632296354112135)};
+        \addplot [mark=|,mark size=0.2cm,color=kit-cyan] coordinates {(10,0.1994456116321715)};
+        \addplot [mark=|,mark size=0.2cm,color=kit-red] coordinates {(9,0.1890627965205028)};
     \end{axis}
 \end{tikzpicture}
