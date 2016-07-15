@@ -8,7 +8,7 @@
 \section{Baseline Sanity}
 \label{sec:evaluation:baseline}
 
-\begin{table}[ht]
+\begin{table}[t]
     \begin{subtable}[t]{.45\textwidth}
         \centering
         \begin{tabularx}{\textwidth}{r R l}
@@ -77,7 +77,7 @@
 
 Before we start to evaluate the actual algorithms, we show that our baseline is sane. \autoref{tab:ranking_drug_all} shows the top \num{20} neighbors of the $1$-gram \enquote{drug} with a warping radius of $r = 10$, measured over the full \num{256} years. The auto-cutoff-point as described in \autoref{ssec:baseline:sim:rank} is marked. For these examples, only neighbors from the $1$-gram data set are shown. Neighbors are represented by there normalized placeholder which is derived as illustrated in \autoref{sec:baseline:data}. The neighbors are words that are related to the concept \enquote{drug} with some exceptions, for example the neighbor \enquote{li} which is not extracted from any meaningful word. The meaningfulness increases when limiting the DTW to the second half of the data set. This is shown in \autoref{tab:ranking_drug_secondhalf}. It also turns out that \enquote{drug} is used in two contexts: as medicine and in terms of narcotics.
 
-\begin{table}[ht]
+\begin{table}[t]
     \begin{subtable}[t]{.45\textwidth}
         \centering
         \begin{tabularx}{\textwidth}{r R l}
@@ -146,7 +146,7 @@ Before we start to evaluate the actual algorithms, we show that our baseline is 
 
 The warping radius plays an important role when extracting good results from the data. \autoref{tab:ranking_drug_r0} and \autoref{tab:ranking_drug_r20} show too low and too high radius values and how in the first case the neighbors tend to be very pointless while in the latter case the results seem to be very common words.
 
-\begin{table}[ht]
+\begin{table}[t]
     \begin{subtable}[t]{.45\textwidth}
         \centering
         \begin{tabularx}{\textwidth}{r R l}
@@ -215,7 +215,7 @@ The warping radius plays an important role when extracting good results from the
 
 Another interesting but logical observation is that common verbs like \enquote{know} result in unenlightening results as shown in \autoref{tab:ranking_know_all}. On the other hand nouns like \enquote{war} show sane and meaningful data. This is shown in \autoref{tab:ranking_war_all}.
 
-\begin{table}[ht]
+\begin{table}[t]
     \begin{subtable}[t]{.45\textwidth}
         \centering
         \begin{tabularx}{\textwidth}{r R l}
@@ -284,7 +284,7 @@ Another interesting but logical observation is that common verbs like \enquote{k
 
 The situation changes when we try to query phrases and add $2$-grams to the data set. As \autoref{tab:ranking_chance_1} shows, results may contain more entries which do not provide any insights. The data in \autoref{tab:ranking_chance_2} are even worse. At least for us, no insights are extracted at all.\footnote{People might be able to interpret the \enquote{zhang daol} entry which is derived from the name \enquote{Zhang Daoling}.} When limiting the search to the $1$-gram database, the results are even worse. Some reasons for this are that our cleaned up data contains a lot of words that do not provide direct insights. For example the words \enquote{the} and \enquote{of} which are listed in some of the $2$-gram neighbors do not provide meaningful data. On the other hand the same words may be important for $3$-grams, e.g.\ in \enquote{Medal of Honor}. The reason that so many neighbors are found which seem to contain random data is the following: the more data is stored in the database, the more likely it is to find neighbors that have a lower distance. A similar effect can be observed when dealing with correlations of real world data. \cite{correlations1} contains a list of these cases which, with a very high probability, do not belong to the same cause. This is a general issue with methods that try to extract links between words or concepts based on usage count. We were aware of this problem beforehand and it is discussed in \autoref{sec:baseline:sim}. Possible workarounds can be:
 
-\begin{table}[ht]
+\begin{table}[t]
     \begin{subtable}[t]{.45\textwidth}
         \centering
         \begin{tabularx}{\textwidth}{r R l}
@@ -432,7 +432,7 @@ Sometimes using the compression rate as hint how exact the nearest neighbor sear
 \section{Performance}
 \label{sec:evaluation:perf}
 
-\begin{table}[ht]
+\begin{table}[t]
     \centering
     \begin{tabularx}{\textwidth}{r L}
         \toprule
