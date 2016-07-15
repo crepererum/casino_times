@@ -27,6 +27,8 @@ We perform the following clean up steps:
 
 Note that swapping the string-based steps does not lead a different output. \autoref{fig:clean_up_sums} show how much data is pruned by every step for the $1$-gram data set. The exact numbers can be found in \autoref{tab:clean_up_numbers_1} and \autoref{tab:clean_up_numbers_2}. Naturally there are some differences between the different starting characters but as far as we can tell no anomalies can be observed.
 
+If not stated otherwise, all figures and explanations in this work are derived from the $1$-gram data set.
+
 
 \subsection{Download and Parsing}
 \label{ssec:baseline:data:download}
@@ -41,7 +43,7 @@ The data collection and processing is described in~\cite{Google_nGrams}. The raw
 \label{ssec:baseline:data:filter}
 It seems that the nGrams that Google extracted does not only contain pure words but also punctuation characters and word classes. To simplify storage of the strings and because our users are not interested in searching for whole word types, we filter out all entries that contain characters of the following class:
 
-\code{\[_.,!'0-9\]}
+\code{\[\_.\slash{},:;!?\textbackslash'"\#()<>=+*\{\}0-9\]}
 
 \subsection{String Normalization}
 \label{ssec:baseline:data:snorm}
