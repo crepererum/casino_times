@@ -499,3 +499,38 @@ As shown in \autoref{fig:compression_timeline}, normally the first elements inse
 \end{enumerate}
 
 While choosing elements of the dataset is considered cheating because we would add data to the database without counting it, the other methods would in general work because the description of the corresponding trees could be considered as part of the model and are fixed for all compressed data sets. The main issue is that someone needs to come up with a proper choice of this seeds and we were not able to figure out a proper way to do this.
+
+
+
+\section{Different Ideas}
+\label{sec:algorithm:alternatives}
+
+After investigating failed approaches we want to present some ideas which we did not implement but which we think are worth to consider.
+
+The first alternative is to instead compressing the actual time series data, to compress lower and upper limits within the warping as presented in~\cite{LB_Keogh}. The question then is how to design a tracer which handles both trees at the same time. Another open point is if both limits should be added to the same index or not. Using the same index would probably enable higher compression rates while it requires the tracer to handle the mixed data set.
+
+\begin{table}[t]
+    \centering
+    \begin{tabularx}{\textwidth}{r r R R}
+        \toprule
+        algorithm & compression level & \multicolumn{2}{c}{average compression rate}\\
+        & & floating-point data & integer data\\
+        \midrule
+        snappy\footnote{snzip (\url{https://github.com/kubo/snzip}) version \code{1.0.3} with \code{framing2} compression format} & --- & \SI{70.41}{\percent} & \SI{18.93}{\percent}\\
+        lz4\footnote{lz4 (\url{http://www.lz4.org/}) version \code{128}} & 1 & \SI{68.75}{\percent} & \SI{21.15}{\percent}\\
+        & 5 & \SI{66.87}{\percent} & \SI{13.63}{\percent}\\
+        & 9 & \SI{66.86}{\percent} & \SI{12.27}{\percent}\\
+        gzip\footnote{gzip version \code{1.8}, uses the format described in RFC 1952} & 1 & \SI{65.47}{\percent} & \SI{12.17}{\percent}\\
+        & 5 & \SI{64.55}{\percent} & \SI{11.00}{\percent}\\
+        & 9 & \SI{64.45}{\percent} & \SI{10.06}{\percent}\\
+        xz\footnote{xz (\url{http://tukaani.org/xz/}) version \code{5.2.2} with liblzma version \code{5.2.2}} & 1 & \SI{60.17}{\percent} & \SI{7.21}{\percent}\\
+        & 5 & \SI{59.93}{\percent} & \SI{7.07}{\percent}\\
+        & 9 & \SI{59.89}{\percent} & \SI{6.81}{\percent}\\
+        \bottomrule
+    \end{tabularx}
+    \caption{Lossless, general-purpose compression algorithms}\label{tab:gp_compression}
+\end{table}
+
+The next idea is to use a general-purpose lossless compression algorithm to compress the data. To do so, the data should be split in junks so it is still possible to provide quick random access. We did a quick experiment with \SI{1}{\mega\byte} junks so one contains \num{512} time series. We then test two possible ways to compress the data. The first one is to compress the floating-point data which is the input for the DTW. Because we know that floating-point material is usually compressed badly, we also try to compress the initial data set which contains unsigned integer data. In that case, the $\log(x + 1)$ transformation, the smoothing and the gradient calculation must be evaluated on-the-fly. The results for different compression algorithms are shown in \autoref{tab:gp_compression}. They usually have very different performance characteristics and we did not evaluate that behavior. Our experience showed that, even when the integer data enables higher compression rates, it does not imply that it is faster or slower to compress and decompress.
+
+It might also be a good idea to evaluate the usage of other data types for storing the time series data. For integer data this could mean to dynamically select the bit-width of the type according to the largest value within the whole data set, withing a chunk or withing a single time series. For floating-point data this means to either use a smaller IEEE type, similar to the design decision we have made in \autoref{sec:algorithm:opt} or to use a special type which better exploits our data ranges. For example we think that \SI{5}{\bit} for the exponent are too much. Completely different data types like the A-law and $\mu$-law as defined in~\cite{G711} might be worth to try. Stripping the sign from the floating-point data could also be possible since the resulting curves should still preferable match against the same neighbors.
