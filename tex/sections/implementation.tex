@@ -27,7 +27,7 @@ Instead of developing the algorithms as a single monolithic block we designed th
     \item index\_dtw: indexed data as described in \autoref{sec:baseline:speed}
     \item index\_wavelet: transforms time series data into trees, merges them and stores the result together with a child-to-parent index into a file
     \item normalize: normalizes strings as described in \autoref{ssec:baseline:data:snorm}
-    \item print\_wavelet\_tree: extracts multiple wavelet trees and their merges from a wavelet index and outputs a DOT file
+    \item print\_wavelet\_tree\{,2\}: extracts multiple wavelet trees and their merges from a wavelet index and outputs a DOT or TikZ file; the latter one is used to produce the trees shown in the appendix
     \item prune\_support: prunes list of possible normalized $n$-grams according to \autoref{ssec:baseline:data:prune}
     \item query\_dtw\_indexed: queries nearest neighbors, accelerated with an indexed produced by index\_dtw and described in \autoref{sec:baseline:speed}
     \item query\_dtw\_simple: queries nearest neighbors with a simple bruteforce approach
