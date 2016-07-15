@@ -3,6 +3,17 @@
 
 \dots
 
+\begin{definition}[Parameter\slash{}Filter response]
+    A parameter or more specific a filter response describes how an adjustable variable influences a measurable value, e.g.:
+
+    \begin{itemize}
+        \item A filter influences the error made by an algorithm in a linear way, iff the error can be described as $f(x) = ax + b$ in terms of the filter value $x$ and two constants $a$ and $b$.\footnote{This is not the case for our algorithm.}
+        \item The maximum error of the compressor has a monotonic response to the compression rate. This means that if the maximum error is increased, the compression rate does not decrease.\footnote{That is also not the case for our algorithm because of its greedy nature. It is true in when the response curve is smoothed though.} This does not apply any additional attributes like that the compression rate is continuous in terms of the maximum error nor that it can be even expressed as a function of it.
+    \end{itemize}
+
+    The response curve is the graphical representation of the measured value plotted as function of the adjustable parameter.
+\end{definition}
+
 
 
 \section{Baseline Sanity}
