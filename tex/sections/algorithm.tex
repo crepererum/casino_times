@@ -515,6 +515,8 @@ After investigating failed approaches we want to present some ideas which we did
 
 The first alternative is to instead compressing the actual time series data, to compress lower and upper limits within the warping as presented in~\cite{LB_Keogh}. The question then is how to design a tracer which handles both trees at the same time. Another open point is if both limits should be added to the same index or not. Using the same index would probably enable higher compression rates while it requires the tracer to handle the mixed data set.
 
+Another idea is the usage of another wavelet type to do the decomposition, e.g.\ from the set of Daubechies wavelets described in~\cite{daubechies}. This would lower the depth of tree and possible allow larger merges. On the other hand, this also leads to more children per node which lowers the chance that a specific node can actually be merged. It also increases the amount of pointer information stored within the tree and therefore lowers the compression rate, at least when implemented in a na{\"\i}ve way. It also increases the complexity of the implementation. With all this factors, it must be carefully considered if this approach is worth a try.
+
 \begin{table}[t]
     \centering
     \begin{tabularx}{\textwidth}{r r R R}
