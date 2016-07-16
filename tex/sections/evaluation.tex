@@ -1,7 +1,7 @@
 \chapter{Evaluation}
 \label{ch:evaluation}
 
-We now want to evaluate the different parts which we worked out before. We start with a definition:
+We now want to evaluate the different parts that we worked out before. We start with a definition:
 
 \begin{definition}[Parameter\slash{}Filter response]
     A parameter or more specific a filter response describes how an adjustable variable influences a measurable value, e.g.:
@@ -88,7 +88,7 @@ Next we want to check if our baseline selection makes sense by check the neighbo
     \caption{neighbors: $1$-grams, $r = 10$, \enquote{drug}}\label{tab:ranking_drug_sane}
 \end{table}
 
-Before we start to evaluate the actual algorithms, we show that our baseline is sane. \autoref{tab:ranking_drug_all} shows the top \num{20} neighbors of the $1$-gram \enquote{drug} with a warping radius of $r = 10$, measured over the full \num{256} years. The auto-cutoff-point as described in \autoref{ssec:baseline:sim:rank} is marked. For these examples, only neighbors from the $1$-gram data set are shown. Neighbors are represented by there normalized placeholder which is derived as illustrated in \autoref{sec:baseline:data}. The neighbors are words that are related to the concept \enquote{drug} with some exceptions, for example the neighbor \enquote{li} which is not extracted from any meaningful word. The meaningfulness increases when limiting the DTW to the second half of the data set. This is shown in \autoref{tab:ranking_drug_secondhalf}. It also turns out that \enquote{drug} is used in two contexts: as medicine and in terms of narcotics.
+Before we start to evaluate the actual algorithms, we show that our baseline is sane. \autoref{tab:ranking_drug_all} shows the top \num{20} neighbors of the $1$-gram \enquote{drug} with a warping radius of $r = 10$, measured over the full \num{256} years. The auto-cutoff-point as described in \autoref{ssec:baseline:sim:rank} is marked. For these examples, only neighbors from the $1$-gram data set are shown. Neighbors are represented by their normalized placeholder, which is derived as illustrated in \autoref{sec:baseline:data}. The neighbors are words that are related to the concept \enquote{drug} with some exceptions, for example the neighbor \enquote{li}, which is not extracted from any meaningful word. The meaningfulness increases when limiting the DTW to the second half of the data set. This is shown in \autoref{tab:ranking_drug_secondhalf}. It also turns out that \enquote{drug} is used in two contexts: as medicine and in terms of narcotics.
 
 \begin{table}[t]
     \begin{subtable}[t]{.45\textwidth}
@@ -295,7 +295,7 @@ Another interesting but logical observation is that common verbs like \enquote{k
     \caption{neighbors: $1+2$-grams, $r = 10$, $[129,256]$}\label{tab:ranking_chance}
 \end{table}
 
-The situation changes when we try to query phrases and add $2$-grams to the data set. As \autoref{tab:ranking_chance_1} shows, results may contain more entries which do not provide any insights. The data in \autoref{tab:ranking_chance_2} are even worse. At least for us, no insights are extracted at all.\footnote{People might be able to interpret the \enquote{zhang daol} entry which is derived from the name \enquote{Zhang Daoling}.} When limiting the search to the $1$-gram database, the results are even worse. Some reasons for this are that our cleaned up data contains a lot of words that do not provide direct insights. For example the words \enquote{the} and \enquote{of} which are listed in some of the $2$-gram neighbors do not provide meaningful data. On the other hand the same words may be important for $3$-grams, e.g.\ in \enquote{Medal of Honor}. The reason that so many neighbors are found which seem to contain random data is the following: the more data is stored in the database, the more likely it is to find neighbors that have a lower distance. A similar effect can be observed when dealing with correlations of real world data. \cite{correlations1} contains a list of these cases which, with a very high probability, do not belong to the same cause. This is a general issue with methods that try to extract links between words or concepts based on usage count. We were aware of this problem beforehand and it is discussed in \autoref{sec:baseline:sim}. Possible workarounds can be:
+The situation changes when we try to query phrases and add $2$-grams to the data set. As \autoref{tab:ranking_chance_1} shows, results may contain more entries that do not provide any insights. The data in \autoref{tab:ranking_chance_2} are even worse. At least for us, no insights are extracted at all.\footnote{People might be able to interpret the \enquote{zhang daol} entry, which is derived from the name \enquote{Zhang Daoling}.} When limiting the search to the $1$-gram database, the results are even worse. Some reasons for this are that our cleaned up data contains a lot of words that do not provide direct insights. For example the words \enquote{the} and \enquote{of}, which are listed in some $2$-gram neighbors, do not provide meaningful data. On the other hand the same words may be important for $3$-grams, e.g., in \enquote{Medal of Honor}. The reason that so many neighbors are found that seem to contain random data is the following: the more data is stored in the database, the more likely it is to find neighbors that have a lower distance. A similar effect can be observed when dealing with correlations of real world data. \cite{correlations1} contains a list of these cases that, with a very high probability, do not belong to the same cause. This is a general issue with methods that try to extract links between words or concepts based on usage count. We were aware of this problem beforehand and it is discussed in \autoref{sec:baseline:sim}. Possible workarounds can be:
 
 \begin{table}[t]
     \begin{subtable}[t]{.45\textwidth}
@@ -365,8 +365,8 @@ The situation changes when we try to query phrases and add $2$-grams to the data
 \end{table}
 
 \begin{itemize}
-    \item Increasing the pruning threshold: This ould eliminate many pointless entries which only do not represent a common trend.
-    \item Weighting distance with $n$-gram importance: It should be possible to weight the distance with additional information about possible neighbors, e.g.\ with their total counts or with linguistic metrics on how common or special words are.
+    \item Increasing the pruning threshold: This should eliminate many pointless entries that only do not represent a common trend.
+    \item Weighting distance with $n$-gram importance: It should be possible to weight the distance with additional information about possible neighbors, e.g., with their total counts or with linguistic metrics on how common or special words are.
     \item Extend filtering/normalization to take inter-word information into account: Currently prepositions and other non-important words in $2$-grams and at the end of $3+$-grams often do not provide value information.
     \item Use multiple search queries and calculate a (weighted) distance to all of them: An example is shown in \autoref{tab:ranking_chance2} where we add \enquote{philosophi} as a second query. There exist multiple methods on how to do that, in our example we just added the DTW distances together, but Euclidean distances may also work as well as more sophisticated ways like running a DTW against multiple time series at once.
 \end{itemize}
@@ -388,14 +388,14 @@ Because our compression method leads to information loss, we need to figure out 
     \caption{Compression distortion, user facing data, query is \enquote{drug}}\label{fig:compression}
 \end{figure}
 
-First we want to figure out how compression affects the data which is perceived by the user. We use the output as described in \autoref{ssec:baseline:sim:rank} and plug in the optional compression before the smoothing as it was discussed in \autoref{sec:algorithm:wavelet}. We choose a single cutoff point for both, the uncompressed and compressed, results since the choice is very unstable under small compression artifacts. We than calculate the following two metrics:
+First we want to figure out how compression affects the data that is perceived by the user. We use the output as described in \autoref{ssec:baseline:sim:rank} and plug in the optional compression before the smoothing as it was discussed in \autoref{sec:algorithm:wavelet}. We choose a single cutoff point for both, the uncompressed and compressed, results since the choice is very unstable under small compression artifacts. We then calculate the following two metrics:
 
 \begin{enumerate}
-    \item We treat the sorted list of nearest neighbors as strings and calculate the Levenshtein distance (\cite{levenshtein}) of them.
-    \item We measure the amount of new entries produced by compressed version compared to the uncompressed reference as a relative measure.
+    \item We treat the sorted list of the nearest neighbors as strings and calculate the Levenshtein distance (\cite{levenshtein}) of them.
+    \item We measure the amount of new entries produced by the compressed version compared to the uncompressed reference as a relative measure.
 \end{enumerate}
 
-As shown in \autoref{fig:compression} the set of nearest neighbors and the ranking of these neighbors is very unstable as soon as we introduce some noise to the data. This makes our algorithm rather bad when the output data is directly presented to the user. This situation might be improve when combining the distance to multiple queries to one final score which might be required for handling groups of words or entire concepts as a search query.
+As shown in \autoref{fig:compression} the set of the nearest neighbors and the ranking of these neighbors is very unstable as soon as we introduce some noise to the data. This makes our algorithm rather bad when the output data is directly presented to the user. This situation might be improve when combining the distance to multiple queries to one final score, which might be required for handling groups of words or entire concepts as a search query.
 
 
 \subsection{All distances}
@@ -407,7 +407,7 @@ As shown in \autoref{fig:compression} the set of nearest neighbors and the ranki
     \caption{Compression distortion, all distances, query is \enquote{drug}}\label{fig:compression2}
 \end{figure}
 
-To measure how the compression affects the actual distance, we calculate a the distance to a fixed query and calculate the normalized distance of the original result and the ones produced by the compressed data:
+To measure how the compression affects the actual distance, we calculate the distance to a fixed query and calculate the normalized distance of the original result and the ones produced by the compressed data:
 
 \begin{equation}
     \delta_i(a, b) = \frac{b_i - a_i}{a_i}
@@ -428,9 +428,9 @@ Then we measure different quantiles of this distance as plotted in \autoref{fig:
 
 We now want to evaluate how the index structure described in \autoref{sec:algorithm:asindex} behaves under certain compression levels and tracing limits. The wavelet index is only used to select candidates for the DTW-driven nearest neighbor search. It is not used to provide the actual time series data. This information is retrieved from the uncompressed data set. We doubt that our compression method is good enough to drive both components at the same time, especially when the same maximum error is used.
 
-We set up the following experiment: We use the $n$-grams \enquote{democraci}, \enquote{drug}, \enquote{german} \enquote{happi}, \enquote{health}, \enquote{know}, \enquote{money}, \enquote{religion}, \enquote{soft}, and \enquote{war} and a warping radius of \num{0}, \num{5}, \num{10}, \num{15}, and \num{20}. No weight-based filtering is applied. We then compare the top \num{20} neighbors for all combinations under the set of compression levels and maximum trace-down limits. We compare the number of new entries within that list. If the resulting is shorted than \num{20}, because not enough candidates could be extracted from the index, we do a fill-up with virtual entries that never match any existing one. Without that special handling, only the precision of the index would be measured and low recall values would not affect the score. Also we do not measure the string distance here since our approach does not influence the pair-wise ranking of the correctly drawn neighbors. This is due to the fact that all candidates returned by the index are compared via DTW without any priority handling.
+We set up the following experiment: We use the $n$-grams \enquote{democraci}, \enquote{drug}, \enquote{german} \enquote{happi}, \enquote{health}, \enquote{know}, \enquote{money}, \enquote{religion}, \enquote{soft}, and \enquote{war} and a warping radius of \num{0}, \num{5}, \num{10}, \num{15}, and \num{20}. No weight-based filtering is applied. We then compare the top \num{20} neighbors for all combinations under the set of compression levels and maximum trace-down limits. We compare the number of new entries within that list. If the resulting is shorted than \num{20}, because not enough candidates could be extracted from the index, we do a fill-up with virtual entries that never match any existing one. Without that special handling, only the precision of the index would be measured and low recall values would not affect the score. Also, we do not measure the string distance here since our approach does not influence the pair-wise ranking of the correctly drawn neighbors. This is due to the fact that all candidates returned by the index are compared via DTW without any priority handling.
 
-The results are shown in \autoref{fig:tbindex}. The top graphics shows the index under a maximum compression error of \num{1}, the middle one with an error of \num{2} and the bottom one with a value of \num{5}. The different plotting styles represent different maximum tracing levels. Sets of markers which share the same x-coordinate usually have their origin in the same warping radius since our tracing algorithm does not take this variable into account. The different groups of markers then correspond to different queries. Measurements which belong to the same query and warping radius, hence the same information request, are connected with a thin line to simplify tracking of the parameter response. It can be observed that different queries are affected differently by the index while the influence of different warping radius values is not that big. Another aspect is the choice of the right compression level. A maximum error of \num{1} makes it hard to draw enough candidates from the index while an error of \num{5} results in too many results and therefore does not provide enough value. We therefore assume that a maximum error of around \num{2} results in good results and we will use this index for further measurements.
+The results are shown in \autoref{fig:tbindex}. The top graphics shows the index under a maximum compression error of \num{1}, the middle one with an error of \num{2} and the bottom one with a value of \num{5}. The different plotting styles represent different maximum tracing levels. Sets of markers that share the same x-coordinate usually have their origin in the same warping radius since our tracing algorithm does not take this variable into account. The different groups of markers then correspond to different queries. Measurements that belong to the same query and warping radius, hence the same information request, are connected with a thin line to simplify tracking of the parameter response. It can be observed that different queries are affected differently by the index while the influence of different warping radius values is not that big. Another aspect is the choice of the right compression level. A maximum error of \num{1} makes it hard to draw enough candidates from the index while an error of \num{5} results in too many results and therefore does not provide enough value. We therefore assume that a maximum error of around \num{2} results in good results and we will use this index for further measurements.
 
 \begin{figure}
     \centering
@@ -438,7 +438,7 @@ The results are shown in \autoref{fig:tbindex}. The top graphics shows the index
     \caption{Efficiency of traceback-based indexing, testing minimum weight filter}\label{fig:tbindex2}
 \end{figure}
 
-Sometimes using the compression rate as hint how exact the nearest neighbor search should be might not be sufficient, for example if the index is already created. Luckily our generic tracer approach allows us to incorporate weight-based filtering. We used that to retrieve data from the index with a maximum error of \num{2} faster in trade-off against the quality of the results. How the minimum weight threshold affects the quality is shown in \autoref{fig:tbindex2}. The setup is identical to \autoref{fig:tbindex}. It turns out that the impact of the filter varies heavily from query to query so it may be hard for users to guess the right value for their expected results. Also the filter response is not monotonic in neither result quality nor number of executed DTWs. Further research is required to make the filter results more predictable.
+Sometimes using the compression rate as hint how exact the nearest neighbor search should be might not be sufficient, for example if the index is already created. Luckily our generic tracer approach allows us to incorporate weight-based filtering. We used that to retrieve data from the index with a maximum error of \num{2} faster in trade-off against the quality of the results. How the minimum weight threshold affects the quality is shown in \autoref{fig:tbindex2}. The setup is identical to \autoref{fig:tbindex}. It turns out that the impact of the filter varies heavily from query to query so it may be hard for users to guess the right value for their expected results. Also, the filter response is not monotonic in neither result quality nor number of executed DTWs. Further research is required to make the filter results more predictable.
 
 
 
@@ -470,7 +470,7 @@ Sometimes using the compression rate as hint how exact the nearest neighbor sear
     \caption{Performance testing environment}\label{tab:env}
 \end{table}
 
-Finally we want to figure out how fast our algorithm is compared to the baseline. To do so, we carry out the following measurements: On a system described in \autoref{tab:env}, we carry out \num{20} executions and measure the average real time of them. We decided against measuring only user space time because that would miss out IO operations of our memory mapped data storage system.
+Finally, we want to figure out how fast our algorithm is compared to the baseline. To do so, we carry out the following measurements: On a system described in \autoref{tab:env}, we carry out \num{20} executions and measure the average real time of them. We decided against measuring only user space time because that would miss out IO operations of our memory mapped data storage system.
 
 \begin{figure}
     \centering
@@ -478,7 +478,7 @@ Finally we want to figure out how fast our algorithm is compared to the baseline
     \caption{Time of baseline algorithms over $r$}\label{fig:perf_baseline_r}
 \end{figure}
 
-The first tests apply to the baseline. As shown in \autoref{fig:perf_baseline_r}, the runtime of na{\"\i}ve approach grows with increasing values of $r$. The index-based method keeps this growing at a minimum but starts at a higher initial cost. The break-even point is at around $r = 5$, slightly depending on the query. Also keep in mind that every warping radius needs its own prepared index. We want to point out that every run has its initial boot-up time for loading the data, even when most data is stored in memory mapped files. But that costs should be the same, no matter which type of query is run and which acceleration method is used.
+The first tests apply to the baseline. As shown in \autoref{fig:perf_baseline_r}, the runtime of na{\"\i}ve approach grows with increasing values of $r$. The index-based method keeps this growing at a minimum but starts at a higher initial cost. The break-even point is at around $r = 5$, slightly depending on the query. Also, keep in mind that every warping radius needs its own prepared index. We want to point out that every run has its initial boot-up time for loading the data, even when most data is stored in memory mapped files. But that costs should be the same, no matter what type of query is run and what acceleration method is used.
 
 \begin{figure}
     \centering

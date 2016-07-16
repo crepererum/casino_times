@@ -1,7 +1,7 @@
 \chapter{Algorithm}
 \label{ch:algorithm}
 
-In this chapter we explain our approach to compress the data and how we want to exploit this compression to find similar time series. To do so we first describe how we transform time series into tree structures, then we explain the general idea of information pruning. Afterwards we develop a method that instead of pruning of information relies on the merging of similar information packages. We then discuss different error metrics, detail how our construction can be used as an index and explain some technical improvements made to the algorithm. Finally we show which issues our approach has and how we tried to work-around these.
+In this chapter we explain our approach to compress the data and how we want to exploit this compression to find similar time series. To do so we first describe how we transform time series into tree structures, then we explain the general idea of information pruning. Afterwards we develop a method that instead of pruning of information relies on the merging of similar information packages. We then discuss different error metrics, detail how our construction can be used as an index and explain some technical improvements made to the algorithm. Finally, we show, which issues our approach has and how we tried to work-around these.
 
 Before we start we want to define some important terms:
 
@@ -20,12 +20,12 @@ Before we start we want to define some important terms:
     \caption{Wavelet Tree Construction}\label{fig:wavelet_tree_example}
 \end{figure}
 
-First of all, we need to find a time series representation that enables us to compare different series on different time scales and different granularities. While the granularity requirement is met by a Fourier Transform, it is not sufficient for different time ranges. The reason for it is that the entire series is disassembled into frequencies that span the hole range. That makes it difficult to compare sub-ranges. So we chose a different transformation --- the Discrete Wavelet Transform under usage of the Haar Wavelet (\cite{Haar}). A special property of this kind of transform is that it deconstructs a time series into a tree-like structure. Note that we only support time series which length is a power of two. A generalization might be archived by the application of~\cite{haar_tree_notwo}.
+First of all, we need to find a time series representation that enables us to compare different series on different time scales and different granularities. While the granularity requirement is met by a Fourier Transform, it is insufficient for different time ranges. The reason for it is that the entire series is disassembled into frequencies that span the hole range. That makes it difficult to compare sub-ranges. So we chose a different transformation --- the Discrete Wavelet Transform under usage of the Haar Wavelet (\cite{Haar}). A special property of this kind of transform is that it deconstructs a time series into a tree-like structure. Note that we only support time series with length that is a power of two. A generalization might be archived by the application of~\cite{haar_tree_notwo}.
 
 To explain how the tree decomposition works we first need to clarify some terms:
 
 \begin{definition}[Superroot]
-    Since in a wavelet tree every node only describes the difference between the left and the right subtree, the information about the absolute position of the time series is missing. To store this information we introduce a superroot, a node which is parent of the root and the only one which has exactly one child. The total position of the time series stored in that node is called anchor and has the symbol $a$.
+    Since in a wavelet tree every node only describes the difference between the left and the right subtree, the information about the absolute position of the time series is missing. To store this information we introduce a superroot, a node that is the parent of the root and the only one that has exactly one child. The total position of the time series stored in that node is called anchor and has the symbol $a$.
 \end{definition}
 
 \begin{definition}[Depth, Level]
@@ -53,7 +53,7 @@ Here $N_{l, i}(t)$ describes the influence of a certain node in level $l$ and de
     \end{cases}
 \end{equation}
 
-Here $x_{l, i}$ is the coefficient stored in the node $N_{l, i}$ and $\mathbb{1}_{t \in N_{l, i}}$ has an affect to this point in time:
+Here $x_{l, i}$ is the coefficient stored in the node $N_{l, i}$ and $\mathbb{1}_{t \in N_{l, i}}$ has an effect to this point in time:
 
 \begin{equation}\label{eq:matches}
     \mathbb{1}_{t \in N_{l, i}} = \begin{cases}
@@ -65,7 +65,7 @@ Here $x_{l, i}$ is the coefficient stored in the node $N_{l, i}$ and $\mathbb{1}
 
 An example is shown in \autoref{fig:wavelet_tree_example}. Keep in mind that this transformation is unambiguous and lossless.
 
-Now we want to discuss what data is actually transformed. It turns out that using the unsmoothed, but logarithmic data works the best. The reason for this are the following: the $\log(x + 1)$ transformation avoids the handling of too large values and as shown before results in a better value distribution. Now smoothing would certainly simply later compression attempts of the wavelet data, but it already prunes information. That alone is not a huge deal, but it gets problematic when we modify the wavelet data. Altering the coefficients of the wavelet tree, e.g.\ by rounding, data conversion, tree pruning (see \autoref{sec:algorithm:pruning}) or tree merging (see \autoref{sec:algorithm:merge}); results in a unsmooth time series after restoring them from the wavelet data. So to use them afterwards a smoothing step is required. A pre-transform smoothing now would results in three steps of information loss while only smoothing after the information recovery makes parameters easier to tune and information loss easier to calculate.
+Now we want to discuss what data is actually transformed. It turns out that using the unsmoothed, but logarithmic data works the best. The reason for this are the following: the $\log(x + 1)$ transformation avoids the handling of too large values and as shown before results in a better value distribution. Now smoothing would certainly simply later compression attempts of the wavelet data, but it already prunes information. That alone is not a huge deal, but it gets problematic when we modify the wavelet data. Altering the coefficients of the wavelet tree, e.g., by rounding, data conversion, tree pruning (see \autoref{sec:algorithm:pruning}) or tree merging (see \autoref{sec:algorithm:merge}); results in an unsmooth time series after restoring them from the wavelet data. So to use them afterwards a smoothing step is required. A pre-transform smoothing now would result in three steps of information loss while only smoothing after the information recovery makes parameters easier to tune and information loss easier to calculate.
 
 
 
@@ -132,14 +132,14 @@ Now we want to discuss what data is actually transformed. It turns out that usin
     \caption{pruneTree}\label{algo:pruneTree}
 \end{algorithm}
 
-The first attempt to reduce the amount of data is an obvious but simple approach: pruning of sub-trees that do not hold important data. This does not entirely reflect the information loss approach we will use for the final algorithm, but it is a good milestone to grasp the idea. The idea was also presented in~\cite{RACE}. A tree node is pruned if the following conditions are met:
+The first attempt to reduce the amount of data is an obvious but simple approach: pruning of sub-trees that do not hold important data. This does not entirely reflect the approach of information loss we will use for the final algorithm, but it is a good milestone to grasp the idea. The idea was also presented in~\cite{RACE}. A tree node is pruned if the following conditions are met:
 
 \begin{enumerate}
     \item both children are pruned
     \item setting its coefficient to $0$ would not increase the error above a certain threshold
 \end{enumerate}
 
-So pruning just equals the zeroing of the coefficient, but it allows us to remove the node entirely and save storage space since it does not contain any additional information than both pruned children and the coefficient that does not have an influence anymore. The question is in which order nodes should be tried to be pruned since this algorithm is greedy method and will stop immediately after the threshold is reached. We propose to shuffle the nodes first to avoid a bias to the begin or end of the time series and then to sort the shuffled nodes starting the smallest coefficient. This makes it more likely to prune more nodes instead of just some with huge coefficients. Also the results are more stable as you can see while comparing \autoref{fig:ngrams_ex2_compression_unsorted} and \autoref{fig:ngrams_ex2_compression_sorted}. The algorithm is shown in \autoref{algo:pruneTree}.
+So pruning just equals the zeroing of the coefficient, but it allows us to remove the node entirely and save storage space since it does not contain any additional information than both pruned children and the coefficient that does not have an influence anymore. The question is in which order nodes should be tried to be pruned since this algorithm is greedy method and will stop immediately after the threshold is reached. We propose to shuffle the nodes first to avoid a bias to the beginning or end of the time series and then to sort the shuffled nodes starting the smallest coefficient. This makes it more likely to prune more nodes instead of just some with huge coefficients. Also, the results are more stable as you can see while comparing \autoref{fig:ngrams_ex2_compression_unsorted} and \autoref{fig:ngrams_ex2_compression_sorted}. The algorithm is shown in \autoref{algo:pruneTree}.
 
 \begin{figure}
     \centering
@@ -158,9 +158,9 @@ So pruning just equals the zeroing of the coefficient, but it allows us to remov
 \section{Tree Merging}
 \label{sec:algorithm:merge}
 
-An important thing to point out about tree pruning is that it does not exploit the fact that there are many time series which might have the same structure. The compression is purely executed on a single series. Tree merging uses a similar idea to tree pruning but with an important difference: instead of setting the coefficient to zero it will be set to a similar entry which is already present in the database (to which we come in a moment). Therefore, the subtree is not pruned but merged with another one. This can simply be done by altering the child pointer of a tree node. The error is calculated based on the difference of the time series resulting from the new tree and the original time series. A discussion of the error metric can be found in \autoref{sec:algorithm:error}.
+An important thing to point out about tree pruning is that it does not exploit the fact that there are many time series that might have the same structure. The compression is purely executed on a single series. Tree merging uses a similar idea to tree pruning but with an important difference: instead of setting the coefficient to zero it will be set to a similar entry that is already present in the database (to which we come in a moment). Therefore, the subtree is not pruned but merged with another one. This can simply be done by altering the child pointer of a tree node. The error is calculated based on the difference of the time series resulting from the new tree and the original time series. A discussion of the error metric can be found in \autoref{sec:algorithm:error}.
 
-Keep in mind to only merge nodes into others when their children are identical. Also we want to point out that we do not merge superroots. This would in theory be possible but we rarely see the case that two time series are similar enough to make that possible. Also it would complicate the implementation since we sometimes use the superroot to store additional information about the time series.
+Keep in mind to only merge nodes into others when their children are identical. Also, we want to point out that we do not merge superroots. This would in theory be possible but we rarely see the case that two time series are similar enough to make that possible. That complicates the implementation since we sometimes use the superroot to store additional information about the time series.
 
 \begin{algorithm}
     \KwData{Node $N$}
@@ -227,11 +227,11 @@ Keep in mind to only merge nodes into others when their children are identical. 
     \caption{addTreeToIndex}\label{algo:addTreeToIndex}
 \end{algorithm}
 
-The construction of the database of known trees\footnote{To be precise: since the trees share common subtrees, they are not real trees anymore. We will continue to refer to them as trees since it is a simple and easy to understand term.} is solved as followed: the time series are added to the database in random order. One whole input tree of an entire time series is (partly) merged into the database, then the next one and so on. For the tree merging itself we changed from a strict bottom-up approach to a queue-based approach since that results in higher compression rates. The problem with the bottom-up approach is the following: it might be that there exist very similar subtrees which are cheap to merge but a strict level-ordered merging would result in prioritizing nodes next to the leaves of the tree. That is contradictory to our goal of merging as many subtrees as possible.
+The construction of the database of known trees\footnote{To be precise: since the trees share common subtrees, they are not real trees anymore. We will continue to refer to them as trees since it is a simple and easy to understand term.} is solved as followed: the time series are added to the database in random order. One whole input tree of an entire time series is (partly) merged into the database, then the next one and so on. For the tree merging itself we changed from a strict bottom-up approach to a queue-based approach since that results in higher compression rates. The problem with the bottom-up approach is the following: it might be that there exist very similar subtrees that are cheap to merge but a strict level-ordered merging would result in prioritizing nodes next to the leaves of the tree. That is contradictory to our goal of merging as many subtrees as possible.
 
-Still the queue-based approach needs to start at the bottom and tends to be bottom-up. This is useful in a sense that the similarity we have defined is based on the gradient. Gradients are more influenced by the lower layers of the wavelet tree and so we merge this information first. This will be helpful for using the merged trees as an index structure.
+Still, the queue-based approach needs to start at the bottom and tends to be bottom-up. This is useful in a sense that the similarity we have defined is based on the gradient. Gradients are more influenced by the lower layers of the wavelet tree and so we merge this information first. This will be helpful for using the merged trees as an index structure.
 
-The final algorithm is shown in \autoref{algo:addTreeToIndex}. An exemplary visual representation of how the merged results look like is shown in \autoref{fig:megatree1} and \autoref{fig:megatree2}. Pay attention to the differences which are the results of the different nearest neighbor query ranges.
+The final algorithm is shown in \autoref{algo:addTreeToIndex}. An exemplary visual representation of how the merged results look like is shown in \autoref{fig:megatree1} and \autoref{fig:megatree2}. Pay attention to the differences, which are the results of the different nearest neighbor query ranges.
 
 
 
@@ -243,36 +243,36 @@ The choice of the error metric, while being easy in many cases, opposes some que
 \begin{itemize}
     \item How fast can a possible implementation be, not only in terms of complexity but also in terms of constant factors due to vectorization and cache layout?
     \item How good can it justify the quality of the decompressed data recovered from wavelet tree?
-    \item How well does the decompressed data it work with the later smoothing, gradient calculation and DTW\@?
+    \item How well does the decompressed data works with the later smoothing, gradient calculation and DTW\@?
 \end{itemize}
 
-We decided to try three different metrics during the process which are described here.
+We decided to try three different metrics during the process, which are described here.
 
 
 \subsection{Summerized linear distance}
 \label{ssec:algorithm:error:linear}
 
-The first metric, a linear absolute distance, is one which naturally occurs when looking for something easy to implement:
+The first metric, a linear absolute distance, is one that naturally occurs when looking for something easy to implement:
 
 \begin{equation}\label{eq:e1}
     e_1\left(t, t'\right) = \frac{1}{m} \sum_{i=1}^m \left|t_i - t'_i\right|
 \end{equation}
 
-The upper bounds can directly be calculated during the tree merging process since the influence regarding location and amplitude of certain tree nodes are know a priory. So the upper limit is simply the sum of the re-adjusted differences of the original node and the merging partner:
+The upper bounds can directly be calculated during the tree merging process since the influence regarding location and amplitude of certain tree nodes are known a priory. So the upper limit is simply the sum of the re-adjusted differences of the original node and the merging partner:
 
 \begin{equation}\label{eq:e1_up}
     \bar{e}_1\left(t, t'\right) = \frac{1}{m} \sum_{m \in \mathrm{merges}(t, t')} 2^\frac{d - m_l}{2} \left|m_x - m_y\right|
 \end{equation}
 
-Here $m_l$ stands for the level of the merged node and $m_x$ and $m_y$ for the coefficient of the original node and the merge partner. Notice that all merges are included in the sum. So even when a node gets merged after both children got merged, they children are included as well.
+Here $m_l$ stands for the level of the merged node and $m_x$ and $m_y$ for the coefficient of the original node and the merging partner. Notice that all merges are included in the sum. So even when a node gets merged after both children got merged, they children are included as well.
 
-While the implementation is rather fast because guessing of the upper limit does not require any knowledge of the actual time series difference, it is not well suited for all applications. A compression using this metric can lead to many jumps within the decompressed time series. Also the metric tends to sacrifice huge local errors for small improvements of the overall compression rate.
+While the implementation is rather fast because guessing of the upper limit does not require any knowledge of the actual time series difference, it is not well suited for all applications. A compression using this metric can lead to many jumps within the decompressed time series. Also, the metric tends to sacrifice huge local errors for small improvements of the overall compression rate.
 
 
 \subsection{Summerized quadratic distance}
 \label{ssec:algorithm:error:quadratic}
 
-A way to put higher panilties on to huge local errors is a quadratic error function:
+A way to put higher penalties on to huge local errors is a quadratic error function:
 
 \begin{equation}\label{eq:e2}
     e_2\left(t, t'\right) = \frac{1}{m} \sum_{i=1}^m \left(t_i - t'_i\right)^2
@@ -290,13 +290,13 @@ Here $\bar{\delta}_i(t, t')$ is the upper limit of the distance between $t$ and 
     \bar{\delta}_i\left(t, t'\right) = \sum_{m \in \mathrm{merges}(t, t')} \mathbb{1}_{m \in i} \cdot 2^{-\frac{d - m_l}{2}} \left|m_x - m_y\right|
 \end{equation}
 
-where $\mathbb{1}_{m \in i}$ describes the fact that the merge $m$ does affect the point in time $i$. Notice the minus in the exponent. Since that upper limit strictly increases with at least the amount of the real delta during each merge, the error metric will reach the user-provided limit faster than expected. So we use a hybrid approach during the merging procedure: do cheap guessing until we reach the error limit and then calculate the real error and use this as a base for the following sum-up operations. The number of recalculations increases when slowly approaching the error limit but it is still way faster than calculating the real error on every merge.
+where $\mathbb{1}_{m \in i}$ describes the fact that the merging $m$ does affect the point in time $i$. Notice the minus in the exponent. Since that upper limit strictly increases with at least the amount of the real delta during each merge, the error metric will reach the user-provided limit faster than expected. So we use a hybrid approach during the merging procedure: do cheap guessing until we reach the error limit and then calculate the real error and use this as a base for the following sum-up operations. The number of recalculations increases when slowly approaching the error limit but it is still way faster than calculating the real error on every merge.
 
 
 \subsection{Delta Range}
 \label{ssec:algorithm:error:range}
 
-Our last metric is an application specific one which is based on the following observation: Shifting the entire time series up or down (in terms of the $y$-Axis) does not affect the gradient. Therefore this should be allowed during the compression procedure. So we use the distance between the maximum of the delta and the minimum of the delta as an error function. Keep in mind that the delta itself is signed.
+Our last metric is an application specific one, which is based on the following observation: Shifting the entire time series up or down (in terms of the $y$-Axis) does not affect the gradient. Therefore, this should be allowed during the compression procedure. So we use the distance between the maximum of the delta and the minimum of the delta as an error function. Keep in mind that the delta itself is signed.
 
 \begin{equation}\label{eq:e3}
     e_3\left(t, t'\right) = \max_{i=1}^m \left|t_i - t'_i\right| - \min_{i=1}^m \left|t_i - t'_i\right|
@@ -388,7 +388,7 @@ Besides providing compression, our tree construction also expresses similarity o
 Our experiments will implement the following filter scheme:
 
 \begin{itemize}
-    \item \code{filterDown}: drop branch if it leads to a time domain which were not requested for DTW\@; stop if a maximum depth is reached
+    \item \code{filterDown}: drop branch if it leads to a time domain that was not requested for DTW\@; stop if a maximum depth is reached
     \item \code{filterUp}: drop branch if weight is below or equal a threshold
 \end{itemize}
 
@@ -399,13 +399,13 @@ We leave an open call to find and apply more sophisticated filtering techniques.
 \section{Optimizations}
 \label{sec:algorithm:opt}
 
-There are three technical details which help to improve the compression ratio even further. The first one is the reduction of precision used to the coefficients. Instead of using full \SI{64}{\bit} floating point numbers we use \SI{16}{\bit} floats, also referred as \enquote{halfs} as defined by~\cite{ieee_float}. This increases the error due to conversion and leads to a lower amount of merges, but increases the overall compression rate in terms of memory size. The smaller size of the memory representation compensates the higher error. Using \SI{16}{\bit} numbers turned out to be better than \SI{32}{\bit}. There might be the possibility to use even less memory by using bit packing and changing the representation to a non-IEEE-compliant data type.
+There are three technical details that help to improve the compression ratio even further. The first one is the reduction of precision used to the coefficients. Instead of using full \SI{64}{\bit} floating point numbers we use \SI{16}{\bit} floats, also referred as \enquote{halfs} as defined by~\cite{ieee_float}. This increases the error due to conversion and leads to a lower amount of merges, but increases the overall compression rate in terms of memory size. The smaller size of the memory representation compensates the higher error. Using \SI{16}{\bit} numbers turned out to be better than \SI{32}{\bit}. There might be the possibility to use even less memory by using bit packing and changing the representation to a non-IEEE-compliant data type.
 
-The second improvement is made by changing the representation of the child pointers within the tree nodes. Because we store all trees within a single memory-mapped region and this region may appear at different offsets during different program executions, we use offset pointers instead of real pointers. These offset pointers store the offset from the pointer itself to its target. Because the target is always located within the same mapped region, the offset stays constant no matter which global position the region has. Originally we stored \SI{64}{\bit} signed integer values as offsets. We reduced this to \SI{48}{\bit} values which is enough to store \SI[parse-numbers = false]{2^{48 - 1}}{\byte} $=$ \SI{128}{\tera\byte}.
+The second improvement is made by changing the representation of the child pointers within the tree nodes. Because we store all trees within a single memory-mapped region and this region may appear at different offsets during different program executions, we use offset pointers instead of real pointers. These offset pointers store the offset from the pointer itself to its target. Because the target is always located within the same mapped region, the offset stays constant no matter what global position the region has. Originally we stored \SI{64}{\bit} signed integer values as offsets. We reduced this to \SI{48}{\bit} values, which is enough to store \SI[parse-numbers = false]{2^{48 - 1}}{\byte} $=$ \SI{128}{\tera\byte}.
 
-The last one is a change on how the time series are shuffled before added to the index. Instead of doing a complete random shuffle, we separate the set of time series into chunks and shuffle these while preserving the order within the chunks. This improves memory locality and therefore results in better IO performance. The results vary from case to case and can be slightly worse than a full shuffle. We set the chunk size to \num{16} which we found a good tradeoff.
+The last one is a change on how the time series are shuffled before added to the index. Instead of doing a complete random shuffle, we separate the set of time series into chunks and shuffle these while preserving the order within the chunks. This improves memory locality and therefore results in better IO performance. The results vary from case to case and can be slightly worse than a full shuffle. We set the chunk size to \num{16}, which we found a good tradeoff.
 
-A possible improvement closely related to reducing the size of the offset pointers is the removal of the null pointers stored in all leaf nodes. We did not implement this simply because it makes the code more complicated and also because there are not enough leaf nodes left after compression to justify this change.
+A possible improvement closely related to reducing the size of the offset pointers is the removal of the null pointers stored in all leaf nodes. We did not implement this simply because it makes the code more complicated, also because there are not enough leaf nodes left after compression to justify this change.
 
 
 
@@ -418,7 +418,7 @@ A possible improvement closely related to reducing the size of the offset pointe
     \caption{Compression per layer}\label{fig:weakness}
 \end{figure}
 
-The main problem with our approach is its greedy nature. As shown in \autoref{fig:weakness}, the merges usually do not reach very high levels. This is caused by the decreasing probability of merging with a node that belongs to the same large subtree. They further the merge process continues, the more likely it gets that somewhere in between there was a better node from a different subtree as a nearest neighbor. On we other hand we can not check all possible merges in all layers because the runtime complexity would grow exponentially with the number of indexed time series. So we to limit the algorithm to a subset of decisions.
+The main problem with our approach is its greedy nature. As shown in \autoref{fig:weakness}, the merges usually do not reach very high levels. This is caused by the decreasing probability of merging with a node that belongs to the same large subtree. The further the merging process continues, the more likely it gets that somewhere in between there was a better node from a different subtree than nearest neighbor one. On we other hand we can not check all possible merges in all layers because the runtime complexity would grow exponentially with the number of indexed time series. So we to limit the algorithm to a subset of decisions.
 
 \begin{figure}
     \centering
@@ -426,7 +426,7 @@ The main problem with our approach is its greedy nature. As shown in \autoref{fi
     \caption{Compression over the compression process}\label{fig:compression_timeline}
 \end{figure}
 
-\autoref{fig:compression_timeline} adds another detail to that problem. It shows how the compression rate developers when more data is added to the index. When using low error thresholds, the following can be observed: at the beginning, not enough data is present in the database so the first entries are not compressed very well. As more data is added, the compression rate improves. This improvement is limited by the fact that it becomes harder to find the right merges that allow to merge larger subtrees. When using higher error thresholds this becomes more obvious. Because the local merging is not limited by the threshold anymore, the choice of the right neighbor that allows to merge its parent as well plays a bigger role now. As a result the behavior flips and the results get worse the more data is added to the index. When using such high thresholds it would be better to compress the data in chunks instead of the whole data set as one piece.
+\autoref{fig:compression_timeline} adds another detail to that problem. It shows how the compression rate developers when more data is added to the index. When using low error thresholds, the following can be observed: at the beginning, not enough data is present in the database so the first entries are not compressed very well. As more data is added, the compression rate improves. This improvement is limited by the fact that it gets harder to find the right merges that allow to merge larger subtrees. When using higher error thresholds this gets more obvious. Because the local merging is not limited by the threshold anymore, the choice of the right neighbor that allows to merge its parent as well plays a bigger role now. As a result the behavior flips and the results get worse the more data is added to the index. When using such high thresholds it would be better to compress the data in chunks instead of the whole data set as one piece.
 
 While the following section explain some of the fixes we have tried, we came to the conclusion that it might require a totally different strategy to find larger merges.
 
@@ -445,7 +445,7 @@ To increase the chance that the greedy algorithm chooses merges that belong to t
 
 \begin{enumerate}
     \item select multiple nearest neighbors as candidates for a merge
-    \item do this for a node which belongs to the same \num{3}-subtree (or larger ones) as well
+    \item do this for a node that belongs to the same \num{3}-subtree (or larger ones) as well
     \item check which pairs of merges belong to the same subtree and priorize them
 \end{enumerate}
 
@@ -455,7 +455,7 @@ This requires that we are quickly able to figure out which nodes have which pare
 \subsection{FLANN}
 \label{ssec:algorithm:fail:flann}
 
-The main goal of our algorithm is to find the best matching subtree in terms of distance. To help the greedy algorithm to archive that task we tried to use FLANN (\cite{FLANN}) to merge subtrees of size \num{3} instead of single nodes. To do so we need to ensure that the coefficients stored in the tree nodes are pre-multiplied like the elements in \autoref{eq:e1_up}. It turns out that the huge amount of indices required renders this method impossible to implement since it is not as memory and time efficient as plain sorted arrays. The result is that the calculation never finishes. Surprisingly the partial compression results are not even better which might be due to the fact that merging entire subtrees tends to be less aggressive compared to handling single nodes.
+The main goal of our algorithm is to find the best matching subtree in terms of distance. To help the greedy algorithm to archive that task we tried to use FLANN (\cite{FLANN}) to merge subtrees of size \num{3} instead of single nodes. To do so we need to ensure that the coefficients stored in the tree nodes are pre-multiplied like the elements in \autoref{eq:e1_up}. It turns out that the huge amount of indices required renders this method impossible to implement since it is not as memory and time efficient as plain sorted arrays. The result is that the calculation never finishes. Surprisingly the partial compression results are not even better, which might be due to the fact that merging entire subtrees tends to be less aggressive compared to handling single nodes.
 
 
 \subsection{Random Boosting}
@@ -467,7 +467,7 @@ This improvement is similar to the one presented in \autoref{ssec:algorithm:fail
 \subsection{DTW}
 \label{ssec:algorithm:fail:dtw}
 
-One of the main limitations of the current neighborhood search is that the we are only looking for nodes which correspond to the same time span. This contradicts the later usage of the data through Dynamic Time Warping. So we tried to decouple the tree structure and subtree merging from the actual time dimensions. We limited the search for the child nodes to a time-monotonic warping and reused the implementation of the existing DTW\@. For the non-leaf-nodes we did not apply any constraint since the same children policy already forces merges with the correct level and correct warping. The results of this technique were not convincing since the additional degree of freedom during the merging makes it even more unlikely to hit neighbors which belong to the same subtree. So the compression rates got worse and we dropped this approach.
+One of the main limitations of the current neighborhood search is that the we are only looking for nodes that correspond to the same time span. This contradicts the later usage of the data through Dynamic Time Warping. So we tried to decouple the tree structure and subtree merging from the actual time dimensions. We limited the search for the child nodes to a time-monotonic warping and reused the implementation of the existing DTW\@. For the non-leaf-nodes we did not apply any constraint since the same children policy already forces merges with the correct level and correct warping. The results of this technique were not convincing since the additional degree of freedom during the merging makes it even more unlikely to hit neighbors that belong to the same subtree. So the compression rates got worse and we dropped this approach.
 
 
 \subsection{Timeless Index}
@@ -479,7 +479,7 @@ One idea that may arise during investigating the results of DTW is that the time
 \subsection{Pruning}
 \label{ssec:algorithm:fail:pruning}
 
-A possible reason for suboptimal decisions during the local node merging might be that coefficients can be quite noisy and therefore expose to many possible merges which do not really differ within their value. Because only the nearest neighbor is selected for a merge, this may result in insane results. We tried to solve this problem by introducing additional information pruning in three variants:
+A possible reason for suboptimal decisions during the local node merging might be that coefficients can be quite noisy and therefore expose to many possible merges, which do not really differ within their value. Because only the nearest neighbor is selected for a merge, this may result in insane results. We tried to solve this problem by introducing additional information pruning in three variants:
 
 \begin{enumerate}
     \item before merging
@@ -487,9 +487,9 @@ A possible reason for suboptimal decisions during the local node merging might b
     \item after merging
 \end{enumerate}
 
-The pruning zeroes low significant parts of the floating point coefficients, bit by bit, so with increasing error. So the ratio of the information loss stays approximately constant no matter which size the coefficient has. The idea behind this is to engage the algorithm to ignore noise within the coefficient and to have less decisions to make. On the other hand this pruning also increases the error without resulting in any compression at all and is only useful for entries that will be added to the index afterwards. Sadly the increase of the error rate overweights the desired affect of helping the greedy algorithm and therefore this approach does not have a positive effect, in all three variants.
+The pruning zeroes low significant parts of the floating point coefficients, bit by bit, so with increasing error. So the ratio of the information loss stays approximately constant no matter what size the coefficient has. The idea behind this is to engage the algorithm to ignore noise within the coefficient and to have fewer decisions to make. On the other hand this pruning also increases the error without resulting in any compression at all and is only useful for entries that will be added to the index afterwards. Sadly the increase of the error rate overweights the desired affect of helping the greedy algorithm and therefore this approach does not have a positive effect, in all three variants.
 
-Keep in mind that this type of pruning does not decrease the memory requirements of the tree nodes since there is no fixed cutoff but rather a individual decision how much information should be kept. So to than decrease the node size by storing a shorter representation of the coefficient you would also need to store how much information got pruned which takes so much space that it eliminates its purpose. For technical reason it is also quite difficult to store nodes with sizes not fitting into hole bytes.
+Keep in mind that this type of pruning does not decrease the memory requirements of the tree nodes since there is no fixed cutoff but rather a individual decision how much information should be kept. So to than decrease the node size by storing a shorter representation of the coefficient you would also need to store how much information got pruned, which takes so much space that it eliminates its purpose. For technical reason it is also quite difficult to store nodes with sizes not fitting into hole bytes.
 
 
 \subsection{Seeding}
@@ -504,18 +504,18 @@ As shown in \autoref{fig:compression_timeline}, normally the first elements inse
     \item fractals
 \end{enumerate}
 
-While choosing elements of the dataset is considered cheating because we would add data to the database without counting it, the other methods would in general work because the description of the corresponding trees could be considered as part of the model and are fixed for all compressed data sets. The main issue is that someone needs to come up with a proper choice of this seeds and we were not able to figure out a proper way to do this.
+While choosing elements of the dataset is considered cheating because we would add data to the database without counting it, the other methods would in general work because the description of the corresponding trees could be considered as part of the model and are fixed for all compressed data sets. The main issue is that someone needs to come up with a proper choice of this seeds and we were unable to figure out a proper way to do this.
 
 
 
 \section{Different Ideas}
 \label{sec:algorithm:alternatives}
 
-After investigating failed approaches we want to present some ideas which we did not implement but which we think are worth to consider.
+After investigating failed approaches we want to present some ideas that we did not implement but that we think are worth to consider.
 
-The first alternative is to instead compressing the actual time series data, to compress lower and upper limits within the warping as presented in~\cite{LB_Keogh}. The question then is how to design a tracer which handles both trees at the same time. Another open point is if both limits should be added to the same index or not. Using the same index would probably enable higher compression rates while it requires the tracer to handle the mixed data set.
+The first alternative is to instead compressing the actual time series data, to compress lower and upper limits within the warping as presented in~\cite{LB_Keogh}. The question then is how to design a tracer that handles both trees at the same time. Another open point is if both limits should be added to the same index or not. Using the same index would probably enable higher compression rates while it requires the tracer to handle the mixed data set.
 
-Another idea is the usage of another wavelet type to do the decomposition, e.g.\ from the set of Daubechies wavelets described in~\cite{daubechies}. This would lower the depth of tree and possible allow larger merges. On the other hand, this also leads to more children per node which lowers the chance that a specific node can actually be merged. It also increases the amount of pointer information stored within the tree and therefore lowers the compression rate, at least when implemented in a na{\"\i}ve way. It also increases the complexity of the implementation. With all this factors, it must be carefully considered if this approach is worth a try.
+Another idea is the usage of another wavelet type to do the decomposition, e.g.\ from the set of Daubechies wavelets described in~\cite{daubechies}. This would lower the depth of tree and possible allow larger merges. On the other hand, this also leads to more children per node, which lowers the chance that a specific node can actually be merged. It also increases the amount of pointer information stored within the tree and therefore lowers the compression rate, at least when implemented in a na{\"\i}ve way. It also increases the complexity of the implementation. With all this factors, it must be carefully considered if this approach is worth a try.
 
 \begin{table}[t]
     \centering
@@ -542,6 +542,6 @@ Another idea is the usage of another wavelet type to do the decomposition, e.g.\
     \caption{Lossless, general-purpose compression algorithms}\label{tab:gp_compression}
 \end{table}
 
-The next idea is to use a general-purpose lossless compression algorithm to compress the data. To do so, the data should be split in junks so it is still possible to provide quick random access. We did a quick experiment with \SI{1}{\mega\byte} junks so one contains \num{512} time series. We then test two possible ways to compress the data. The first one is to compress the floating-point data which is the input for the DTW. Because we know that floating-point material is usually compressed badly, we also try to compress the initial data set which contains unsigned integer data. In that case, the $\log(x + 1)$ transformation, the smoothing and the gradient calculation must be evaluated on-the-fly. The results for different compression algorithms are shown in \autoref{tab:gp_compression}. They usually have very different performance characteristics and we did not evaluate that behavior. Our experience showed that, even when the integer data enables higher compression rates, it does not imply that it is faster or slower to compress and decompress. The compression rate might be improved by sharing information between the chunks while still allowing to decompress them separately. A factor which is important when choosing a compression algorithm is that in this application, the data is compressed once and decompressed many times, so fast decompression is required while resources required during compression are a less important factor. This is also the reason why we have included brotli into the comparison. This method, mainly pushed by Google, is usually used for asset compression on web servers and fast decompression on web clients. It is also to decide how decompressed data is cached and when the cache, if implemented, should be cleared. Technology borrowed from projects like zram\footnote{\url{https://www.kernel.org/doc/Documentation/blockdev/zram.txt}} and zswap\footnote{\url{https://www.kernel.org/doc/Documentation/vm/zswap.txt}}, both implemented within the Linux kernel, might be useful.
+The next idea is to use a general-purpose lossless compression algorithm to compress the data. To do so, the data should be split in junks so it is still possible to provide quick random access. We did a quick experiment with \SI{1}{\mega\byte} junks so one contains \num{512} time series. We then test two possible ways to compress the data. The first one is to compress the floating-point data that is the input for the DTW\@. Because we know that floating-point material is usually compressed badly, we also try to compress the initial data set, which contains unsigned integer data. In that case, the $\log(x + 1)$ transformation, the smoothing and the gradient calculation must be evaluated on-the-fly. The results for different compression algorithms are shown in \autoref{tab:gp_compression}. They usually have very different performance characteristics and we did not evaluate that behavior. Our experience showed that, even when the integer data enables higher compression rates, it does not imply that it is faster or slower to compress and decompress. The compression rate might be improved by sharing information between the chunks while still allowing decompressing them separately. A factor that is important when choosing a compression algorithm is that in this application, the data is compressed once and decompressed many times, so fast decompression is required while resources required during compression are a less important factor. This is also the reason why we have included brotli into the comparison. This method, mainly pushed by Google, is usually used for asset compression on web servers and fast decompression on web clients. It is also to decide how decompressed data is cached and when the cache, if implemented, should be cleared. Technology borrowed from projects like zram\footnote{\url{https://www.kernel.org/doc/Documentation/blockdev/zram.txt}} and zswap\footnote{\url{https://www.kernel.org/doc/Documentation/vm/zswap.txt}}, both implemented within the Linux kernel, might be useful.
 
-It might also be a good idea to evaluate the usage of other data types for storing the time series data. For integer data this could mean to dynamically select the bit-width of the type according to the largest value within the whole data set, withing a chunk or withing a single time series. For floating-point data this means to either use a smaller IEEE type, similar to the design decision we have made in \autoref{sec:algorithm:opt} or to use a special type which better exploits our data ranges. For example we think that \SI{5}{\bit} for the exponent are too much. Completely different data types like the A-law and $\mu$-law as defined in~\cite{G711} might be worth to try. Stripping the sign from the floating-point data could also be possible since the resulting curves should still preferable match against the same neighbors.
+It might also be a good idea to evaluate the usage of other data types for storing the time series data. For integer data this could mean to dynamically select the bit-width of the type according to the largest value within the whole data set, withing a chunk or withing a single time series. For floating-point data this means to either use a smaller IEEE type, similar to the design decision we have made in \autoref{sec:algorithm:opt} or to use a special type that better exploits our data ranges. For example we think that \SI{5}{\bit} for the exponent are too much. Completely different data types like the A-law and $\mu$-law as defined in~\cite{G711} might be worth to try. Stripping the sign from the floating-point data could also be possible since the resulting curves should still preferable match against the same neighbors.

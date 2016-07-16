@@ -1,7 +1,7 @@
 \chapter{Baseline}
 \label{ch:baseline}
 
-Before we can start analyzing any data or to do any algorithm research, we need to clarify what exact data we want to process and what results we want to gather. In this chapter we explain the preprocessing of the data from the collection from the Google server over normalization up to the clean up. Then we craft a precise description of the what we think similarity is in our context. Finally we present prior work on how to calculate this and explain why these methods do not work in our case.
+Before we can start analyzing any data or to do any algorithm research, we need to clarify what exact data we want to process and what results we want to gather. In this chapter we explain the preprocessing of the data from the collection from the Google server over normalization up to the clean up. Then we craft a precise description of the what we think similarity is in our context. Finally, we present prior work on how to calculate this and explain why these methods do not work in our case.
 
 
 
@@ -36,7 +36,7 @@ As a first step we download the raw data from the Google server. A complete list
 
 \url{https://storage.googleapis.com/books/ngrams/books/datasetsv2.html}
 
-The data collection and processing is described in~\cite{Google_nGrams}. The raw text data which was downloaded from the Google servers is mangled by a high-performance C++ implementation to speed-up the upcoming steps. During the first steps, only the $n$-gram content is required without any knowledge of the actual time series data. We exploit this fact and delay the actual parsing and storage of the time series until the data is required and focus on the handling of the string data as long as possible.
+The data collection and processing is described in~\cite{Google_nGrams}. The raw text data, which was downloaded from the Google servers, is mangled by a high-performance C++ implementation to speed-up the upcoming steps. During the first steps, only the $n$-gram content is required without any knowledge of the actual time series data. We exploit this fact and delay the actual parsing and storage of the time series until the data is required and focus on the handling of the string data as long as possible.
 
 
 \subsection{String filtering}
@@ -49,32 +49,32 @@ It seems that the $n$-grams that Google extracted does not only contain pure wor
 \label{ssec:baseline:data:snorm}
 Since the data the $n$-grams are described by Unicode strings, there may exist string describing the same content. We apply NFKC normalization as described in~\cite{unicode8annex15} to solve this issue. Furthermore we lowercase all inputs with respect to the Unicode standard. If this procedure will lead to duplicate $n$-grams, they are joined by adding the corresponding time series data.
 
-Notice that the lowercase transformation may not work as expected for other languages than English since it may lead to a lose of important information.
+Notice, that the lowercase transformation may not work as expected for other languages than English since it may lead to a loss of important information.
 
 
 \subsection{Word Normalization}
 \label{ssec:baseline:data:wnorm}
-The words forming the $n$-grams exist in multiple variants, e.g.\ different terms for verbs or singular and plural form for nouns. Naturally the resulting time series are very similar and do not contain valuable information, neither for our algorithms nor for a human analyst. We solve this issue by applying the WordNet lemmatizer (\cite{wordnet}) and afterwards the snowball stemmer (\cite{porter2}) to all words. In case of same output $n$-grams the related time series are added again.
+The words forming the $n$-grams exist in multiple variants, e.g., different terms for verbs or singular and plural form for nouns. Naturally the resulting time series are very similar and do not contain valuable information, neither for our algorithms nor for a human analyst. We solve this issue by applying the WordNet lemmatizer (\cite{wordnet}) and afterwards the snowball stemmer (\cite{porter2}) to all words. In case of same output $n$-grams the related time series are added again.
 
-As for the former transformation step be aware of the language problem. Other languages may require other word normalization techniques. Also there may be more advanced techniques that exploit the knowledge of the entire $n$-gram instead of single words.
+As for the former transformation step, be aware of the language problem. Other languages may require other word normalization techniques. Also, there may be more advanced techniques that exploit the knowledge of the entire $n$-gram instead of single words.
 
 We decided not to run any OCR (optical character recognition) error recognition since we are not aware of any general purpose approach that does not transform rare words or names like a na\"{\i}ve spell checker would do.
 
 
 \subsection{Pruning}
 \label{ssec:baseline:data:prune}
-The original data sets contains a lot of very rare $n$-grams that, in our opinion, do not provide enough statistical information to be considered during the further analysis. The same applies to all $n$-grams for the early years that are contained in the data. We decided to only use the last \num{256} years of the time series data and that we drop all $n$-grams where the related match count time series is too small, or in mathematical terms where $\sum_{1753 \leq y \leq 2008} v_{0, y} < 1000$ ($v_0$ is the \enquote{match count}) applies. Notice that this is the first step where the actual time series content is required. Therefore it is also the first step where we parse the time series data for all $n$-gram strings which survived up to this point.
+The original data sets contains a lot of very rare $n$-grams that, in our opinion, do not provide enough statistical information to be considered during the further analysis. The same applies to all $n$-grams for the early years that are contained in the data. We decided to only use the last \num{256} years of the time series data and that we drop all $n$-grams where the related match count time series is too small, or in mathematical terms where $\sum_{1753 \leq y \leq 2008} v_{0, y} < 1000$ ($v_0$ is the \enquote{match count}) applies. Notice, that this is the first step where the actual time series content is required. Therefore, it is also the first step where we parse the time series data for all $n$-gram strings that survived up to this point.
 
-The selection of the time range of \num{256} years has other advantages apart from the pure pruning. Since it is a power of \num{2} it is easier to apply many transformations (e.g.\ Fourier or Discrete Wavelet Transformation) to it without the need to think about and justify additional edge case handling.
+The selection of the time range of \num{256} years has other advantages apart from the pure pruning. Since it is a power of \num{2} it is easier to apply many transformations (e.g., Fourier or Discrete Wavelet Transformation) to it without the need to think about and justify additional edge case handling.
 
 
 
 \section{Similarity}
 \label{sec:baseline:sim}
-We first discuss which time series we want to consider as similar. We want to explore which $n$-grams are used together. Because there might be a normal usage of certain words or phrases in the day to day life, interesting data might be hidden by an overall large number and therefore interesting changes in usage patterns might not be discovered when total numbers of mentions are compared. Consider the following example: $n_1 \Rightarrow n_2$ but not vice versa and $n_2$ is already used in many books but $n_1$ is a new $n$-gram at a certain point of time. This implication cannot be found by comparing total numbers, because $n_2$ might be way larger than $n_1$ but the implication will lead to similar changes in the overall time series. So we seek to find similar structure instead of similar usage numbers.
+We first discuss, which time series we want to consider as similar. We want to explore, which $n$-grams are used together. Because there might be a normal usage of certain words or phrases in the day to day life, interesting data might be hidden by an overall large number and therefore interesting changes in usage patterns might not be discovered when total numbers of mentions are compared. Consider the following example: $n_1 \Rightarrow n_2$ but not vice versa and $n_2$ is already used in many books but $n_1$ is a new $n$-gram at a certain point of time. This implication cannot be found by comparing total numbers, because $n_2$ might be way larger than $n_1$ but the implication will lead to similar changes in the overall time series. So we seek to find similar structure instead of similar usage numbers.
 
 \begin{definition}[Query]
-    A query is a time series for which the user (or some program) wants to know the nearest neighbors for. By writing \enquote{some word} we refer to the time series which belongs to the normalized $n$-gram or the $n$-gram itself, depending on the context. The plural form queries is used to express multiple starting points for a nearest neighbor search, either when generating statistics or when calculating the distance to multiple time series.
+    A query is a time series for which the user (or some program) wants to know the nearest neighbors for. By writing \enquote{some word} we refer to the time series that belongs to the normalized $n$-gram or the $n$-gram itself, depending on the context. The plural form queries is used to express multiple starting points for a nearest neighbor search, either when generating statistics or when calculating the distance to multiple time series.
 \end{definition}
 
 Furthermore we limit our analysis to the \enquote{match count} because it seems to be more useful for later research than the less fine grained \enquote{unique book count}.
@@ -109,7 +109,7 @@ In \autoref{fig:ngrams_ex_total} you can observe the following: the words \enquo
     \caption{Relative counts of example $n$-grams}\label{fig:ngrams_ex_relative}
 \end{figure}
 
-\autoref{fig:ngrams_sums} shows the foundation of such a factor. The problem with this approach is that time series with an overall huge impact on the sum will also influence the normalized results of small time series heavily. In other words: rather than symbolizing a straight growth, the sum itself has a structure which than will influence the normalized result. An example result of this normalization is shown in \autoref{fig:ngrams_ex_relative}. It can be observed that the $n$-gram \enquote{war} seems to grow heavily during during the time around the world wars. The reason for this is that the overall number of publications decreased during this time except for war-related topics. As explained, the structure of the sum time series itself now results in a new feature of the \enquote{war} data.
+\autoref{fig:ngrams_sums} shows the foundation of such a factor. The problem with this approach is that time series with an overall huge impact on the sum will also influence the normalized results of small time series heavily. In other words: rather than symbolizing a straight growth, the sum itself has a structure, which then will influence the normalized result. An example result of this normalization is shown in \autoref{fig:ngrams_ex_relative}. It can be observed that the $n$-gram \enquote{war} seems to grow heavily during the time around the world wars. The reason for this is that the overall number of publications decreased during this time except for war-related topics. As explained, the structure of the time series sum itself now results in a new feature of the \enquote{war} data.
 
 \begin{figure}
     \centering
@@ -123,7 +123,7 @@ In \autoref{fig:ngrams_ex_total} you can observe the following: the words \enquo
     \caption{Histogram of $\log(x + 1)$ of all time series}\label{fig:ngrams_lhist}
 \end{figure}
 
-So we choose to apply $\log(x + 1)$ to all values for normalizing. Note the \num{1} which was added because the range of possible input values starts at \num{0}. The results are shown in \autoref{fig:ngrams_ex_log} and the corresponding histogram is shown in \autoref{fig:ngrams_lhist}. There is a small gap in the histogram which is a bin $(0,0.5]$ which before transformation is $(0,0.65]$ and therefore no count values can fall into that range. Overall the results look way better distributed. It can also be observed that the later years are smoother than the beginning of the time series. This is due to the fact that larger values counts are, in relative means, less noisy than smaller counts.
+So we choose to apply $\log(x + 1)$ to all values for normalizing. Note the \num{1} that was added because the range of possible input values starts at \num{0}. The results are shown in \autoref{fig:ngrams_ex_log} and the corresponding histogram is shown in \autoref{fig:ngrams_lhist}. There is a small gap in the histogram, which is the bin $(0,0.5]$, which before transformation is $(0,0.65]$ and therefore no count values can fall into that range. Overall the results look way better distributed. It can also be observed that the later years are smoother than the beginning of the time series. This is due to the fact that larger values counts are, in relative means, less noisy than smaller counts.
 
 
 \subsection{Gradients}
@@ -141,7 +141,7 @@ So we choose to apply $\log(x + 1)$ to all values for normalizing. Note the \num
     \caption{Gradients of example $n$-grams}\label{fig:ngrams_ex2_grad}
 \end{figure}
 
-As \autoref{fig:ngrams_ex2_fitavg} shows, there are cases where time series look very similar but are difficult to fit by using a linear transformation. Therefore a simple $p$-distance is not sufficient for as a distance measure. We decided to fit the gradients instead. An example is shown in \autoref{fig:ngrams_ex2_grad}. We use the $\Delta = 1$ gradient of $\log(x + 1)$. Now time series with similar structure have a low distance. The following two subsections will explain two additional tunings we made to make this distance more meaningful.
+As \autoref{fig:ngrams_ex2_fitavg} shows, there are cases where time series look very similar but are difficult to fit by using a linear transformation. Therefore, a simple $p$-distance is not sufficient for as a distance measure. We decided to fit the gradients instead. An example is shown in \autoref{fig:ngrams_ex2_grad}. We use the $\Delta = 1$ gradient of $\log(x + 1)$. Now time series with similar structure have a low distance. The following two subsections will explain two additional tunings we made to make this distance more meaningful.
 
 \begin{figure}
     \centering
@@ -155,7 +155,7 @@ As \autoref{fig:ngrams_ex2_fitavg} shows, there are cases where time series look
     \caption{Frequency distribution (mean + standard deviation) for different smoothing levels}\label{fig:smoothing_frequencies}
 \end{figure}
 
-Since calculating the distances of noisy gradients may lead to useless results, we smooth the time series using a Gauss kernel with $\sigma = 1$ before deriving the gradient. An example is shown in \autoref{fig:ngrams_ex2_grad_smooth}. The reason we can use a Gauss kernel, which takes past and future values into account, for a time series here is the fact that the data we are transforming is known beforehand. This is different to most other scenarios where smoothing techniques like EWMA (exponentially weighted moving average) are required. Frequency distributions for different smoothing levels are shown in \autoref{fig:smoothing_frequencies}. The non-smoothed data shows quite high amplitudes in higher frequencies ranges which is uncommon for most time series data sets. The chosen smoothing of $\sigma = 1$ reduces noise while $\sigma = 2$ leads to a heavy loss of information. The overall pattern of fast switching gradients will also lead to some other problems, e.g.\ in \autoref{sec:baseline:speed}. The similarity of the $1$-gram \enquote{kiss} is clearer now. As expected, the time data does not quite fit the other example series. This is intended since the underlying data also has a slightly different structure.
+Since calculating the distances of noisy gradients may lead to useless results, we smooth the time series using a Gauss kernel with $\sigma = 1$ before deriving the gradient. An example is shown in \autoref{fig:ngrams_ex2_grad_smooth}. The reason we can use a Gauss kernel, which takes past and future values into account, for a time series here is the fact that the data we are transforming is known beforehand. This is different to most other scenarios where smoothing techniques like EWMA (exponentially weighted moving average) are required. Frequency distributions for different smoothing levels are shown in \autoref{fig:smoothing_frequencies}. The non-smoothed data shows quite high amplitudes in higher frequencies ranges, which is uncommon for most time series data sets. The chosen smoothing of $\sigma = 1$ reduces noise while $\sigma = 2$ leads to a heavy loss of information. The overall pattern of fast switching gradients will also lead to some other problems, e.g.\ in \autoref{sec:baseline:speed}. The similarity of the $1$-gram \enquote{kiss} is clearer now. As expected, the time data does not quite fit the other example series. This is intended since the underlying data also has a slightly different structure.
 
 
 \subsection{Dynamic Time Warping}
@@ -186,16 +186,16 @@ First the distribution of the distances differs heavily from query to query as s
 \begin{figure}
     \centering
     \input{figures/dists_sorted.tex}
-    \caption{Distance of the first \num{100} neighbors of example $1$-grams, without first element which is the query itself}\label{fig:dists_sorted}
+    \caption{Distance of the first \num{100} neighbors of example $1$-grams, without the first element, which is the query itself}\label{fig:dists_sorted}
 \end{figure}
 
-Second it is not clear how many nearest neighbors should be taken into account, especially when designing user-facing applications. To solve this problem we sort all neighbors by their distance and only take rank $1$ to $\frac{n}{2}$ into account. This ignores the query itself with its distance of \num{0} and also prunes the second half of the sorted list because there are usually many outliers at the end of the spectrum. Then we normalize the distances:
+Second it is not clear how many nearest neighbors should be taken into account, especially when designing user-facing applications. To solve this problem we sort all neighbors by their distance and only take rank $1$ to $\frac{n}{2}$ into account. This ignores the query itself with its distance of \num{0} and prunes the second half of the sorted list because there are usually many outliers at the end of the spectrum. Then we normalize the distances:
 
 \begin{equation}\label{eq:dists_norm}
     d_{n,i} = \frac{d_i - d_1}{d_1}
 \end{equation}
 
-Here $d_i$ is the distance of the neighbor with rank $i$, starting at \num{0} with the query itself. The result is shown in \autoref{fig:dists_sorted}. Now we search for the index which clearly cuts a group of nearest neighbors from the rest of data. To do so we do the following:
+Here $d_i$ is the distance of the neighbor with rank $i$, starting at \num{0} with the query itself. The result is shown in \autoref{fig:dists_sorted}. Now we search for the index that clearly cuts the group of the nearest neighbors from the rest of data. To do so we do the following:
 
 \begin{equation}\label{eq:dists_cut}
     i_\text{cut} = 1 + \argmax_{i=1}^\frac{n}{2} \left( \Delta_1 \left( \frac{\Delta_1(d_n)}{d_n} \right) \right)_i
@@ -203,9 +203,9 @@ Here $d_i$ is the distance of the neighbor with rank $i$, starting at \num{0} wi
 
 Here $\Delta_1$ calculates the gradient with distance \num{1}.
 
-That approach might seem to be slightly artificial and indeed its more a phenomenological metric instead of a mathematically proven approach. The main reason for this is that we want to keep the index as small as possible to enable users to understand the content of the list. If you try to use the set of nearest neighbors as an input for another algorithm you may want to choose another method.
+That approach might seem to be slightly artificial and indeed its a more phenomenological metric instead of a mathematically proven approach. The main reason for this is that we want to keep the index as small as possible to enable users to understand the content of the list. If you try to use the set of nearest neighbors as an input for another algorithm you may want to choose another method.
 
-Keep in mind that our method requires sorting of all neighbors while na{\"\i}ve $k$ nearest neighbors search requires only partial sorting. For a bruteforce search this should not be a problem since calculating the DTW distances dominates the execution time but it might be a problem when handling overly large data sets. Also it renders index techniques useless since the algorithm cannot ensure to draw enough data from the index to reach the cutoff point. Therefore we do not use this technique during all evaluations.
+Keep in mind that our method requires sorting of all neighbors while na{\"\i}ve $k$ nearest neighbors search requires only partial sorting. For a bruteforce search this should not be a problem since calculating the DTW distances dominates the execution time but it might be a problem when handling overly large data sets. Also, it renders index techniques useless since the algorithm cannot ensure to draw enough data from the index to reach the cutoff point. Therefore, we do not use this technique during all evaluations.
 
 We also want to point out that this method is very instable. Small changes in the input data, e.g.\ by noise introduces by compression, will quickly lead to different results.
 
@@ -214,7 +214,7 @@ We also want to point out that this method is very instable. Small changes in th
 \section{Index-based Speed-up}
 \label{sec:baseline:speed}
 
-One of the fundamental problems of large-scale DTW-based similarity searches is that, without further preparation, a linear scan is required. In preparation of further research and usage of $5$-grams, we want to avoid this and cut the runtime complexity to $\mathcal{O}(\log{n})$. While doing so we still want to archive exact results, at least for our baseline. We decided to implement~\cite{LB_Keogh} which is a combination of an R-tree index (\cite{rtree}) and early sorting and pruning by utilizing bound checks.
+One of the fundamental problems of large-scale DTW-based similarity searches is that, without further preparation, a linear scan is required. In preparation of further research and usage of $5$-grams, we want to avoid this and cut the runtime complexity to $\mathcal{O}(\log{n})$. While doing so we still want to archive exact results, at least for our baseline. We decided to implement~\cite{LB_Keogh}, which is a combination of an R-tree index (\cite{rtree}) and early sorting and pruning by utilizing bound checks.
 
 \begin{figure}
     \centering
@@ -228,18 +228,18 @@ One of the fundamental problems of large-scale DTW-based similarity searches is 
     \caption{DTW index efficiency, over $r$, resolution is \num{64}}\label{fig:dtw_index2}
 \end{figure}
 
-A problem with this type of index is that the structure of the indexed data is different than the one tested in the publication. Our rather short data (in terms of measured points) contains more entropy and is more jittering than the time series intended by the paper. Therefore we require more dimensions to get a tree that at least filters out some candidates as shown in \autoref{fig:dtw_index}. We need at least \num{16} dimensions to get any affect from the \code{LB\_PAA} and we do not even see any real filtering effect from the tree structure itself\footnote{the amount of received time series is more than \SI{95}{\percent}}. So the tree structure only provides a sorting of the time series. That results in a very memory-inefficient data structure. Remember that for every dimension, the R-tree stores two data points, a minimum and a maximum. So we need to store at least \SI{12.5}{\percent} of the actual data size as an index to get a any effect and still have a linear complexity. The high dimensionality renders the tree performance and memory management nearly useless, as also found by~\cite{rtree_highdim}. The situation depends on the warping radius as shown in \autoref{fig:dtw_index2}. For non-trivial values nearly the entire data is fetched from the index. Because all of this is a general problem of R-tree-based algorithms, we did not implement the improvements suggested by~\cite{LB_Improved}.
+A problem with this type of index is that the structure of the indexed data is different than the one tested in the publication. Our rather short data (in terms of measured points) contains more entropy and is more jittering than the time series intended by the paper. Therefore, we require more dimensions to get a tree that at least filters out some candidates as shown in \autoref{fig:dtw_index}. We need at least \num{16} dimensions to get any affect from the \code{LB\_PAA} and we do not even see any real filtering effect from the tree structure itself\footnote{the amount of received time series is more than \SI{95}{\percent}}. So the tree structure only provides a sorting of the time series. That results in a very memory-inefficient data structure. Remember that for every dimension, the R-tree stores two data points, a minimum and a maximum. So we need to store at least \SI{12.5}{\percent} of the actual data size as an index to get a any effect and still have a linear complexity. The high dimensionality renders the tree performance and memory management nearly useless, as also found by~\cite{rtree_highdim}. The situation depends on the warping radius as shown in \autoref{fig:dtw_index2}. For non-trivial values nearly the entire data is fetched from the index. Because all of this is a general problem of R-tree-based algorithms, we did not implement the improvements suggested by~\cite{LB_Improved}.
 
 
 
 \section{Prior Work}
 \label{sec:baseline:prior}
 
-Now we would like to introduce some prior work and discuss how they differ from our work. Before doing so and because we think it is not expressed enough amongst researchers we want to emphasize the following point: these methods and algorithms are not bad in general and have their applications, but there are reasons for not using them. Either the time series we work with are just different from the ones which are normally used or it is because many fields do not face the vast amount of data as we do. And some of them are just not able to simultaneously match the goals we have:
+Now we would like to introduce some prior work and discuss how they differ from our work. Before doing so and because we think it is not expressed enough amongst researchers we want to emphasize the following point: these methods and algorithms are not bad in general and have their applications, but there are reasons for not using them. Either the time series we work with are just different from the ones that are normally used or it is because many fields do not face the vast amount of data as we do. And some of them are just not able to simultaneously match the goals we have:
 
 \begin{itemize}
     \item finding similarities as defined by us amongst a large set of short but entropy-right time series
-    \item use these findings to speed-up nearest neighbor queries
+    \item use these findings to speed up nearest neighbor queries
     \item at the same time exploit shared information to compress the data
     \item enable similarity search on subranges of the data set without the need to prepare the data again
 \end{itemize}
@@ -248,7 +248,7 @@ Now we would like to introduce some prior work and discuss how they differ from 
 \subsection{Dimension Reduction}
 \label{ssec:baseline:prior:dimred}
 
-The first idea on how to deal with our data set would be a dimension reduction. To do so, the time series data is usually transformed into another representation and from there multiple parts are removed. This can be either done as a compression technique or to speed up index lookups (\cite{LB_Keogh,LB_Improved,dimred1,dimred2}). As shown in the previous section, this prunes too much information to enable good indexing. Therefore our main goal is to not reduce the dimensionality of the data but rather exploit similarities of the time series to compress data and build an index to speed-up DTW calculations.
+The first idea on how to deal with our data set would be a dimension reduction. To do so, the time series data is usually transformed into another representation and from that multiple parts are removed. This can be either done as a compression technique or to speed up index lookups (\cite{LB_Keogh,LB_Improved,dimred1,dimred2}). As shown in the previous section, this prunes too much information to enable good indexing. Therefore, our main goal is to not reduce the dimensionality of the data but rather exploit similarities of the time series to compress data and build an index to speed-up DTW calculations.
 
 
 \subsection{No Compression or Reduction}
@@ -260,7 +260,7 @@ Some methods (\cite{dimred3,dimred4}) try to transform the data into another rep
 \subsection{Feature Extraction}
 \label{ssec:baseline:prior:extract}
 
-Another hole topic is the extraction of specific features (\cite{compress1,compress2,compress3,compress4,compress5}). It leads to a compression and sometimes (\cite{compress1}) to human-readable outputs. The reduced and refined amount of data usually enables better index structures. The reason why this is not applicable to our problem is the following: during the feature extraction process it is not clear how large or small the time ranges during the similarity search will be and therefore it is not clear how fine-grained the resulting description should should be. We have shown that the frequency of our time series is high and a coarse-grained extraction would be equal to a dimension reduction and therefore would not work as well. A fine-grained extraction results in too much information to index and process on demand and is also a bad compression.
+Another hole topic is the extraction of specific features (\cite{compress1,compress2,compress3,compress4,compress5}). It leads to a compression and sometimes (\cite{compress1}) to human-readable outputs. The reduced and refined amount of data usually enables better index structures. The reason this is not applicable to our problem is the following: during the feature extraction process it is not clear how large or small the time ranges during the similarity search will be and therefore it is not clear how fine-grained the resulting description should be. We have shown that the frequency of our time series is high and a coarse-grained extraction would be equal to a dimension reduction and therefore would not work as well. A fine-grained extraction results in too much information to index and process on demand and is also a bad compression.
 
 
 \subsection{Similarity}
@@ -268,13 +268,13 @@ Another hole topic is the extraction of specific features (\cite{compress1,compr
 
 It is not surprising that others also tried to find similarities amongst time series.
 
-One example is similarity based on mutual information (\cite{MISE}). We believe that this definition is a great idea and is a very generic approach which can be applied to many fields. Sadly their method relies on slow pairwise comparison. Also their idea of relationship does not match the one we developed for this particular application.
+One example is similarity based on mutual information (\cite{MISE}). We believe that this definition is a great idea and is a very generic approach, which can be applied to many fields. Sadly their method relies on slow pairwise comparison. Also, their idea of relationship does not match the one we developed for this particular application.
 
 The definition developed in~\cite{sim1} is based on the matching of rescaled subsequences. This is similar to our idea of using DTW and might be worth to consider for future research work. For now we are not able to use this approach because it does not scale well enough to the large amount of time series.
 
-An interesting approach is presented in~\cite{sim2}. There time series are described by rules that describe discretized data. In our opinion that could be classified as feature extraction. The two issues are: the discretization loss and the amount of extracted rules. Both do not work very well with our idea of similarity, but it might be worth to consider to use this technology to add additional information to behavior that we find with our method and make the results more understandable to the users.
+An interesting approach is presented in~\cite{sim2}. In that paper time series are described by rules that describe discretized data. In our opinion that could be classified as feature extraction. The two issues are: the discretization loss and the amount of extracted rules. Both do not work very well with our idea of similarity, but it might be worth to consider to use this technology to add additional information to behavior that we find with our method and make the results more understandable to the users.
 
-One last idea which we want present here is an alternative to the used DTW\@: Longest Common Subsequence (LCSS) and Edit Distance on Real Sequence (EDR). These require either discrete data or $\epsilon$-thresholds. \cite{sim3} crafts a generic and fast approach to compute these. Other groups might find this helpful but we decided that DTW is better suited for our application since its idea of a Euclidean distance with some time inaccuracies better match our model of similarity.
+One last idea, which we want present here, is an alternative to the used DTW\@: Longest Common Subsequence (LCSS) and Edit Distance on Real Sequence (EDR). These require either discrete data or $\epsilon$-thresholds. \cite{sim3} crafts a generic and fast approach to compute these. Other groups might find this helpful but we decided that DTW is better suited for our application since its idea of a Euclidean distance with some time inaccuracies better match our model of similarity.
 
 
 \subsection{Related Techniques}
