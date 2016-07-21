@@ -45,6 +45,8 @@ It seems that the $n$-grams that Google extracted does not only contain pure wor
 
 \code{\[\_.\slash{},:;!?\textbackslash'"\#()<>=+*\{\}0-9\]}
 
+We have found this character set sufficient for our work, but want to point out that there this is a parameter that depends on the concrete application. For example, we drop $n$-grams that contain the combined words like \enquote{It's}. To deal with this type of content, the pipeline needs to be extended to split words into a normalized form. In the following work we assume that all parts of the $n$-gram are atomic words.
+
 \subsection{String Normalization}
 \label{ssec:baseline:data:snorm}
 Since the data the $n$-grams are described by Unicode strings, there may exist string describing the same content. We apply NFKC normalization as described in~\cite{unicode8annex15} to solve this issue. Furthermore we lowercase all inputs with respect to the Unicode standard. If this procedure will lead to duplicate $n$-grams, they are joined by adding the corresponding time series data.
@@ -63,15 +65,22 @@ We decided not to run any OCR (optical character recognition) error recognition 
 
 \subsection{Pruning}
 \label{ssec:baseline:data:prune}
-The original data sets contains a lot of very rare $n$-grams that, in our opinion, do not provide enough statistical information to be considered during the further analysis. The same applies to all $n$-grams for the early years that are contained in the data. We decided to only use the last \num{256} years of the time series data and that we drop all $n$-grams where the related match count time series is too small, or in mathematical terms where $\sum_{1753 \leq y \leq 2008} v_{0, y} < 1000$ ($v_0$ is the \enquote{match count}) applies. Notice, that this is the first step where the actual time series content is required. Therefore, it is also the first step where we parse the time series data for all $n$-gram strings that survived up to this point.
+The original data sets contains a lot of very rare $n$-grams that, in our opinion, do not provide enough statistical information to be considered during the further analysis. The same applies to all $n$-grams for the early years that are contained in the data.
 
-The selection of the time range of \num{256} years has other advantages apart from the pure pruning. Since it is a power of \num{2} it is easier to apply many transformations (e.g., Fourier or Discrete Wavelet Transformation) to it without the need to think about and justify additional edge case handling.
+To handle the first case, we have decided to drop all $n$-grams where the related match count time series is too small, or in mathematical terms where $\sum_{1753 \leq y \leq 2008} v_{0, y} < 1000$ ($v_0$ is the \enquote{match count}) applies. This threshold is, as many other parameters, an application-specific one. For us it was a trade-off of eliminating noise and keeping some very specific entries which might be required to answer some questions in the field of philosophy.
 
+To eliminate the second source of irrelevant information we decided to only use the last \num{256} years of the time series data. The selection of the time range of \num{256} years has other advantages apart from the pure pruning. Since it is a power of \num{2} it is easier to apply many transformations (e.g., Fourier or Discrete Wavelet Transformation) to it without the need to think about and justify additional edge case handling.
+
+Please note that this is the first step where the actual time series content is required. Therefore, it is also the first step where we parse the time series data for all $n$-gram strings that survived up to this point.
 
 
 \section{Similarity}
 \label{sec:baseline:sim}
-We first discuss, which time series we want to consider as similar. We want to explore, which $n$-grams are used together. Because there might be a normal usage of certain words or phrases in the day to day life, interesting data might be hidden by an overall large number and therefore interesting changes in usage patterns might not be discovered when total numbers of mentions are compared. Consider the following example: $n_1 \Rightarrow n_2$ but not vice versa and $n_2$ is already used in many books but $n_1$ is a new $n$-gram at a certain point of time. This implication cannot be found by comparing total numbers, because $n_2$ might be way larger than $n_1$ but the implication will lead to similar changes in the overall time series. So we seek to find similar structure instead of similar usage numbers.
+The idea of similarity depends on the concrete application. The simplest one, which is obviously not suitable, is to just take the total count of $n$-grams over a time period and calculate the absolute distance to each other. Another idea would be to treat the time series as a high-dimensional vector and use the Euclidean distance as a description of how similar the different series are. For our application it was not clear beforehand, which precise mathematical definition is suitable. It should be justified by two parts. The first one is a purely data-driven approach. Because we want to overcome the subjective guessing described in the introduction, we want a similarity metric which is based on the actual time series data and nothing else. The second part is that the results should be sane in a semantically sense. So for $n$-grams that are similar there should, from a user point of view, also be a good reason to trait them as such.
+
+Notice that similarity is a function which describes a metric while not being mathematically correct. We guarantee non-negativity and symmetry but the method we come up with does not provide identity of indiscernible and subadditivity.
+
+In this section we first discuss, which time series we want to consider as similar. We want to explore, which $n$-grams are used together. Because there might be a normal usage of certain words or phrases in the day to day life, interesting data might be hidden by an overall large number and therefore interesting changes in usage patterns might not be discovered when total numbers of mentions are compared. Consider the following example: $n_1 \Rightarrow n_2$ but not vice versa and $n_2$ is already used in many books but $n_1$ is a new $n$-gram at a certain point of time. This implication cannot be found by comparing total numbers, because $n_2$ might be way larger than $n_1$ but the implication will lead to similar changes in the overall time series. So we seek to find similar structure instead of similar usage numbers.
 
 \begin{definition}[Query]
     A query is a time series for which the user (or some program) wants to know the nearest neighbors for. By writing \enquote{some word} we refer to the time series that belongs to the normalized $n$-gram or the $n$-gram itself, depending on the context. The plural form queries is used to express multiple starting points for a nearest neighbor search, either when generating statistics or when calculating the distance to multiple time series.
@@ -219,13 +228,13 @@ One of the fundamental problems of large-scale DTW-based similarity searches is 
 \begin{figure}
     \centering
     \input{figures/dtw_index.tex}
-    \caption{DTW index efficiency, over resolution, $r$ is \num{10}}\label{fig:dtw_index}
+    \caption{DTW index efficiency, per resolution, $r$ is \num{10}}\label{fig:dtw_index}
 \end{figure}
 
 \begin{figure}
     \centering
     \input{figures/dtw_index2.tex}
-    \caption{DTW index efficiency, over $r$, resolution is \num{64}}\label{fig:dtw_index2}
+    \caption{DTW index efficiency, per $r$, resolution is \num{64}}\label{fig:dtw_index2}
 \end{figure}
 
 A problem with this type of index is that the structure of the indexed data is different than the one tested in the publication. Our rather short data (in terms of measured points) contains more entropy and is more jittering than the time series intended by the paper. Therefore, we require more dimensions to get a tree that at least filters out some candidates as shown in \autoref{fig:dtw_index}. We need at least \num{16} dimensions to get any affect from the \code{LB\_PAA} and we do not even see any real filtering effect from the tree structure itself\footnote{the amount of received time series is more than \SI{95}{\percent}}. So the tree structure only provides a sorting of the time series. That results in a very memory-inefficient data structure. Remember that for every dimension, the R-tree stores two data points, a minimum and a maximum. So we need to store at least \SI{12.5}{\percent} of the actual data size as an index to get a any effect and still have a linear complexity. The high dimensionality renders the tree performance and memory management nearly useless, as also found by~\cite{rtree_highdim}. The situation depends on the warping radius as shown in \autoref{fig:dtw_index2}. For non-trivial values nearly the entire data is fetched from the index. Because all of this is a general problem of R-tree-based algorithms, we did not implement the improvements suggested by~\cite{LB_Improved}.
