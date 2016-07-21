@@ -14,18 +14,17 @@ Before we can start analyzing any data or to do any algorithm research, we need 
     \caption{Relative amount of pruned data per letter}\label{fig:clean_up_sums}
 \end{figure}
 
-We perform the following clean up steps:
+As for most data analysis tasks, the raw input data is not suitable for direct information gathering. To clean up the data we are looking for an efficient and deterministic way. To do so we perform the following clean up steps:
 
 \begin{enumerate}
-    \itemsep0em
-    \item download and parsing
-    \item string filtering
-    \item string normalization
-    \item word normalization
-    \item pruning
+    \item download and parsing: Retrieve the data from the Google servers and parse the data for the first time. This step results in a list of all $n$-grams within the data set but does not, for efficiency reasons, store the actual time series data.
+    \item string filtering: Remove strings from the list of $n$-grams that contain certain characters. This removes punctuation and other unwanted entries.
+    \item string normalization: At this point we handle the fact that semantically identical Unicode strings might be encoded in different ways.
+    \item word normalization: For our application we ignore different word attributes like tenses and pluralization. This results in an unambiguous list of $n$-grams.
+    \item pruning: the Google data set contains a lot of very rare entries that do not contain enough valuable information. At this point, we strip certain parts based on a time frame as well as statistical significance. This is the first time that the actual time series data is required. This delayed parsing removes a lot of overhead during the early stages of the pipeline.
 \end{enumerate}
 
-Note that swapping the string-based steps does not lead a different output. \autoref{fig:clean_up_sums} show how much data is pruned by every step for the $1$-gram data set. The exact numbers can be found in \autoref{tab:clean_up_numbers_1} and \autoref{tab:clean_up_numbers_2}. Naturally there are some differences between the different starting characters but as far as we can tell no anomalies can be observed.
+Note that swapping the string-based steps does not lead a different output. \autoref{fig:clean_up_sums} show how much data is pruned by every step for the $1$-gram data set. The exact numbers can be found in \autoref{tab:clean_up_numbers_1} and \autoref{tab:clean_up_numbers_2}. Naturally there are some differences between the different starting characters of the $n$-grams but as far as we can tell no anomalies can be observed.
 
 If not stated otherwise, all figures and explanations in this work are derived from the $1$-gram data set.
 
@@ -176,7 +175,7 @@ Since calculating the distances of noisy gradients may lead to useless results, 
     \caption{Extrema of gradients of $\sigma = 2$ smoothed example time series}\label{fig:ngrams_ex2_extrema}
 \end{figure}
 
-As \autoref{fig:ngrams_ex2_extrema} shows, while having the same structure the gradients do not align perfectly. To calculate a meaningful distance, we use DTW (Dynamic Time Warping)\footnote{We do not cite a publication here since it is a commonly known algorithm and the only online publisher of the assumed original publication wants you to pay $>$\SI{30}{\$} after $>$\num{45} years.} with an Euclidean distance and a Sakoe-Chiba Band (\cite{sakoe}) of radius $r$. The usage of gradients as an input of Dynamic Time Warping follows the idea presented in~\cite{DDTW}.
+Now we have reached a state where we could just calculate the quadratic distance of the smoothed time series data. The question is if this obvious approach is sane. If would do so, we would completely ignore the fact that events that influence one time series have an delayed effect on others. Someone might wonder if this effect occurs in our data set. Take a look at \autoref{fig:ngrams_ex2_extrema} where we plot the extrema points of the smoothed data. While all four time seres have the same structure, their smoothed gradients do not align perfectly. To calculate a meaningful distance, we use DTW (Dynamic Time Warping)\footnote{We do not cite a publication here since it is a commonly known algorithm and the only online publisher of the assumed original publication wants you to pay $>$\SI{30}{\$} after $>$\num{45} years.} with an Euclidean distance. The usage of gradients as an input of Dynamic Time Warping follows the idea presented in~\cite{DDTW}. To only allow a warping up to a certain distance we use Sakoe-Chiba Band from~\cite{sakoe} of radius $r$. This prevents the DTW algorithm from stretching the time series too heavily which would result in semantically insane results and therefore would contradict our goals we have for our similarity.
 
 
 \subsection{Ranking}
@@ -198,7 +197,7 @@ First the distribution of the distances differs heavily from query to query as s
     \caption{Distance of the first \num{100} neighbors of example $1$-grams, without the first element, which is the query itself}\label{fig:dists_sorted}
 \end{figure}
 
-Second it is not clear how many nearest neighbors should be taken into account, especially when designing user-facing applications. To solve this problem we sort all neighbors by their distance and only take rank $1$ to $\frac{n}{2}$ into account. This ignores the query itself with its distance of \num{0} and prunes the second half of the sorted list because there are usually many outliers at the end of the spectrum. Then we normalize the distances:
+Second it is not clear how many nearest neighbors should be taken into account, especially when designing user-facing applications. To solve this problem we sort all neighbors by their distance and only take rank $1$ to $\frac{m}{2}$ into account, with $m$ being the size of the set of all $n$-grams. This ignores the query itself with its distance of \num{0} and prunes the second half of the sorted list because there are usually many outliers at the end of the spectrum. Then we normalize the distances:
 
 \begin{equation}\label{eq:dists_norm}
     d_{n,i} = \frac{d_i - d_1}{d_1}
@@ -207,7 +206,7 @@ Second it is not clear how many nearest neighbors should be taken into account, 
 Here $d_i$ is the distance of the neighbor with rank $i$, starting at \num{0} with the query itself. The result is shown in \autoref{fig:dists_sorted}. Now we search for the index that clearly cuts the group of the nearest neighbors from the rest of data. To do so we do the following:
 
 \begin{equation}\label{eq:dists_cut}
-    i_\text{cut} = 1 + \argmax_{i=1}^\frac{n}{2} \left( \Delta_1 \left( \frac{\Delta_1(d_n)}{d_n} \right) \right)_i
+    i_\text{cut} = 1 + \argmax_{i=1}^\frac{m}{2} \left( \Delta_1 \left( \frac{\Delta_1(d_n)}{d_n} \right) \right)_i
 \end{equation}
 
 Here $\Delta_1$ calculates the gradient with distance \num{1}.
@@ -237,7 +236,7 @@ One of the fundamental problems of large-scale DTW-based similarity searches is 
     \caption{DTW index efficiency, per $r$, resolution is \num{64}}\label{fig:dtw_index2}
 \end{figure}
 
-A problem with this type of index is that the structure of the indexed data is different than the one tested in the publication. Our rather short data (in terms of measured points) contains more entropy and is more jittering than the time series intended by the paper. Therefore, we require more dimensions to get a tree that at least filters out some candidates as shown in \autoref{fig:dtw_index}. We need at least \num{16} dimensions to get any affect from the \code{LB\_PAA} and we do not even see any real filtering effect from the tree structure itself\footnote{the amount of received time series is more than \SI{95}{\percent}}. So the tree structure only provides a sorting of the time series. That results in a very memory-inefficient data structure. Remember that for every dimension, the R-tree stores two data points, a minimum and a maximum. So we need to store at least \SI{12.5}{\percent} of the actual data size as an index to get a any effect and still have a linear complexity. The high dimensionality renders the tree performance and memory management nearly useless, as also found by~\cite{rtree_highdim}. The situation depends on the warping radius as shown in \autoref{fig:dtw_index2}. For non-trivial values nearly the entire data is fetched from the index. Because all of this is a general problem of R-tree-based algorithms, we did not implement the improvements suggested by~\cite{LB_Improved}.
+A problem with this type of index is that the structure of the indexed data is different than the one tested in the publication. Our rather short data (in terms of measured points) contains more entropy and is more jittering than the time series intended by the paper. Therefore, we require more dimensions to get a tree that at least filters out some candidates as shown in \autoref{fig:dtw_index}. We need at least \num{16} dimensions to get any effect from the \code{LB\_PAA} and we do not even see any real filtering effect from the tree structure itself\footnote{the amount of received time series is more than \SI{95}{\percent}}. So the tree structure only provides a sorting of the time series. That results in a very memory-inefficient data structure. Remember that for every dimension, the R-tree stores two data points, a minimum and a maximum. So we need to store at least \SI{12.5}{\percent} of the actual data size as an index to get a any effect and still have a linear complexity. The high dimensionality renders the tree performance and memory management nearly useless, as also found by~\cite{rtree_highdim}. The situation depends on the warping radius as shown in \autoref{fig:dtw_index2}. For non-trivial values nearly the entire data is fetched from the index. Because all of this is a general problem of R-tree-based algorithms, we did not implement the improvements suggested by~\cite{LB_Improved}.
 
 
 
