@@ -1,4 +1,4 @@
-\chapter{Algorithm}
+\chapter{The Design of CASINO TIMES}
 \label{ch:algorithm}
 
 In this chapter we explain our approach to compress the data and how we want to exploit this compression to find similar time series. To do so we first describe how we transform time series into tree structures, then we explain the general idea of information pruning. Afterwards we develop a method that instead of pruning of information relies on the merging of similar information packages. We then discuss different error metrics, detail how our construction can be used as an index and explain some technical improvements made to the algorithm. Finally, we show, which issues our approach has and how we tried to work-around these.
@@ -25,7 +25,7 @@ First of all, we need to find a time series representation that enables us to co
 To explain how the tree decomposition works we first need to clarify some terms:
 
 \begin{definition}[Superroot]
-    Since in a wavelet tree every node only describes the difference between the left and the right subtree, the information about the absolute position of the time series is missing. To store this information we introduce a superroot, a node that is the parent of the root and the only one that has exactly one child. The total position of the time series stored in that node is called anchor and has the symbol $a$.
+    Since in a wavelet tree every node only describes the difference between the left and the right subtree, the information about the absolute position of the time series is missing. To store this information we introduce a superroot, a node that is the parent of the root and the only one that has exactly one child. This absolute position of the time series stored in that node is called anchor and has the symbol $a$. Since the wavelet trees are fully balanced the anchor equals the mean value of a time series.
 \end{definition}
 
 \begin{definition}[Depth, Level]
@@ -164,7 +164,6 @@ Keep in mind to only merge nodes into others when their children are identical. 
 
 \begin{algorithm}
     \KwData{Node $N$}
-    \KwData{Error threshold $\epsilon$}
 
     \SetKwFunction{FindNearestNeighbor}{findNearestNeighbor}
     \SetKwFunction{GetChild}{getChild}
@@ -231,7 +230,7 @@ The construction of the database of known trees\footnote{To be precise: since th
 
 Still, the queue-based approach needs to start at the bottom and tends to be bottom-up. This is useful in a sense that the similarity we have defined is based on the gradient. Gradients are more influenced by the lower layers of the wavelet tree and so we merge this information first. This will be helpful for using the merged trees as an index structure.
 
-The final algorithm is shown in \autoref{algo:addTreeToIndex}. An exemplary visual representation of how the merged results look like is shown in \autoref{fig:megatree1} and \autoref{fig:megatree2}. Pay attention to the differences, which are the results of the different nearest neighbor query ranges.
+The final algorithm is shown in \autoref{algo:addTreeToIndex} and \autoref{algo:createMergeTask}. Notice that the creation of queue tasks does not involve the error threshold since we want to avoid expensive checks of the error bounds and only execute the corresponding routine when candidates are drawn from the queue. How this can be used to speed-up the error calculation is shown in the next section. An exemplary visual representation of how the merged results look like is shown in \autoref{fig:megatree1} and \autoref{fig:megatree2}. Pay attention to the differences, which are the results of the different nearest neighbor query ranges.
 
 
 
@@ -246,13 +245,13 @@ The choice of the error metric, while being easy in many cases, opposes some que
     \item How well does the decompressed data works with the later smoothing, gradient calculation and DTW\@?
 \end{itemize}
 
-We decided to try three different metrics during the process, which are described here.
+We decided to try three different metrics during the process, which we will describe in the following subsections.
 
 
 \subsection{Summerized linear distance}
 \label{ssec:algorithm:error:linear}
 
-The first metric, a linear absolute distance, is one that naturally occurs when looking for something easy to implement:
+The first metric, a linear absolute distance, is one that naturally occurs when looking for something easy to implement. With $t$ and $t'$ being the time series to compare, which both have a length of $m$, the summerized linear distance can be written as:
 
 \begin{equation}\label{eq:e1}
     e_1\left(t, t'\right) = \frac{1}{m} \sum_{i=1}^m \left|t_i - t'_i\right|
@@ -264,7 +263,7 @@ The upper bounds can directly be calculated during the tree merging process sinc
     \bar{e}_1\left(t, t'\right) = \frac{1}{m} \sum_{m \in \mathrm{merges}(t, t')} 2^\frac{d - m_l}{2} \left|m_x - m_y\right|
 \end{equation}
 
-Here $m_l$ stands for the level of the merged node and $m_x$ and $m_y$ for the coefficient of the original node and the merging partner. Notice that all merges are included in the sum. So even when a node gets merged after both children got merged, they children are included as well.
+Here $m$ stands for a merge task, which merges two nodes with the coefficients $m_x$ and $m_y$, both located at level $m_l$. $d$ stands for the depth of the corresponding wavelet trees.\footnote{Notice that we mean the complete tree here, not only the subtree affected by the merge.} All these terms are equal to the descriptions in \autoref{sec:algorithm:wavelet}. Notice that all merges are included in the sum. So even when a node gets merged after both children got merged, they children are included as well.
 
 While the implementation is rather fast because guessing of the upper limit does not require any knowledge of the actual time series difference, it is not well suited for all applications. A compression using this metric can lead to many jumps within the decompressed time series. Also, the metric tends to sacrifice huge local errors for small improvements of the overall compression rate.
 
@@ -403,7 +402,9 @@ There are three technical details that help to improve the compression ratio eve
 
 The second improvement is made by changing the representation of the child pointers within the tree nodes. Because we store all trees within a single memory-mapped region and this region may appear at different offsets during different program executions, we use offset pointers instead of real pointers. These offset pointers store the offset from the pointer itself to its target. Because the target is always located within the same mapped region, the offset stays constant no matter what global position the region has. Originally we stored \SI{64}{\bit} signed integer values as offsets. We reduced this to \SI{48}{\bit} values, which is enough to store \SI[parse-numbers = false]{2^{48 - 1}}{\byte} $=$ \SI{128}{\tera\byte}.
 
-The last one is a change on how the time series are shuffled before added to the index. Instead of doing a complete random shuffle, we separate the set of time series into chunks and shuffle these while preserving the order within the chunks. This improves memory locality and therefore results in better IO performance. The results vary from case to case and can be slightly worse than a full shuffle. We set the chunk size to \num{16}, which we found a good tradeoff.
+We want to point out that both changes of data types lead to a packed node representation of \SI{112}{\bit} which is acceptable on architectures that implement unaligned load and store operations. This is the case for x64. The packed layout only applies while the data is located on disc or loaded into the RAM and cache lines. As soon as the values are fetched into processor registers, they usually require architecture-defined space. On x64 this are multiples of \SI{64}{\bit}.
+
+The last one is a change on how the time series are shuffled before added to the index. Instead of doing a complete random shuffle, we separate the set of time series into chunks and shuffle these while preserving the order within the chunks. This improves memory locality and therefore results in better IO performance. The results vary from case to case and can be slightly worse than a full shuffle. We set the chunk size to \num{16}, which we found a good trade-off.
 
 A possible improvement closely related to reducing the size of the offset pointers is the removal of the null pointers stored in all leaf nodes. We did not implement this simply because it makes the code more complicated, also because there are not enough leaf nodes left after compression to justify this change.
 
@@ -426,7 +427,7 @@ The main problem with our approach is its greedy nature. As shown in \autoref{fi
     \caption{Compression over the compression process}\label{fig:compression_timeline}
 \end{figure}
 
-\autoref{fig:compression_timeline} adds another detail to that problem. It shows how the compression rate developers when more data is added to the index. When using low error thresholds, the following can be observed: at the beginning, not enough data is present in the database so the first entries are not compressed very well. As more data is added, the compression rate improves. This improvement is limited by the fact that it gets harder to find the right merges that allow to merge larger subtrees. When using higher error thresholds this gets more obvious. Because the local merging is not limited by the threshold anymore, the choice of the right neighbor that allows to merge its parent as well plays a bigger role now. As a result the behavior flips and the results get worse the more data is added to the index. When using such high thresholds it would be better to compress the data in chunks instead of the whole data set as one piece.
+\autoref{fig:compression_timeline} adds another detail to that problem. It shows how the compression rate develops when more data is added to the index. When using low error thresholds, the following can be observed: at the beginning, not enough data is present in the database so the first entries are not compressed very well. As more data is added, the compression rate improves. This improvement is limited by the fact that it gets harder to find the right merges that allow to merge larger subtrees. When using higher error thresholds this gets more obvious. Because the local merging is not limited by the threshold anymore, the choice of the right neighbor that allows to merge its parent as well plays a bigger role now. As a result the behavior flips and the results get worse the more data is added to the index. When using such high thresholds it would be better to compress the data in chunks instead of the whole data set as one piece.
 
 While the following section explain some of the fixes we have tried, we came to the conclusion that it might require a totally different strategy to find larger merges.
 
@@ -489,7 +490,7 @@ A possible reason for suboptimal decisions during the local node merging might b
 
 The pruning zeroes low significant parts of the floating point coefficients, bit by bit, so with increasing error. So the ratio of the information loss stays approximately constant no matter what size the coefficient has. The idea behind this is to engage the algorithm to ignore noise within the coefficient and to have fewer decisions to make. On the other hand this pruning also increases the error without resulting in any compression at all and is only useful for entries that will be added to the index afterwards. Sadly the increase of the error rate overweights the desired affect of helping the greedy algorithm and therefore this approach does not have a positive effect, in all three variants.
 
-Keep in mind that this type of pruning does not decrease the memory requirements of the tree nodes since there is no fixed cutoff but rather a individual decision how much information should be kept. So to than decrease the node size by storing a shorter representation of the coefficient you would also need to store how much information got pruned, which takes so much space that it eliminates its purpose. For technical reason it is also quite difficult to store nodes with sizes not fitting into hole bytes.
+Keep in mind that this type of pruning does not decrease the memory requirements of the tree nodes since there is no fixed cutoff but rather a individual decision how much information should be kept. So to than decrease the node size by storing a shorter representation of the coefficient you would also need to store how much information got pruned, which takes so much space that it eliminates its purpose. For technical reason it is also quite difficult to store nodes with sizes not fitting into whole bytes.
 
 
 \subsection{Seeding}
