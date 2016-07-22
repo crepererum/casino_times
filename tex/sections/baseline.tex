@@ -203,13 +203,13 @@ Second it is not clear how many nearest neighbors should be taken into account, 
     d_{n,i} = \frac{d_i - d_1}{d_1}
 \end{equation}
 
-Here $d_i$ is the distance of the neighbor with rank $i$, starting at \num{0} with the query itself. The result is shown in \autoref{fig:dists_sorted}. Now we search for the index that clearly cuts the group of the nearest neighbors from the rest of data. To do so we do the following:
+Here $d_i$ is the distance of the neighbor with rank $i$, starting at \num{0} with the query itself. The result is shown in \autoref{fig:dists_sorted}. Now we search for the index that clearly cuts the group of the nearest neighbors from the rest of data. To do so we take into account the following observation: the derivative of the function of sorted nearest neighbors is usually decreasing and is then suddenly increasing again, isolating a dedicated group of nearest neighbors. We use this as a cutoff-point. The mathematical term is:
 
 \begin{equation}\label{eq:dists_cut}
     i_\text{cut} = 1 + \argmax_{i=1}^\frac{m}{2} \left( \Delta_1 \left( \frac{\Delta_1(d_n)}{d_n} \right) \right)_i
 \end{equation}
 
-Here $\Delta_1$ calculates the gradient with distance \num{1}.
+Here $\Delta_1$ calculates the gradient with distance \num{1}. Notice that we normalize the first derivative since we want to compare relative changes from a certain neighbor to the next one. This normalization is always possible due to the sorting of neighbors by rank. The second derivative can be positive and negative and therefore normalization is not desired and also would not have a semantical meaning.
 
 That approach might seem to be slightly artificial and indeed its a more phenomenological metric instead of a mathematically proven approach. The main reason for this is that we want to keep the index as small as possible to enable users to understand the content of the list. If you try to use the set of nearest neighbors as an input for another algorithm you may want to choose another method.
 
