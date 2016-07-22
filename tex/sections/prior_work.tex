@@ -1,13 +1,15 @@
 \chapter{Prior Work}
 \label{ch:prior}
 
-Now we would like to introduce some prior work and discuss how they differ from our work. Before doing so and because we think it is not expressed enough amongst researchers we want to emphasize the following point: these methods and algorithms are not bad in general and have their applications, but there are reasons for not using them. Either the time series we work with are just different from the ones that are normally used or it is because many fields do not face the vast amount of data as we do. And some of them are just not able to simultaneously match the goals we have:
+Before starting with the presentation of our research we would like to introduce some prior work and discuss how they differ from our work. First, we want to emphasize the following point, which we think it is not expressed enough amongst researchers: these methods and algorithms are not bad in general and have their applications, but there are reasons for not using them. Either the time series we work with are just different from the ones that are normally used or it is because many fields do not face the vast amount of data as we do. And some of them are just not able to simultaneously match the goals we have:
 
 \begin{itemize}
     \item finding similarities as defined by us amongst a large set of short but entropy-right time series
     \item use these findings to speed up nearest neighbor queries
     \item at the same time exploit shared information to compress the data
-    \item enable similarity search on subranges of the data set without the need to prepare the data again
+    \item enable similarity search on subranges of the data set with different sizes without the need to prepare the data again
+    \item while the preprocessing is done once and can be slow, the nearest neighbor queries need to fast enough to enable interactive investigations
+    \item the entire data processing must be possible on one server to enable more groups to work with the data
 \end{itemize}
 
 
@@ -19,10 +21,10 @@ The first idea on how to deal with our data set would be a dimension reduction. 
 
 
 
-\section{No Compression or Reduction}
+\section{No Compression}
 \label{sec:prior:nocompression}
 
-Some methods (\cite{dimred3,dimred4}) try to transform the data into another representation and use this representation to speed up similarity search. The problem here that this does not lead to a data reduction and therefore does not enable users to process the full $n$-gram corpus.
+Some methods (\cite{dimred3,dimred4}) try to transform the data into another representation and use this representation to speed up similarity search. These transformations are only used for indexing purposes and do not compress the overall data set. This does not lead to a data reduction since you still need the full data corpus, at least when checking for our definition of similarity, and therefore does not enable users to process the full $n$-gram corpus. Since the preprocessed $1$-gram data set is \SI{1.6}{\giga\byte} and the $2$-gram set is already \SI{13}{\giga\byte} in size, we expect that the full $5$-gram data set can only be used for interactive query processing when compression is used.
 
 
 
@@ -30,6 +32,8 @@ Some methods (\cite{dimred3,dimred4}) try to transform the data into another rep
 \label{sec:prior:extract}
 
 Another hole topic is the extraction of specific features (\cite{compress1,compress2,compress3,compress4,compress5}). It leads to a compression and sometimes (\cite{compress1}) to human-readable outputs. The reduced and refined amount of data usually enables better index structures. The reason this is not applicable to our problem is the following: during the feature extraction process it is not clear how large or small the time ranges during the similarity search will be and therefore it is not clear how fine-grained the resulting description should be. We have shown that the frequency of our time series is high and a coarse-grained extraction would be equal to a dimension reduction and therefore would not work as well. A fine-grained extraction results in too much information to index and process on demand and is also a bad compression.
+
+For small fixed query windows a feature extraction might work but keep in mind that the neighborhood search still needs to match our similarity definition and therefore must be able to compensate small warping effects. Keeping the course of dimensionality in mind the number of extracted features should possibly not exceed a count of \num{16}. Together with the frequency plots shown in \autoref{fig:smoothing_frequencies} we guess that it might be possible to enable meaningful feature extraction for time windows up to a size of $16 \cdot 256/64 = 64$. From our own experiments in \autoref{ssec:baseline:sim:rank} we think that this approach would also lead to large changes within the set of nearest neighbors. There might be features that can archive this task or even be able to exceed our guessed window but we are not aware of any existing publications covering this.
 
 
 
@@ -44,7 +48,7 @@ The definition developed in~\cite{sim1} is based on the matching of rescaled sub
 
 An interesting approach is presented in~\cite{sim2}. In that paper time series are described by rules that describe discretized data. In our opinion that could be classified as feature extraction. The two issues are: the discretization loss and the amount of extracted rules. Both do not work very well with our idea of similarity, but it might be worth to consider to use this technology to add additional information to behavior that we find with our method and make the results more understandable to the users.
 
-One last idea, which we want present here, is an alternative to the used DTW\@: Longest Common Subsequence (LCSS) and Edit Distance on Real Sequence (EDR). These require either discrete data or $\epsilon$-thresholds. \cite{sim3} crafts a generic and fast approach to compute these. Other groups might find this helpful but we decided that DTW is better suited for our application since its idea of a Euclidean distance with some time inaccuracies better match our model of similarity.
+One last idea, which we want present here, is an alternative to the used DTW\@: Longest Common Subsequence (LCSS) and Edit Distance on Real Sequence (EDR). These require either discrete data or $\epsilon$-thresholds. \cite{sim3} crafts a generic and fast approach to compute these. Other groups might find this helpful but we decided that DTW is better suited for our application since its idea of a Euclidean distance with some time inaccuracies better match our model of similarity. For us that means not including binary decisions during the distance calculation.\footnote{Strictly speaking the DTW calculation does include binary decisions but these are only be used to find the minimal distance not for the actual distance calculation.} The reason for this is that the difference of the distance within the set of nearest neighbors is small as shown in \autoref{ssec:baseline:sim:rank}.
 
 
 
