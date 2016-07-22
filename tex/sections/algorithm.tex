@@ -20,7 +20,9 @@ Before we start we want to define some important terms:
     \caption{Wavelet Tree Construction}\label{fig:wavelet_tree_example}
 \end{figure}
 
-First of all, we need to find a time series representation that enables us to compare different series on different time scales and different granularities. While the granularity requirement is met by a Fourier Transform, it is insufficient for different time ranges. The reason for it is that the entire series is disassembled into frequencies that span the hole range. That makes it difficult to compare sub-ranges. So we chose a different transformation --- the Discrete Wavelet Transform under usage of the Haar Wavelet (\cite{Haar}). A special property of this kind of transform is that it deconstructs a time series into a tree-like structure. Note that we only support time series with length that is a power of two. A generalization might be archived by the application of~\cite{haar_tree_notwo}.
+First of all, we need to find a time series representation that enables us to compare different series on different time scales and different granularities. While the granularity requirement is met by a Fourier Transform or a Discrete Cosine Transform (\cite{DCT1,DCT2}), it is insufficient for different time ranges. The reason for it is that the entire series is disassembled into frequencies that span the hole range. That makes it difficult to compare sub-ranges. A possible workaround would be the splitting of the time series into fixed-size chunks and transform each of them individually. Sadly, this makes it hard to handle requests for different time spawns and introduces an artificial choice between fine or course granularity, but never allows to extract and combine information for the entire range of granularity choices.
+
+So we chose a different transformation --- the Discrete Wavelet Transform under usage of the Haar Wavelet (\cite{Haar}). A special property of this kind of transform is that it deconstructs a time series into a tree-like structure. Note that we only implement indexing of time series with length that is a power of two, because of our recursive tree-construction which requires subtrees of equals sizes. A generalization might be archived by the application of~\cite{haar_tree_notwo}. This limitation does not apply to query ranges.
 
 To explain how the tree decomposition works we first need to clarify some terms:
 
@@ -139,7 +141,9 @@ The first attempt to reduce the amount of data is an obvious but simple approach
     \item setting its coefficient to $0$ would not increase the error above a certain threshold
 \end{enumerate}
 
-So pruning just equals the zeroing of the coefficient, but it allows us to remove the node entirely and save storage space since it does not contain any additional information than both pruned children and the coefficient that does not have an influence anymore. The question is in which order nodes should be tried to be pruned since this algorithm is greedy method and will stop immediately after the threshold is reached. We propose to shuffle the nodes first to avoid a bias to the beginning or end of the time series and then to sort the shuffled nodes starting the smallest coefficient. This makes it more likely to prune more nodes instead of just some with huge coefficients. Also, the results are more stable as you can see while comparing \autoref{fig:ngrams_ex2_compression_unsorted} and \autoref{fig:ngrams_ex2_compression_sorted}. The algorithm is shown in \autoref{algo:pruneTree}.
+The error threshold is an application-specific parameter, similar to what video and audio compression codecs expose. Similar to these, the direct effect on the results is not always easy to guess since the decompressed data might be used for different purposes afterwards. For the method which extends the pruning to a merging as described in the following section, we measured the threshold-error relation in the context of neighborhood queries in \autoref{sec:evaluation:distortion}.
+
+So pruning just equals the zeroing of the coefficient, but it allows us to remove the node entirely and save storage space since it does not contain any additional information than both pruned children and the coefficient that does not have an influence anymore. The question is in which order nodes should be tried to be pruned since this algorithm is greedy method and will stop immediately after the threshold is reached. We propose to shuffle the nodes first to avoid a bias to the beginning or end of the time series and then to sort the shuffled nodes starting the smallest coefficient. This makes it more likely to prune more nodes instead of just some with huge coefficients. Also, the results are more stable as you can see while comparing \autoref{fig:ngrams_ex2_compression_unsorted} and \autoref{fig:ngrams_ex2_compression_sorted}. There we show how the increasing error threshold affects the compression rate or in other words: the relative amount of pruned nodes as a function of the error threshold. The algorithm is shown in \autoref{algo:pruneTree}.
 
 \begin{figure}
     \centering
@@ -442,6 +446,10 @@ We tried different approaches to solve to increase the likelihood to merge with 
 \subsection{Subtree Index}
 \label{ssec:algorithm:fail:stindex}
 
+\begin{definition}[$s$-subtree]
+    An $s$-subtree is a subtree starting at a certain node and that includes all child nodes and their subtrees. The size $s$ equals the number of nodes in that subtree. Since in our case there are always two children\footnote{Except for the superroot, which we just ignore here.} and the length of the time series is \num{256}, possible values for $s$ are: $2^i - 1, 1 \leq i \leq 8$.
+\end{definition}
+
 To increase the chance that the greedy algorithm chooses merges that belong to the same subtree we tried the following method:
 
 \begin{enumerate}
@@ -456,7 +464,7 @@ This requires that we are quickly able to figure out which nodes have which pare
 \subsection{FLANN}
 \label{ssec:algorithm:fail:flann}
 
-The main goal of our algorithm is to find the best matching subtree in terms of distance. To help the greedy algorithm to archive that task we tried to use FLANN (\cite{FLANN}) to merge subtrees of size \num{3} instead of single nodes. To do so we need to ensure that the coefficients stored in the tree nodes are pre-multiplied like the elements in \autoref{eq:e1_up}. It turns out that the huge amount of indices required renders this method impossible to implement since it is not as memory and time efficient as plain sorted arrays. The result is that the calculation never finishes. Surprisingly the partial compression results are not even better, which might be due to the fact that merging entire subtrees tends to be less aggressive compared to handling single nodes.
+The main goal of our algorithm is to find the best matching subtree in terms of distance. To help the greedy algorithm to archive that task we tried to use FLANN (\cite{FLANN}) to merge subtrees of size \num{3} instead of single nodes. To do so we need to ensure that the coefficients stored in the tree nodes are pre-multiplied like the elements in \autoref{eq:e1_up}. It turns out that the huge amount of indices required, renders this method impossible to implement since it is not as memory and time efficient as plain sorted arrays. The result is that the calculation never finishes. Surprisingly the partial compression results are not even better, which might be due to the fact that merging entire subtrees tends to be less aggressive compared to handling single nodes.
 
 
 \subsection{Random Boosting}
@@ -480,7 +488,7 @@ One idea that may arise during investigating the results of DTW is that the time
 \subsection{Pruning}
 \label{ssec:algorithm:fail:pruning}
 
-A possible reason for suboptimal decisions during the local node merging might be that coefficients can be quite noisy and therefore expose to many possible merges, which do not really differ within their value. Because only the nearest neighbor is selected for a merge, this may result in insane results. We tried to solve this problem by introducing additional information pruning in three variants:
+Noise within the time series data results in small changes of the coefficients store in the tree nodes. Since our algorithm only uses the nearest neighbor as a candidate for a merging operation, these small changes quickly result in different decisions during the local merging process. This is suboptimal since our method should rather focus on the big picture rather being to sensitive to noisy input. We tried to solve this problem by introducing additional information pruning, which we hoped should eliminate the noise sensitive, in three variants:
 
 \begin{enumerate}
     \item before merging
