@@ -247,7 +247,7 @@
 \setcounter{secnumdepth}{3}
 
 % subcaption
-\RequirePackage[list=true]{subcaption}
+\RequirePackage{subcaption}
 
 % wallpaper for title page (KIT-Frame)
 \RequirePackage{wallpaper}

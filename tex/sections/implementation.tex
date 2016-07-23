@@ -13,7 +13,7 @@ After considering multiple ways of implementing a high-performance algorithm, we
 \begin{sidewaysfigure}
     \centering
     \input{figures/tools.tex}
-    \caption{Used tools}\label{fig:tools}
+    \caption[Overview over used tools]{Used tools}\label{fig:tools}
 \end{sidewaysfigure}
 
 Instead of developing the algorithms as a single monolithic block we designed them as reusable executables with single scopes similar to the system tools provided by UNIX-like systems. An overview of these tools and their interaction can be found in \autoref{fig:tools}. There purposes are:
@@ -50,7 +50,7 @@ Common code is shared by header files and static libraries and executables are l
 \begin{figure}
     \centering
     \input{figures/dtw_fast.tex}
-    \caption{Fast DTW implementation}\label{fig:dtw_fast}
+    \caption[Illustration of fast DTW implementation]{Fast DTW implementation}\label{fig:dtw_fast}
 \end{figure}
 
 One of the most important parts of our implementation is having a solid and fast DTW baseline. The fundamental idea behind this is explained in \autoref{fig:dtw_fast}. Because Dynamic Time Warping is an optimal dynamic programming method, we only need to store the current set of alternatives instead of the entire history of possible warping paths. Furthermore, our warping window is limited to a Sakoe-Chiba Band of size $2r + 1$. This leads to the possibility to use a double buffering technique --- one buffer for the old set of optimal paths and one buffer for the new set. We also do not need to store the actual warping path but only the optimal distance, which reduced memory allocations and speeds up the implementation even further.

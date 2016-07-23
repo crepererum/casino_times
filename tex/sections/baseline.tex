@@ -11,7 +11,7 @@ Before we can start analyzing any data or to do any algorithm research, we need 
 \begin{figure}
     \centering
     \input{figures/clean_up_sums.tex}
-    \caption{Relative amount of pruned data per letter}\label{fig:clean_up_sums}
+    \caption[Data pruning breakdown]{Relative amount of pruned data per letter}\label{fig:clean_up_sums}
 \end{figure}
 
 As for most data analysis tasks, the raw input data is not suitable for direct information gathering. To clean up the data we are looking for an efficient and deterministic way. To do so we perform the following clean up steps:
@@ -113,13 +113,13 @@ To derive meaningful similarity, we will now explain the reason and execution of
 \begin{figure}
     \centering
     \input{figures/ngrams_ex_total.tex}
-    \caption{Total counts of example $n$-grams}\label{fig:ngrams_ex_total}
+    \caption[Time series plot, absolute amount]{Total counts of example $n$-grams}\label{fig:ngrams_ex_total}
 \end{figure}
 
 \begin{figure}
     \centering
     \input{figures/ngrams_hist.tex}
-    \caption{Histogram of all time series}\label{fig:ngrams_hist}
+    \caption[Histogram of time series data, absolute amount]{Histogram of all time series}\label{fig:ngrams_hist}
 \end{figure}
 
 In \autoref{fig:ngrams_ex_total} you can observe the following: the words \enquote{without}, \enquote{area} and \enquote{death} share the global low around 1945 while the word \enquote{war} does not. On the other hand you can see the same structure (peak and then depression) between 1961 and 1977 for \enquote{war} and \enquote{without}. Another feature that can be observed is the fact that the time series data is not limited in its value and that they behave exponentially, as shown in \autoref{fig:ngrams_hist}. Exponential growth is also common amongst this area and our natural environments (\cite{exp_growth1,exp_growth2}). To be able to determine a proper similarity between different time series, this scaling should be eliminated. There are two possible ways: applying a logarithm or normalizing every point in time by using a factor shared amongst all series.
@@ -127,13 +127,13 @@ In \autoref{fig:ngrams_ex_total} you can observe the following: the words \enquo
 \begin{figure}
     \centering
     \input{figures/ngrams_sums.tex}
-    \caption{Absolute sum of all nGram time series}\label{fig:ngrams_sums}
+    \caption[Plot of time series sum]{Absolute sum of all $n$-gram time series}\label{fig:ngrams_sums}
 \end{figure}
 
 \begin{figure}
     \centering
     \input{figures/ngrams_ex_relative.tex}
-    \caption{Relative counts of example $n$-grams}\label{fig:ngrams_ex_relative}
+    \caption[Time series plot, relative amount]{Relative counts of example $n$-grams}\label{fig:ngrams_ex_relative}
 \end{figure}
 
 \autoref{fig:ngrams_sums} shows the foundation of such a factor. The problem with this approach is that time series with an overall huge impact on the sum will also influence the normalized results of small time series heavily. In other words: rather than symbolizing a straight growth, the sum itself has a structure, which then will influence the normalized result. An example result of this normalization is shown in \autoref{fig:ngrams_ex_relative}. It can be observed that the $n$-gram \enquote{war} seems to grow heavily during the time around the world wars. The reason for this is that the overall number of publications decreased during this time except for war-related topics. As explained, the structure of the time series sum itself now results in a new feature of the \enquote{war} data.
@@ -141,13 +141,13 @@ In \autoref{fig:ngrams_ex_total} you can observe the following: the words \enquo
 \begin{figure}
     \centering
     \input{figures/ngrams_ex_log.tex}
-    \caption{$\log$ counts of example $n$-grams}\label{fig:ngrams_ex_log}
+    \caption[Time series plot, $\log$]{$\log$ counts of example $n$-grams}\label{fig:ngrams_ex_log}
 \end{figure}
 
 \begin{figure}
     \centering
     \input{figures/ngrams_lhist.tex}
-    \caption{Histogram of $\log(x + 1)$ of all time series}\label{fig:ngrams_lhist}
+    \caption[Histogram of time series data, $\log$]{Histogram of $\log(x + 1)$ of all time series}\label{fig:ngrams_lhist}
 \end{figure}
 
 So we choose to apply $\log(x + 1)$ to all values for normalizing. Note the \num{1} that was added because the range of possible input values starts at \num{0}. The results are shown in \autoref{fig:ngrams_ex_log} and the corresponding histogram is shown in \autoref{fig:ngrams_lhist}. There is a small gap in the histogram, which is the bin $(0,0.5]$, which before transformation is $(0,0.65]$ and therefore no count values can fall into that range. Overall the results look way better distributed. It can also be observed that the later years are smoother than the beginning of the time series. This is due to the fact that larger values counts are, in relative means, less noisy than smaller counts.
@@ -159,13 +159,13 @@ So we choose to apply $\log(x + 1)$ to all values for normalizing. Note the \num
 \begin{figure}
     \centering
     \input{figures/ngrams_ex2_fitavg.tex}
-    \caption{Example $n$-grams, fit using AVG}\label{fig:ngrams_ex2_fitavg}
+    \caption[Time series plot, fit using AVG]{Example $n$-grams, fit using AVG}\label{fig:ngrams_ex2_fitavg}
 \end{figure}
 
 \begin{figure}
     \centering
     \input{figures/ngrams_ex2_grad.tex}
-    \caption{Gradients of example $n$-grams}\label{fig:ngrams_ex2_grad}
+    \caption[Time series plot, gradients]{Gradients of example $n$-grams}\label{fig:ngrams_ex2_grad}
 \end{figure}
 
 As \autoref{fig:ngrams_ex2_fitavg} shows, there are cases where time series look very similar but are difficult to fit by using a linear transformation. Therefore, a simple $p$-distance is not sufficient for as a distance measure. We decided to fit the gradients instead. An example is shown in \autoref{fig:ngrams_ex2_grad}. We use the $\Delta = 1$ gradient of $\log(x + 1)$. Now time series with similar structure have a low distance. The following two subsections will explain two additional tunings we made to make this distance more meaningful.
@@ -173,13 +173,13 @@ As \autoref{fig:ngrams_ex2_fitavg} shows, there are cases where time series look
 \begin{figure}
     \centering
     \input{figures/ngrams_ex2_grad_smooth.tex}
-    \caption{Gradients of example $n$-grams, smoothed with $\sigma = 1$}\label{fig:ngrams_ex2_grad_smooth}
+    \caption[Time series plot, smoothed gradients]{Gradients of example $n$-grams, smoothed with $\sigma = 1$}\label{fig:ngrams_ex2_grad_smooth}
 \end{figure}
 
 \begin{figure}
     \centering
     \input{figures/smoothing_frequencies.tex}
-    \caption{Frequency distribution (mean + standard deviation) for different smoothing levels}\label{fig:smoothing_frequencies}
+    \caption[Frequency plot for smoothing]{Frequency distribution (mean + standard deviation) for different smoothing levels}\label{fig:smoothing_frequencies}
 \end{figure}
 
 Since calculating the distances of noisy gradients may lead to useless results, we smooth the time series using a Gauss kernel with $\sigma = 1$ before deriving the gradient. An example is shown in \autoref{fig:ngrams_ex2_grad_smooth}. The reason we can use a Gauss kernel, which takes past and future values into account, for a time series here is the fact that the data we are transforming is known beforehand. This is different to most other scenarios where smoothing techniques like EWMA (exponentially weighted moving average) are required. Frequency distributions for different smoothing levels are shown in \autoref{fig:smoothing_frequencies}. The non-smoothed data shows quite high amplitudes in higher frequencies ranges, which is uncommon for most time series data sets. The chosen smoothing of $\sigma = 1$ reduces noise while $\sigma = 2$ leads to a heavy loss of information. The overall pattern of fast switching gradients will also lead to some other problems, e.g.\ in \autoref{sec:baseline:speed}. The similarity of the $1$-gram \enquote{kiss} is clearer now. As expected, the time data does not quite fit the other example series. This is intended since the underlying data also has a slightly different structure.
@@ -191,7 +191,7 @@ Since calculating the distances of noisy gradients may lead to useless results, 
 \begin{figure}
     \centering
     \input{figures/ngrams_ex2_extrema.tex}
-    \caption{Extrema of gradients of $\sigma = 2$ smoothed example time series}\label{fig:ngrams_ex2_extrema}
+    \caption[Extrema of time series]{Extrema of gradients of $\sigma = 2$ smoothed example time series}\label{fig:ngrams_ex2_extrema}
 \end{figure}
 
 Now we have reached a state where we could just calculate the quadratic distance of the smoothed time series data. The question is if this obvious approach is sane. If would do so, we would completely ignore the fact that events that influence one time series have an delayed effect on others. Someone might wonder if this effect occurs in our data set. Take a look at \autoref{fig:ngrams_ex2_extrema} where we plot the extrema points of the smoothed data. While all four time seres have the same structure, their smoothed gradients do not align perfectly. To calculate a meaningful distance, we use DTW (Dynamic Time Warping)\footnote{We do not cite a publication here since it is a commonly known algorithm and the only online publisher of the assumed original publication wants you to pay $>$\SI{30}{\$} after $>$\num{45} years.} with an Euclidean distance. The usage of gradients as an input of Dynamic Time Warping follows the idea presented in~\cite{DDTW}. To only allow a warping up to a certain distance we use Sakoe-Chiba Band from~\cite{sakoe} of radius $r$. This prevents the DTW algorithm from stretching the time series too heavily which would result in semantically insane results and therefore would contradict our goals we have for our similarity.
@@ -205,7 +205,7 @@ It seems obvious to use the DTW distances to rank nearest neighbors. There are t
 \begin{figure}
     \centering
     \input{figures/dists_hist.tex}
-    \caption{Histogram of distances to example $1$-grams}\label{fig:dists_hist}
+    \caption[Histogram of distances]{Histogram of distances to example $1$-grams}\label{fig:dists_hist}
 \end{figure}
 
 First the distribution of the distances differs heavily from query to query as shown in \autoref{fig:dists_hist}.
@@ -213,7 +213,7 @@ First the distribution of the distances differs heavily from query to query as s
 \begin{figure}
     \centering
     \input{figures/dists_sorted.tex}
-    \caption{Distance of the first \num{100} neighbors of example $1$-grams, without the first element, which is the query itself}\label{fig:dists_sorted}
+    \caption[Sorted distances, with cutoff points]{Distance of the first \num{100} neighbors of example $1$-grams, without the first element, which is the query itself}\label{fig:dists_sorted}
 \end{figure}
 
 Second it is not clear how many nearest neighbors should be taken into account, especially when designing user-facing applications. To solve this problem we sort all neighbors by their distance and only take rank $1$ to $\frac{m}{2}$ into account, with $m$ being the size of the set of all $n$-grams. This ignores the query itself with its distance of \num{0} and prunes the second half of the sorted list because there are usually many outliers at the end of the spectrum. Then we normalize the distances:
@@ -246,13 +246,13 @@ One of the fundamental problems of large-scale DTW-based similarity searches is 
 \begin{figure}
     \centering
     \input{figures/dtw_index.tex}
-    \caption{DTW index efficiency, per resolution, $r$ is \num{10}}\label{fig:dtw_index}
+    \caption[DTW index efficiency per resolution]{DTW index efficiency, per resolution, $r$ is \num{10}}\label{fig:dtw_index}
 \end{figure}
 
 \begin{figure}
     \centering
     \input{figures/dtw_index2.tex}
-    \caption{DTW index efficiency, per $r$, resolution is \num{64}}\label{fig:dtw_index2}
+    \caption[DTW index efficiency per $r$]{DTW index efficiency, per $r$, resolution is \num{64}}\label{fig:dtw_index2}
 \end{figure}
 
 A problem with this type of index is that the structure of the indexed data is different than the one tested in the publication. Our rather short data (in terms of measured points) contains more entropy and is more jittering than the time series intended by the paper. Therefore, we require more dimensions to get a tree that at least filters out some candidates as shown in \autoref{fig:dtw_index}. We need at least \num{16} dimensions to get any effect from the \code{LB\_PAA} and we do not even see any real filtering effect from the tree structure itself\footnote{the amount of received time series is more than \SI{95}{\percent}}. So the tree structure only provides a sorting of the time series. That results in a very memory-inefficient data structure. Remember that for every dimension, the R-tree stores two data points, a minimum and a maximum. So we need to store at least \SI{12.5}{\percent} of the actual data size as an index to get a any effect and still have a linear complexity. The high dimensionality renders the tree performance and memory management nearly useless, as also found by~\cite{rtree_highdim}. The situation depends on the warping radius as shown in \autoref{fig:dtw_index2}. For non-trivial values nearly the entire data is fetched from the index. Because all of this is a general problem of R-tree-based algorithms, we did not implement the improvements suggested by~\cite{LB_Improved}.
