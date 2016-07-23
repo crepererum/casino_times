@@ -35,12 +35,21 @@ As a first step we download the raw data from the Google server. A complete list
 
 \url{https://storage.googleapis.com/books/ngrams/books/datasetsv2.html}
 
+We use the files of version \code{20120701} listed under \enquote{American English}, with the exception of:
+
+\begin{itemize}
+    \item files with $n$-grams that for sure contain word types instead of types and therefore will be dropped\footnote{Does not apply to the $1$-gram data set.}: \code{\_ADJ\_}, \code{\_ADP\_}, \code{\_ADV\_}, \code{\_CONJ\_}, \code{\_DET\_}, \code{\_NOUN\_}, \code{\_NUM\_}, \code{\_PRON\_}, \code{\_PRT\_}, \code{\_VERB\_}
+    \item files containing $n$-grams with numbers: \code{0}, \code{1}, \code{2}, \code{3}, \code{4}, \code{5}, \code{6}, \code{7}, \code{8}, \code{9}
+    \item punctuation data: \code{punctuation}
+    \item characters which do not belong to the English alphabet: \code{other}
+\end{itemize}
+
 The data collection and processing is described in~\cite{Google_nGrams}. The raw text data, which was downloaded from the Google servers, is mangled by a high-performance C++ implementation to speed-up the upcoming steps. During the first steps, only the $n$-gram content is required without any knowledge of the actual time series data. We exploit this fact and delay the actual parsing and storage of the time series until the data is required and focus on the handling of the string data as long as possible.
 
 
 \subsection{String filtering}
 \label{ssec:baseline:data:filter}
-It seems that the $n$-grams that Google extracted does not only contain pure words but also punctuation characters and word classes. To simplify storage of the strings and because our users are not interested in searching for whole word types, we filter out all entries that contain characters of the following class:
+It seems that the $n$-grams that Google extracted does not only contain pure words but also numbers, punctuation characters and word classes. To simplify storage of the strings and because our users are not interested in searching for whole word types, we filter out all entries that contain characters of the following class:
 
 \code{\[\_.\slash{},:;!?\textbackslash'"\#()<>=+*\{\}0-9\]}
 
@@ -86,6 +95,16 @@ In this section we first discuss, which time series we want to consider as simil
 \end{definition}
 
 Furthermore we limit our analysis to the \enquote{match count} because it seems to be more useful for later research than the less fine grained \enquote{unique book count}.
+
+To derive meaningful similarity, we will now explain the reason and execution of the different steps done for the metric calculation, which are executed in the following order:
+
+\begin{enumerate}
+    \item normalization: since the book counts grow exponentially but at the same time we want to ensure independent preprocessing of the single time series, we do a $\log(x + 1)$ transformation
+    \item smoothing: to eliminate noise for the next step\footnote{This step does have its own subsection but is explained during the discussion of the gradient calculation.}
+    \item gradients: we seek for structural changes withing the time series, not similar counts, so we calculate the distances of gradients instead of the original time series
+    \item Dynamic Time Warping: time series can include small delays we want to compensate them before doing the actual distance calculation
+    \item ranking: similarity can be used to derive a set of nearest neighbors; we explain how to do so, which problems occur due to noise and present one possible way to automatically select the size of the set of nearest neighbors
+\end{enumerate}
 
 
 \subsection{Normalization}
