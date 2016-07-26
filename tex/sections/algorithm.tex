@@ -423,7 +423,7 @@ A possible improvement closely related to reducing the size of the offset pointe
     \caption{Compression per tree level}\label{fig:weakness}
 \end{figure}
 
-The main problem with our approach is its greedy nature. As shown in \autoref{fig:weakness}, the merges usually do not reach very high levels. This is caused by the decreasing probability of merging with a node that belongs to the same large subtree. The further the merging process continues, the more likely it gets that somewhere in between there was a better node from a different subtree than nearest neighbor one. On we other hand we can not check all possible merges in all layers because the runtime complexity would grow exponentially with the number of indexed time series. So we to limit the algorithm to a subset of decisions.
+The main problem with our approach is its greedy nature. As shown in \autoref{fig:weakness}, the merges usually do not reach very high levels. This is caused by the decreasing probability of merging with a node that belongs to the same large subtree. The further the merging process continues, the more likely it gets that somewhere in between there was a better node from a different subtree than nearest neighbor one. On the other hand we can not check all possible merges in all layers because the runtime complexity would grow exponentially with the number of indexed time series. So we to limit the algorithm to a subset of decisions.
 
 \begin{figure}
     \centering
@@ -455,7 +455,7 @@ To increase the chance that the greedy algorithm chooses merges that belong to t
 \begin{enumerate}
     \item select multiple nearest neighbors as candidates for a merge
     \item do this for a node that belongs to the same \num{3}-subtree (or larger ones) as well
-    \item check which pairs of merges belong to the same subtree and priorize them
+    \item check which pairs of merges belong to the same subtree and prioritize them
 \end{enumerate}
 
 This requires that we are quickly able to figure out which nodes have which parents, so we introduced a subtree and superroot index to do so. Also we need to query multiple neighbors instead of just one. The index structure is the same as used for the tracer, but since compression requires way more index requests than the normal index usage, that approach is to slow for that application. Altogether that renders the entire approach impractical and we abandoned it. Also the compression results only improved slightly and sometimes even got worse.
@@ -470,13 +470,13 @@ The main goal of our algorithm is to find the best matching subtree in terms of 
 \subsection{Random Boosting}
 \label{ssec:algorithm:fail:random}
 
-This improvement is similar to the one presented in \autoref{ssec:algorithm:fail:stindex}. We try to find better merges by observing more neighbors. This time we tried to gather a fixed amount of neighbors and select a random one with decreasing probability bound to the rank. Then we execute a complete subtree merge. This process is repeated multiple times and the best merge is kept. We also add a merge to the set where only the nearest neighbor is used to ensure that the greedy decision never is worse due to the random elements, at least as a local outcome for that specific time series. We ended up with a heavily increased calculation time and less than \SI{5}{\percent} improvements of the compression rate.
+This improvement is similar to the one presented in \autoref{ssec:algorithm:fail:stindex}. We try to find better merges by observing more neighbors. This time we tried to gather a fixed amount of neighbors and select a random one with decreasing probability bound to the rank. Then we execute a complete subtree merge. This process is repeated multiple times and the best merge is kept. We also add a merge to the set where only the nearest neighbor is used to ensure that the greedy decision never gets worse due to the random elements, at least as a local outcome for that specific time series. We ended up with a heavily increased calculation time and less than \SI{5}{\percent} improvements of the compression rate.
 
 
 \subsection{DTW}
 \label{ssec:algorithm:fail:dtw}
 
-One of the main limitations of the current neighborhood search is that the we are only looking for nodes that correspond to the same time span. This contradicts the later usage of the data through Dynamic Time Warping. So we tried to decouple the tree structure and subtree merging from the actual time dimensions. We limited the search for the child nodes to a time-monotonic warping and reused the implementation of the existing DTW\@. For the non-leaf-nodes we did not apply any constraint since the same children policy already forces merges with the correct level and correct warping. The results of this technique were not convincing since the additional degree of freedom during the merging makes it even more unlikely to hit neighbors that belong to the same subtree. So the compression rates got worse and we dropped this approach.
+One of the main limitations of the current neighborhood search is that we are only looking for nodes that correspond to the same time span. This contradicts the later usage of the data through Dynamic Time Warping. So we tried to decouple the tree structure and subtree merging from the actual time dimensions. We limited the search for the child nodes to a time-monotonic warping and reused the implementation of the existing DTW\@. For the non-leaf-nodes we did not apply any constraint since the same children policy already forces merges with the correct level and correct warping. The results of this technique were not convincing since the additional degree of freedom during the merging makes it even more unlikely to hit neighbors that belong to the same subtree. So the compression rates got worse and we dropped this approach.
 
 
 \subsection{Timeless Index}
