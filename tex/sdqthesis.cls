@@ -191,10 +191,6 @@
     \iflanguage{english}{Reviewer}{Erstgutachter}: & \thereviewerone\\
     \iflanguage{english}{Second reviewer}{Zweitgutachter}: & \thereviewertwo\\
     \iflanguage{english}{Advisor}{Betreuender Mitarbeiter}: &  \theadvisorone\\
-    % if there is no second advisor, do not output this line
-    \ifthenelse{\equal{\theadvisortwo}{}}{}{%
-    \iflanguage{english}{Second advisor}{Zweiter betreuender Mitarbeiter}: & \theadvisortwo\\
-    }
     \noalign{\vskip2em}
     Submission Date: & \thesubmissiondate\\
     Presentation Date: & \thepresentationdate\\
