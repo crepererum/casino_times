@@ -489,5 +489,17 @@
 \def\subsubsectionautorefname{Subsection}
 \def\paragraphautorefname{Paragraph}
 
+% refcheck
+\RequirePackage[norefs,nocites,ignoreunlbld]{refcheck}
+\makeatletter
+\newcommand{\refcheckize}[1]{%
+  \expandafter\let\csname @@\string#1\endcsname#1%
+  \expandafter\DeclareRobustCommand\csname relax\string#1\endcsname[1]{%
+    \csname @@\string#1\endcsname{##1}\wrtusdrf{##1}}%
+  \expandafter\let\expandafter#1\csname relax\string#1\endcsname
+}
+\makeatother
+\refcheckize{\autoref}
+
 % misc
 \RequirePackage{placeins}
