@@ -169,9 +169,13 @@ function plot_dataframe(df, title, geo=Geom.line, th=Theme(default_point_size=0.
     )
 end
 
-function plot_all_that(data, map_s2i, t, ngrams, fnorm, ftransform, title, geo=Geom.line, th=Theme(default_point_size=0.75mm))
+function df_all_that(data, map_s2i, t, ngrams, fnorm, ftransform)
     dfs = map(ng -> DataFrame(x=t, y=get_from_data(data, map_s2i[ng], fnorm, ftransform), label=ng), ngrams)
-    df = reduce(vcat, DataFrame(), dfs)
+    reduce(vcat, DataFrame(), dfs)
+end
+
+function plot_all_that(data, map_s2i, t, ngrams, fnorm, ftransform, title, geo=Geom.line, th=Theme(default_point_size=0.75mm))
+    df = df_all_that(data, map_s2i, t, ngrams, fnorm, ftransform)
     plot_dataframe(df, title, geo, th)
 end
 
