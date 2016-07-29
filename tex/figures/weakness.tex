@@ -6,6 +6,7 @@
         xmode=log,
         fullwidth
     ]
+        \addlegendimage{empty legend}
         \addplot [mark=+,color=kit-green] table [x=maxerror, y=level0, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
         \addplot [mark=o,color=kit-blue] table [x=maxerror, y=level1, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
         \addplot [mark=asterisk,color=kit-green2] table [x=maxerror, y=level2, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
@@ -14,6 +15,6 @@
         \addplot [mark=diamond,color=kit-brown] table [x=maxerror, y=level5, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
         \addplot [mark=Mercedes star flipped,color=kit-red] table [x=maxerror, y=level6, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
         \addplot [mark=pentagon,color=kit-violet] table [x=maxerror, y=level7, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
-        \legend{1,2,3,4,5,6,7,8};  % WARNING: we count levels different in the document!
+        \legend{\textbf{level:},1,2,3,4,5,6,7,8};  % WARNING: we count levels different in the document!
     \end{axis}
 \end{tikzpicture}

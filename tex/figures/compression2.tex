@@ -13,6 +13,7 @@
         },
         fullwidth large
     ]
+        \addlegendimage{empty legend}
         \addplot [mark=+,color=kit-green] table [x=maxerror, y=min, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
         \addplot [mark=o,color=kit-blue] table [x=maxerror, y=q002, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
         \addplot [mark=asterisk,color=kit-green2] table [x=maxerror, y=q009, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
@@ -23,6 +24,6 @@
         \addplot [mark=otimes,color=kit-green!75] table [x=maxerror, y=q098, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
         \addplot [mark=square,color=kit-blue!75] table [x=maxerror, y=max, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
 
-        \legend{$0.00$,$0.02$,$0.09$,$0.25$,$0.50$,$0.75$,$0.91$,$0.98$,$1.00$};
+        \legend{\textbf{quantile:},$0.00$,$0.02$,$0.09$,$0.25$,$0.50$,$0.75$,$0.91$,$0.98$,$1.00$};
     \end{axis}
 \end{tikzpicture}

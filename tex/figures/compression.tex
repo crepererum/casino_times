@@ -8,6 +8,6 @@
         \addplot [mark=+,color=kit-green2] table [x=maxerror, y=sdiff, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
         \addplot [mark=o,color=kit-yellow] table [x=maxerror, y=enew, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
         \addplot [mark=asterisk,color=kit-red] table [x=maxerror, y=levelx, col sep=comma, ignore chars={"}] {data/wavelet_compression.csv};
-        \legend{Levenshtein distance,new entries,\% nodes};
+        \legend{Levenshtein distance,amount of new entries,amount of nodes};
     \end{axis}
 \end{tikzpicture}

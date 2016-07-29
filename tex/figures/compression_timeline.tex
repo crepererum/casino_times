@@ -10,20 +10,37 @@
     ]
         \addplot [mark=none,color=kit-green2,dotted] table [x=n, y=delta, col sep=comma, ignore chars={"}] {data/compression_time_1.csv};
         \addplot [mark=none,color=kit-cyan,dotted] table [x=n, y=delta, col sep=comma, ignore chars={"}] {data/compression_time_2.csv};
-        \addplot [mark=none,color=kit-red,dotted] table [x=n, y=delta, col sep=comma, ignore chars={"}] {data/compression_time_5.csv};
+        \addplot [mark=none,color=kit-red,dotted] table [x=n, y=delta, col sep=comma, ignore chars={"}] {data/compression_time_3.csv};
+        \addplot [mark=none,color=kit-orange,dotted] table [x=n, y=delta, col sep=comma, ignore chars={"}] {data/compression_time_4.csv};
+        \addplot [mark=none,color=kit-violet,dotted] table [x=n, y=delta, col sep=comma, ignore chars={"}] {data/compression_time_5.csv};
     \end{axis}
 
     \begin{axis}[
         xlabel={n},
         ylabel={compression rate},
-        legend pos=north east,
+        legend above,
         axis y line*=left,
         ymode=log,
         fullwidth
     ]
+        \addlegendimage{empty legend}
         \addplot [mark=none,color=kit-green2] table [x=n, y=pnodes, col sep=comma, ignore chars={"}] {data/compression_time_1.csv};
         \addplot [mark=none,color=kit-cyan] table [x=n, y=pnodes, col sep=comma, ignore chars={"}] {data/compression_time_2.csv};
-        \addplot [mark=none,color=kit-red] table [x=n, y=pnodes, col sep=comma, ignore chars={"}] {data/compression_time_5.csv};
-        \legend{1,2,5};
+        \addplot [mark=none,color=kit-red] table [x=n, y=pnodes, col sep=comma, ignore chars={"}] {data/compression_time_3.csv};
+        \addplot [mark=none,color=kit-orange] table [x=n, y=pnodes, col sep=comma, ignore chars={"}] {data/compression_time_4.csv};
+        \addplot [mark=none,color=kit-violet] table [x=n, y=pnodes, col sep=comma, ignore chars={"}] {data/compression_time_5.csv};
+        \legend{\textbf{error threshold:},1,2,3,4,5};
+
+        \addplot [mark=Mercedes star flipped,mark size=0.1cm,color=kit-green2] coordinates {(800,0.141618)};
+        \addplot [mark=Mercedes star flipped,mark size=0.1cm,color=kit-cyan] coordinates {(800,0.0837157)};
+        \addplot [mark=Mercedes star flipped,mark size=0.1cm,color=kit-red] coordinates {(800,0.049)};
+        \addplot [mark=Mercedes star flipped,mark size=0.1cm,color=kit-orange] coordinates {(8800,0.027451)};
+        \addplot [mark=Mercedes star flipped,mark size=0.1cm,color=kit-violet] coordinates {(749586,0.0174147)};
+
+        \addplot [mark=Mercedes star,mark size=0.1cm,color=kit-green2] coordinates {(803042,0.0762867)};
+        \addplot [mark=Mercedes star,mark size=0.1cm,color=kit-cyan] coordinates {(803042,0.044707)};
+        \addplot [mark=Mercedes star,mark size=0.1cm,color=kit-red] coordinates {(803042,0.0316028)};
+        \addplot [mark=Mercedes star,mark size=0.1cm,color=kit-orange] coordinates {(800,0.0221569)};
+        \addplot [mark=Mercedes star,mark size=0.1cm,color=kit-violet] coordinates {(800,0.00873529)};
     \end{axis}
 \end{tikzpicture}
