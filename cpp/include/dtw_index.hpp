@@ -64,7 +64,7 @@ calc_t lb_paa_unnorm(const box_t& a, const point_t& b) {
 template <typename T>
 struct get_downsampled_generic {
     static point_t f(const calc_t* local_base, year_t ylength, point_t& result) {
-        std::size_t rate = ylength >> dtw_index_resolution_shift;
+        std::size_t rate = static_cast<std::size_t>(ylength) >> dtw_index_resolution_shift;
 
         for (std::size_t idx = 0, input_idx = 0; idx < dtw_index_resolution; ++idx, input_idx += rate) {
             result[idx] = std::accumulate(
