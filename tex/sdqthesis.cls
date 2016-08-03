@@ -499,3 +499,5 @@
 
 % misc
 \RequirePackage{placeins}
+\RequirePackage{nth}
+
